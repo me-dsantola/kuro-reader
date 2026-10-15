@@ -1,0 +1,39 @@
+name: Build KuroReader APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch: # Permite clicar em um botão no GitHub para gerar o APK quando quiser
+
+jobs:
+  build-android:
+    name: Compilar APK Release (arm64)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar Java 17 (Exigido pelo Gradle do projeto)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 3. Instalar Flutter SDK (Canal Stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 4. Instalar dependências do pubspec.yaml
+        run: flutter pub get
+
+      - name: 5. Compilar APK Release Otimizado
+        run: flutter build apk --release --split-per-abi
+
+      - name: 6. Disponibilizar APK para Download
+        uses: actions/upload-artifact@v4
+        with:
+          name: KuroReader-Android-APK
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
