@@ -57,15 +57,22 @@ class DownloadManager {
           final fileName = '${pageIndex.toString().padLeft(3, '0')}.$ext';
           final file = File('${chapterDir.path}/$fileName');
 
-          final response = await http.get(
-            Uri.parse(url),
-            headers: manga.customHeaders,
-          );
-          if (response.statusCode == 200) {
-            await file.writeAsBytes(response.bodyBytes);
+          // Reaproveita páginas completas de uma tentativa anterior.
+          if (await file.exists() && await file.length() > 0) {
             savedPaths[pageIndex] = file.path;
           } else {
-            throw Exception('Falha ao baixar página ${pageIndex + 1}');
+            final response = await http.get(
+              Uri.parse(url),
+              headers: manga.customHeaders,
+            ).timeout(const Duration(seconds: 30));
+            if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+              throw Exception('Falha ao baixar página ${pageIndex + 1}');
+            }
+            // A gravação temporária evita tratar arquivos incompletos como válidos.
+            final temporary = File('${file.path}.part');
+            await temporary.writeAsBytes(response.bodyBytes, flush: true);
+            await temporary.rename(file.path);
+            savedPaths[pageIndex] = file.path;
           }
 
           completed++;
@@ -80,7 +87,7 @@ class DownloadManager {
         'downloadedAt': DateTime.now().toIso8601String(),
       });
     } catch (e) {
-      await deleteChapter(chapter.id);
+      // Preserva as páginas já concluídas para retomar na próxima tentativa.
       rethrow;
     } finally {
       _removeProgress(chapter.id);
