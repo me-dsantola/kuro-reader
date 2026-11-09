@@ -1500,6 +1500,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   bool _isLoading = true;
   bool _isLoadingMore = false;
   String? _error;
+  int _catalogRequestGeneration = 0;
 
   final Set<CanonicalTag> _includedTags = {};
   final Set<CanonicalTag> _excludedTags = {};
@@ -1557,6 +1558,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
 
   Future<void> _loadMangas({bool reset = true}) async {
+    final generation = ++_catalogRequestGeneration;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -1566,14 +1568,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
         filter: _currentFilter,
         reset: reset,
       );
-      if (mounted) {
+      if (mounted && generation == _catalogRequestGeneration) {
         setState(() {
           _mangas = result;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _catalogRequestGeneration) {
         setState(() {
           _error = e.toString();
           _isLoading = false;
@@ -1583,13 +1585,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _loadMoreMangas() async {
+    if (_isLoading || _isLoadingMore) return;
+    final generation = _catalogRequestGeneration;
     setState(() => _isLoadingMore = true);
     try {
       final result = await MangaDexService.fetchMergedCatalog(
         filter: _currentFilter,
         reset: false,
       );
-      if (mounted && result.isNotEmpty) {
+      if (mounted && generation == _catalogRequestGeneration && result.isNotEmpty) {
         setState(() {
           _mangas.addAll(result);
         });
