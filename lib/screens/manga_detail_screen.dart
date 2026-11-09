@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
 import '../services/mangadex_service.dart';
@@ -24,7 +23,10 @@ class MangaDetailScreen extends StatefulWidget {
 }
 
 class _MangaDetailScreenState extends State<MangaDetailScreen> {
-  List<Chapter> _chapters = [];
+  Map<MangaSourceType, List<Chapter>> _chaptersBySource = {};
+  late MangaSourceType _selectedSource;
+  MangaSourceType? _recommendedMostCompleteSource;
+
   bool _loadingChapters = true;
   String _selectedLang = 'TODOS';
   bool _sortAscending = false;
@@ -32,33 +34,53 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadChapters();
+    _selectedSource = widget.manga.source;
+    _discoverAndSelectBestSource();
   }
 
-  Future<void> _loadChapters() async {
+  /// Verifica todas as fontes disponíveis para este título, compara a quantidade de capítulos
+  /// e seleciona DE CARA a fonte mais completa (ex: One Piece com mais capítulos),
+  /// permitindo ao usuário alternar manualmente quando quiser!
+  Future<void> _discoverAndSelectBestSource() async {
     try {
-      final ch = await MangaDexService.fetchChapters(widget.manga);
-      if (mounted) {
-        setState(() {
-          _chapters = ch;
-          _loadingChapters = false;
-        });
+      final map = await MangaDexService.discoverAllSourcesForManga(widget.manga);
+      if (!mounted) return;
+
+      MangaSourceType bestSource = widget.manga.source;
+      int maxChapters = -1;
+
+      for (final entry in map.entries) {
+        if (entry.value.length > maxChapters) {
+          maxChapters = entry.value.length;
+          bestSource = entry.key;
+        }
       }
+
+      setState(() {
+        _chaptersBySource = map;
+        _recommendedMostCompleteSource = bestSource;
+        _selectedSource = bestSource;
+        _loadingChapters = false;
+      });
     } catch (_) {
       final cached = StorageService.getCachedMangaChapters(widget.manga.id);
       if (mounted) {
         setState(() {
-          _chapters = cached;
+          _chaptersBySource = {widget.manga.source: cached};
           _loadingChapters = false;
         });
       }
     }
   }
 
+  List<Chapter> get _currentSourceChapters =>
+      _chaptersBySource[_selectedSource] ?? [];
+
   List<Chapter> _getFilteredAndSortedChapters() {
+    final base = _currentSourceChapters;
     final filtered = _selectedLang == 'TODOS'
-        ? List<Chapter>.from(_chapters)
-        : _chapters.where((c) => c.language == _selectedLang).toList();
+        ? List<Chapter>.from(base)
+        : base.where((c) => c.language.contains(_selectedLang)).toList();
 
     filtered.sort(
       (a, b) => _sortAscending
@@ -69,7 +91,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   }
 
   void _openChapter(Chapter chapter, List<Chapter> currentList) {
-    StorageService.markChapterAsRead(widget.manga.id, chapter, read: true);
+    StorageService.markChapterAsRead(widget.manga, chapter, read: true);
     final orderedAsc = List<Chapter>.from(currentList)
       ..sort((a, b) => a.numericChapter.compareTo(b.numericChapter));
 
@@ -88,6 +110,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final filteredChapters = _getFilteredAndSortedChapters();
+    final bool hasZeroChaptersEverywhere = !_loadingChapters &&
+        _chaptersBySource.values.every((list) => list.isEmpty);
 
     return Scaffold(
       body: ValueListenableBuilder(
@@ -109,7 +133,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                       final isFav = StorageService.isFavorite(widget.manga.id);
                       return IconButton(
                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.black.withOpacity(0.45),
+                          backgroundColor: Colors.black.withValues(alpha: 0.45),
                         ),
                         icon: Icon(
                           isFav
@@ -128,14 +152,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      CachedNetworkImage(
-                        imageUrl: widget.manga.getCoverUrl(highRes: true),
-                        httpHeaders: widget.manga.customHeaders,
-                        fit: BoxFit.cover,
+                      YomiCoverImage(
+                        manga: widget.manga,
+                        highRes: true,
                       ),
                       BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                        child: Container(color: Colors.black.withOpacity(0.58)),
+                        child: Container(color: Colors.black.withValues(alpha: 0.58)),
                       ),
                       const DecoratedBox(
                         decoration: BoxDecoration(
@@ -157,13 +180,22 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                               tag: widget.heroTag,
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: CachedNetworkImage(
-                                  imageUrl:
-                                      widget.manga.getCoverUrl(highRes: true),
-                                  httpHeaders: widget.manga.customHeaders,
-                                  width: 115,
-                                  height: 165,
-                                  fit: BoxFit.cover,
+                                child: ColorFiltered(
+                                  colorFilter: hasZeroChaptersEverywhere
+                                      ? const ColorFilter.mode(
+                                          Colors.grey,
+                                          BlendMode.saturation,
+                                        )
+                                      : const ColorFilter.mode(
+                                          Colors.transparent,
+                                          BlendMode.multiply,
+                                        ),
+                                  child: YomiCoverImage(
+                                    manga: widget.manga,
+                                    highRes: true,
+                                    width: 115,
+                                    height: 165,
+                                  ),
                                 ),
                               ),
                             ),
@@ -173,7 +205,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Row(
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.symmetric(
@@ -181,40 +215,39 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                                           vertical: 3,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: YomiPalette.ensoRed
-                                              .withOpacity(0.25),
+                                          color: _selectedSource.accentColor
+                                              .withValues(alpha: 0.25),
                                           borderRadius:
                                               BorderRadius.circular(6),
                                           border: Border.all(
-                                              color: YomiPalette.ensoRed),
+                                              color: _selectedSource.accentColor),
                                         ),
                                         child: Text(
-                                          widget.manga.source.label,
+                                          _selectedSource.label,
                                           style: const TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.bold,
-                                            color: YomiPalette.sakuraSoft,
+                                            color: YomiPalette.pureWhite,
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 6),
-                                      if (widget.manga.isNsfw)
+                                      if (hasZeroChaptersEverywhere)
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
+                                            horizontal: 8,
                                             vertical: 3,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: YomiPalette.sakuraPink,
+                                            color: Colors.white24,
                                             borderRadius:
                                                 BorderRadius.circular(6),
                                           ),
                                           child: const Text(
-                                            '18+',
+                                            'SÓ CAPA (0 CAPS)',
                                             style: TextStyle(
                                               fontSize: 10,
                                               fontWeight: FontWeight.w900,
-                                              color: Colors.black,
+                                              color: Colors.white70,
                                             ),
                                           ),
                                         ),
@@ -247,6 +280,116 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // SELETOR INTELIGENTE DE FONTE (Exibe de cara a mais completa e permite trocar!)
+                      if (!_loadingChapters && _chaptersBySource.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: YomiPalette.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: YomiPalette.ensoRed.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.auto_awesome_rounded,
+                                    size: 16,
+                                    color: YomiPalette.ensoRed,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Expanded(
+                                    child: Text(
+                                      'Seletor Inteligente de Fonte (Auto-selecionada a mais completa)',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: YomiPalette.sakuraSoft,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: _chaptersBySource.entries.map((entry) {
+                                    final src = entry.key;
+                                    final count = entry.value.length;
+                                    final isSelected = src == _selectedSource;
+                                    final isBest =
+                                        src == _recommendedMostCompleteSource &&
+                                            count > 0;
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: ChoiceChip(
+                                        selected: isSelected,
+                                        selectedColor:
+                                            YomiPalette.ensoRed.withValues(alpha: 0.28),
+                                        backgroundColor: YomiPalette.pitchBlack,
+                                        side: BorderSide(
+                                          color: isSelected
+                                              ? YomiPalette.ensoRed
+                                              : Colors.white24,
+                                        ),
+                                        label: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              '${src.badge}: $count caps',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.bold
+                                                    : FontWeight.normal,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            if (isBest) ...[
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 5,
+                                                  vertical: 1.5,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: YomiPalette.ensoRed,
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: const Text(
+                                                  'MAIS COMPLETA',
+                                                  style: TextStyle(
+                                                    fontSize: 8.5,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        onSelected: (_) {
+                                          setState(() => _selectedSource = src);
+                                        },
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
                       if (lastChapter != null) ...[
                         SizedBox(
                           width: double.infinity,
@@ -299,7 +442,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         style: TextStyle(
                           fontSize: 13.5,
                           height: 1.45,
-                          color: Colors.white.withOpacity(0.75),
+                          color: Colors.white.withValues(alpha: 0.75),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -354,6 +497,29 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     child: CircularProgressIndicator(color: YomiPalette.ensoRed),
                   ),
                 )
+              else if (filteredChapters.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.sentiment_dissatisfied_rounded,
+                          size: 48,
+                          color: Colors.white38,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          hasZeroChaptersEverywhere
+                              ? 'Este título possui apenas a capa registrada e nenhum capítulo disponível nas fontes consultadas.'
+                              : 'Nenhum capítulo neste filtro de idioma. Toque em "All" acima para ver todos os capítulos da fonte.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white54),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
@@ -372,7 +538,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                               : Icons.radio_button_unchecked_rounded,
                           color: isRead
                               ? YomiPalette.ensoRed
-                              : Colors.white.withOpacity(0.25),
+                              : Colors.white.withValues(alpha: 0.25),
                           size: 22,
                         ),
                         title: Text(
@@ -393,7 +559,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                           style: TextStyle(
                             fontSize: 11.5,
                             color:
-                                Colors.white.withOpacity(isRead ? 0.25 : 0.5),
+                                Colors.white.withValues(alpha: isRead ? 0.25 : 0.5),
                           ),
                         ),
                         trailing: ChapterDownloadButton(
@@ -403,7 +569,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         onTap: () => _openChapter(chapter, filteredChapters),
                         onLongPress: () {
                           StorageService.markChapterAsRead(
-                            widget.manga.id,
+                            widget.manga,
                             chapter,
                             read: !isRead,
                           );
@@ -454,7 +620,6 @@ class ChapterDownloadButton extends StatelessWidget {
           valueListenable: DownloadManager.activeDownloads,
           builder: (context, activeMap, _) {
             final progress = activeMap[chapter.id];
-
             if (progress != null) {
               return SizedBox(
                 width: 48,
@@ -490,17 +655,17 @@ class ChapterDownloadButton extends StatelessWidget {
                 color: Colors.white54,
               ),
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 try {
                   await DownloadManager.downloadChapter(
                     manga: manga,
                     chapter: chapter,
+                    useDataSaver: StorageService.dataSaverEnabled,
                   );
                 } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erro no download: $e')),
-                    );
-                  }
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Erro no download: $e')),
+                  );
                 }
               },
             );

@@ -18,6 +18,7 @@ void main() async {
       systemNavigationBarColor: YomiPalette.pitchBlack,
     ),
   );
+
   runApp(const YomiApp());
 }
 
@@ -65,14 +66,9 @@ class MainNavigationShell extends StatefulWidget {
 
 class _MainNavigationShellState extends State<MainNavigationShell>
     with WidgetsBindingObserver {
+  // Inicia de cara na aba 0 (Perfil & Métricas), conforme solicitado!
   int _selectedIndex = 0;
   bool _isPrivacyShieldActive = false;
-
-  final List<Widget> _pages = const [
-    ExploreScreen(),
-    LibraryScreen(),
-    DownloadsScreen(),
-  ];
 
   @override
   void initState() {
@@ -86,7 +82,6 @@ class _MainNavigationShellState extends State<MainNavigationShell>
     super.dispose();
   }
 
-  // Escudo de Privacidade: Oculta a tela nos "Apps Recentes" do Android
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final shouldShield = state == AppLifecycleState.inactive ||
@@ -98,36 +93,61 @@ class _MainNavigationShellState extends State<MainNavigationShell>
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      ProfileDashboardScreen(
+        onGoToExplore: () => setState(() => _selectedIndex = 1),
+        onGoToSettings: () => setState(() => _selectedIndex = 4),
+      ),
+      const ExploreScreen(),
+      const LibraryScreen(),
+      const DownloadsScreen(),
+      const SettingsScreen(),
+    ];
+
     return Stack(
       children: [
         Scaffold(
-          body: IndexedStack(index: _selectedIndex, children: _pages),
+          body: IndexedStack(index: _selectedIndex, children: pages),
           bottomNavigationBar: NavigationBar(
             backgroundColor: YomiPalette.surface,
-            indicatorColor: YomiPalette.ensoRed.withOpacity(0.25),
+            indicatorColor: YomiPalette.ensoRed.withValues(alpha: 0.25),
             selectedIndex: _selectedIndex,
             onDestinationSelected: (idx) =>
                 setState(() => _selectedIndex = idx),
             destinations: const [
               NavigationDestination(
+                icon: Icon(Icons.person_outline_rounded),
+                selectedIcon:
+                    Icon(Icons.person_rounded, color: YomiPalette.ensoRed),
+                label: 'Perfil',
+              ),
+              NavigationDestination(
                 icon: Icon(Icons.explore_outlined),
                 selectedIcon:
-                    Icon(Icons.explore, color: YomiPalette.ensoRed),
+                    Icon(Icons.explore_rounded, color: YomiPalette.ensoRed),
                 label: 'Explorar',
               ),
               NavigationDestination(
                 icon: Icon(Icons.bookmarks_outlined),
                 selectedIcon:
-                    Icon(Icons.bookmarks, color: YomiPalette.ensoRed),
+                    Icon(Icons.bookmarks_rounded, color: YomiPalette.ensoRed),
                 label: 'Biblioteca',
               ),
               NavigationDestination(
                 icon: Icon(Icons.download_done_rounded),
                 selectedIcon: Icon(
-                  Icons.download_for_offline,
+                  Icons.download_for_offline_rounded,
                   color: YomiPalette.sakuraPink,
                 ),
                 label: 'Offline',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(
+                  Icons.settings_rounded,
+                  color: YomiPalette.sakuraPink,
+                ),
+                label: 'Ajustes',
               ),
             ],
           ),

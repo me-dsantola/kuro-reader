@@ -32,15 +32,16 @@ class DownloadManager {
       if (urls.isEmpty) throw Exception('Capítulo sem páginas disponíveis.');
 
       final baseDir = await getApplicationSupportDirectory();
-      final chapterDir = Directory('${baseDir.path}/chapters/${chapter.id}');
+      final safeChapterId = chapter.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final chapterDir = Directory('${baseDir.path}/chapters/$safeChapterId');
       if (!await chapterDir.exists()) {
         await chapterDir.create(recursive: true);
       }
 
       final List<String> savedPaths = List.filled(urls.length, '');
       int completed = 0;
-
       const int batchSize = 3;
+
       for (int i = 0; i < urls.length; i += batchSize) {
         final end =
             (i + batchSize < urls.length) ? i + batchSize : urls.length;
@@ -48,7 +49,11 @@ class DownloadManager {
 
         await Future.wait(batchIndices.map((pageIndex) async {
           final url = urls[pageIndex];
-          final ext = url.split('.').last.split('?').first;
+          String ext = 'jpg';
+          final rawExt = url.split('.').last.split('?').first.toLowerCase();
+          if (rawExt == 'png' || rawExt == 'webp' || rawExt == 'jpg' || rawExt == 'jpeg') {
+            ext = rawExt;
+          }
           final fileName = '${pageIndex.toString().padLeft(3, '0')}.$ext';
           final file = File('${chapterDir.path}/$fileName');
 
@@ -56,7 +61,6 @@ class DownloadManager {
             Uri.parse(url),
             headers: manga.customHeaders,
           );
-
           if (response.statusCode == 200) {
             await file.writeAsBytes(response.bodyBytes);
             savedPaths[pageIndex] = file.path;
@@ -85,7 +89,8 @@ class DownloadManager {
 
   static Future<void> deleteChapter(String chapterId) async {
     final baseDir = await getApplicationSupportDirectory();
-    final chapterDir = Directory('${baseDir.path}/chapters/$chapterId');
+    final safeChapterId = chapterId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    final chapterDir = Directory('${baseDir.path}/chapters/$safeChapterId');
     if (await chapterDir.exists()) {
       await chapterDir.delete(recursive: true);
     }
