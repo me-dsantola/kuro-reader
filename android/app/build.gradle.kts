@@ -18,8 +18,14 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    val isBetaBuild = providers.gradleProperty("betaBuild").orNull == "true"
+
     defaultConfig {
         applicationId = "com.kuroreader.kuro_reader"
+        if (isBetaBuild) {
+            applicationIdSuffix = ".beta"
+        }
+        manifestPlaceholders["appLabel"] = if (isBetaBuild) "YOMI Beta" else "YOMI"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
