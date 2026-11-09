@@ -46,10 +46,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-    // Expande o cache de imagens na RAM do Flutter (250 MB / 300 páginas)
-    // para impedir que páginas anteriores sejam descartadas ao rolar!
-    PaintingBinding.instance.imageCache.maximumSizeBytes = 250 * 1024 * 1024;
-    PaintingBinding.instance.imageCache.maximumSize = 300;
+    // Limita o cache de imagens decodificadas para evitar pressão de memória.
+    // Páginas fora da janela visível poderão ser descartadas pelo Flutter.
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 64 * 1024 * 1024;
+    PaintingBinding.instance.imageCache.maximumSize = 80;
 
     _currentPage = StorageService.getSavedPageIndex(widget.chapter.id);
     _pageController = PageController(initialPage: _currentPage);
@@ -119,28 +119,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
           _isOfflineMode = false;
           _isLoading = false;
         });
-        _precacheInitialPages();
+        // A lista carrega páginas sob demanda; evita antecipar seis imagens.
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _precacheInitialPages() {
-    final urls = _onlinePagesData?.getUrls(
-          useDataSaver: StorageService.dataSaverEnabled,
-        ) ??
-        [];
-    final count = urls.length < 6 ? urls.length : 6;
-    for (int i = 0; i < count; i++) {
-      if (!mounted) break;
-      precacheImage(
-        NetworkImage(
-          urls[i],
-          headers: kIsWeb ? null : widget.manga.customHeaders,
-        ),
-        context,
-      );
     }
   }
 
@@ -197,25 +179,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
                         ListView.builder(
                           controller: _webtoonScrollController,
                           padding: EdgeInsets.zero,
-                          // Mantém 12.000 pixels acima e abaixo vivos na árvore de renderização
-                          cacheExtent: 12000,
-                          addAutomaticKeepAlives: true,
+                          // Mantém apenas uma pequena janela ao redor da área visível.
+                          cacheExtent: 800,
+                          addAutomaticKeepAlives: false,
                           addRepaintBoundaries: true,
                           itemCount: totalPages + 1,
                           itemBuilder: (context, index) {
                             if (index == totalPages) {
                               return _buildEndOfChapterFooter(nextCh, prevCh);
-                            }
-
-                            // Pré-carrega as próximas 3 páginas silenciosamente
-                            if (!_isOfflineMode && index + 3 < onlineUrls.length) {
-                              precacheImage(
-                                NetworkImage(
-                                  onlineUrls[index + 3],
-                                  headers: kIsWeb ? null : widget.manga.customHeaders,
-                                ),
-                                context,
-                              );
                             }
 
                             return _KeepAlivePageTile(
@@ -397,8 +368,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 }
 
-/// Widget de página blindado com [AutomaticKeepAliveClientMixin]:
-/// Uma vez que a página é carregada, ela NUNCA é destruída nem recarregada quando você volta 2, 5 ou 30 páginas para trás!
+/// Página descartável: o Flutter recicla widgets distantes da área visível.
 class _KeepAlivePageTile extends StatefulWidget {
   final int pageIndex;
   final bool isOffline;
@@ -425,13 +395,9 @@ class _KeepAlivePageTile extends StatefulWidget {
   State<_KeepAlivePageTile> createState() => _KeepAlivePageTileState();
 }
 
-class _KeepAlivePageTileState extends State<_KeepAlivePageTile>
-    with AutomaticKeepAliveClientMixin {
+class _KeepAlivePageTileState extends State<_KeepAlivePageTile> {
   late List<String> _candidates;
   int _mirrorIdx = 0;
-
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -444,8 +410,6 @@ class _KeepAlivePageTileState extends State<_KeepAlivePageTile>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-
     if (widget.isOffline && widget.localPath != null) {
       return Image.file(
         File(widget.localPath!),
@@ -464,7 +428,8 @@ class _KeepAlivePageTileState extends State<_KeepAlivePageTile>
       headers: kIsWeb ? null : widget.headers,
       fit: BoxFit.fitWidth,
       gaplessPlayback: true,
-      filterQuality: FilterQuality.medium,
+      cacheWidth: (MediaQuery.sizeOf(context).width * MediaQuery.devicePixelRatioOf(context)).ceil(),
+      filterQuality: FilterQuality.low,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         final screenWidth = MediaQuery.of(context).size.width;
