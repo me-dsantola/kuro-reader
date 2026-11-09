@@ -5,44 +5,48 @@ import 'screens/home_tabs.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await StorageService.init();
+  try {
+    await StorageService.init();
+  } catch (e) {
+    debugPrint('Aviso na inicializacao do Hive: $e');
+  }
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF09090E),
+      systemNavigationBarColor: YomiPalette.pitchBlack,
     ),
   );
-  runApp(const KuroReaderApp());
+  runApp(const YomiApp());
 }
 
-class KuroReaderApp extends StatelessWidget {
-  const KuroReaderApp({super.key});
+class YomiApp extends StatelessWidget {
+  const YomiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'KuroReader',
+      title: 'YOMI',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF09090E),
+        scaffoldBackgroundColor: YomiPalette.pitchBlack,
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF8B5CF6),
-          secondary: Color(0xFFC084FC),
-          surface: Color(0xFF14141F),
+          primary: YomiPalette.ensoRed,
+          secondary: YomiPalette.sakuraPink,
+          surface: YomiPalette.surface,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF09090E),
+          backgroundColor: YomiPalette.pitchBlack,
           elevation: 0,
           centerTitle: false,
           titleTextStyle: TextStyle(
             fontSize: 22,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
             color: Colors.white,
           ),
         ),
@@ -59,8 +63,10 @@ class MainNavigationShell extends StatefulWidget {
   State<MainNavigationShell> createState() => _MainNavigationShellState();
 }
 
-class _MainNavigationShellState extends State<MainNavigationShell> {
+class _MainNavigationShellState extends State<MainNavigationShell>
+    with WidgetsBindingObserver {
   int _selectedIndex = 0;
+  bool _isPrivacyShieldActive = false;
 
   final List<Widget> _pages = const [
     ExploreScreen(),
@@ -69,35 +75,84 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Escudo de Privacidade: Oculta a tela nos "Apps Recentes" do Android
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final shouldShield = state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused;
+    if (_isPrivacyShieldActive != shouldShield) {
+      setState(() => _isPrivacyShieldActive = shouldShield);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: const Color(0xFF14141F),
-        indicatorColor: const Color(0xFF8B5CF6).withOpacity(0.25),
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (idx) => setState(() => _selectedIndex = idx),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.explore_outlined),
-            selectedIcon: Icon(Icons.explore, color: Color(0xFFC084FC)),
-            label: 'Explorar',
+    return Stack(
+      children: [
+        Scaffold(
+          body: IndexedStack(index: _selectedIndex, children: _pages),
+          bottomNavigationBar: NavigationBar(
+            backgroundColor: YomiPalette.surface,
+            indicatorColor: YomiPalette.ensoRed.withOpacity(0.25),
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (idx) =>
+                setState(() => _selectedIndex = idx),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.explore_outlined),
+                selectedIcon:
+                    Icon(Icons.explore, color: YomiPalette.ensoRed),
+                label: 'Explorar',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.bookmarks_outlined),
+                selectedIcon:
+                    Icon(Icons.bookmarks, color: YomiPalette.ensoRed),
+                label: 'Biblioteca',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.download_done_rounded),
+                selectedIcon: Icon(
+                  Icons.download_for_offline,
+                  color: YomiPalette.sakuraPink,
+                ),
+                label: 'Offline',
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.bookmarks_outlined),
-            selectedIcon: Icon(Icons.bookmarks, color: Color(0xFFC084FC)),
-            label: 'Biblioteca',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.download_done_rounded),
-            selectedIcon: Icon(
-              Icons.download_for_offline,
-              color: Color(0xFFC084FC),
+        ),
+        if (_isPrivacyShieldActive)
+          const Material(
+            color: YomiPalette.pitchBlack,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  YomiEnsoLogo(fontSize: 36),
+                  SizedBox(height: 12),
+                  Text(
+                    'Proteção de Privacidade Ativa',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: YomiPalette.sakuraPink,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            label: 'Offline',
           ),
-        ],
-      ),
+      ],
     );
   }
 }

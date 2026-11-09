@@ -7,6 +7,7 @@ import 'package:photo_view/photo_view_gallery.dart';
 import '../models/manga_models.dart';
 import '../services/mangadex_service.dart';
 import '../services/storage_service.dart';
+import 'home_tabs.dart';
 
 class ReaderScreen extends StatefulWidget {
   final Manga manga;
@@ -30,7 +31,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   bool _isOfflineMode = false;
   bool _isLoading = true;
   bool _isWebtoonMode = true;
-  bool _useDataSaver = false;
+  final bool _useDataSaver = false;
   bool _showHud = true;
   int _currentPage = 0;
   late PageController _pageController;
@@ -89,7 +90,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
 
     try {
-      final data = await MangaDexService.fetchChapterPages(widget.chapter.id);
+      final data = await MangaDexService.fetchChapterPages(widget.chapter);
       if (mounted) {
         setState(() {
           _onlinePagesData = data;
@@ -106,199 +107,203 @@ class _ReaderScreenState extends State<ReaderScreen> {
   Widget build(BuildContext context) {
     final onlineUrls =
         _onlinePagesData?.getUrls(useDataSaver: _useDataSaver) ?? [];
-    final totalPages = _isOfflineMode
-        ? _localFilePaths.length
-        : onlineUrls.length;
+    final totalPages =
+        _isOfflineMode ? _localFilePaths.length : onlineUrls.length;
     final nextCh = _nextChapter;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : totalPages == 0
           ? const Center(
-              child: Text('Sem conexão e capítulo não salvo offline.'),
+              child: CircularProgressIndicator(color: YomiPalette.ensoRed),
             )
-          : GestureDetector(
-              onTap: () => setState(() => _showHud = !_showHud),
-              child: Stack(
-                children: [
-                  if (_isWebtoonMode)
-                    ListView.builder(
-                      padding: EdgeInsets.zero,
-                      cacheExtent: 2500,
-                      itemCount: totalPages + 1,
-                      itemBuilder: (context, index) {
-                        // Rodapé no final do capítulo para ir direto ao próximo
-                        if (index == totalPages) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 48,
-                              horizontal: 24,
-                            ),
-                            color: const Color(0xFF09090E),
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  Icons.check_circle_outline_rounded,
-                                  size: 44,
-                                  color: Color(0xFFC084FC),
+          : totalPages == 0
+              ? const Center(
+                  child: Text('Sem conexão e capítulo não salvo offline.'),
+                )
+              : GestureDetector(
+                  onTap: () => setState(() => _showHud = !_showHud),
+                  child: Stack(
+                    children: [
+                      if (_isWebtoonMode)
+                        ListView.builder(
+                          padding: EdgeInsets.zero,
+                          cacheExtent: 2500,
+                          itemCount: totalPages + 1,
+                          itemBuilder: (context, index) {
+                            if (index == totalPages) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 48,
+                                  horizontal: 24,
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Fim do Capítulo ${widget.chapter.chapterNumber}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                if (nextCh != null)
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: FilledButton.icon(
-                                      onPressed: () => _goToChapter(nextCh),
-                                      icon: const Icon(Icons.skip_next_rounded),
-                                      label: Text(
-                                        'Ler Próximo: Cap. ${nextCh.chapterNumber}',
-                                      ),
-                                      style: FilledButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 16,
-                                        ),
+                                color: YomiPalette.pitchBlack,
+                                child: Column(
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle_outline_rounded,
+                                      size: 44,
+                                      color: YomiPalette.ensoRed,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Fim do Capítulo ${widget.chapter.chapterNumber}',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  )
-                                else
-                                  const Text(
-                                    'Você chegou ao capítulo mais recente!',
-                                    style: TextStyle(color: Colors.white54),
+                                    const SizedBox(height: 20),
+                                    if (nextCh != null)
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: FilledButton.icon(
+                                          onPressed: () => _goToChapter(nextCh),
+                                          icon: const Icon(
+                                              Icons.skip_next_rounded),
+                                          label: Text(
+                                            'Ler Próximo: Cap. ${nextCh.chapterNumber}',
+                                          ),
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: YomiPalette.ensoRed,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      const Text(
+                                        'Você chegou ao capítulo mais recente!',
+                                        style: TextStyle(color: Colors.white54),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            StorageService.saveLastPageIndex(
+                              widget.chapter.id,
+                              index,
+                            );
+
+                            if (_isOfflineMode) {
+                              return Image.file(
+                                File(_localFilePaths[index]),
+                                fit: BoxFit.fitWidth,
+                              );
+                            }
+                            return CachedNetworkImage(
+                              imageUrl: onlineUrls[index],
+                              httpHeaders: widget.manga.customHeaders,
+                              fit: BoxFit.fitWidth,
+                              placeholder: (context, url) => SizedBox(
+                                height: 420,
+                                child: Center(
+                                  child: Text(
+                                    'Carregando pág. ${index + 1}...',
+                                    style:
+                                        const TextStyle(color: Colors.white54),
                                   ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        StorageService.saveLastPageIndex(
-                          widget.chapter.id,
-                          index,
-                        );
-
-                        if (_isOfflineMode) {
-                          return Image.file(
-                            File(_localFilePaths[index]),
-                            fit: BoxFit.fitWidth,
-                          );
-                        }
-                        return CachedNetworkImage(
-                          imageUrl: onlineUrls[index],
-                          httpHeaders: MangaDexService.headers,
-                          fit: BoxFit.fitWidth,
-                          placeholder: (context, url) => SizedBox(
-                            height: 420,
-                            child: Center(
-                              child: Text(
-                                'Carregando pág. ${index + 1}...',
-                                style: const TextStyle(color: Colors.white54),
+                                ),
                               ),
-                            ),
-                          ),
-                        );
-                      },
-                    )
-                  else
-                    PhotoViewGallery.builder(
-                      pageController: _pageController,
-                      itemCount: totalPages,
-                      onPageChanged: (index) {
-                        setState(() => _currentPage = index);
-                        StorageService.saveLastPageIndex(
-                          widget.chapter.id,
-                          index,
-                        );
-                      },
-                      builder: (context, index) {
-                        final ImageProvider provider = _isOfflineMode
-                            ? FileImage(File(_localFilePaths[index]))
-                            : CachedNetworkImageProvider(
+                            );
+                          },
+                        )
+                      else
+                        PhotoViewGallery.builder(
+                          pageController: _pageController,
+                          itemCount: totalPages,
+                          onPageChanged: (index) {
+                            setState(() => _currentPage = index);
+                            StorageService.saveLastPageIndex(
+                              widget.chapter.id,
+                              index,
+                            );
+                          },
+                          builder: (context, index) {
+                            final ImageProvider provider = _isOfflineMode
+                                ? FileImage(File(_localFilePaths[index]))
+                                : CachedNetworkImageProvider(
                                     onlineUrls[index],
-                                    headers: MangaDexService.headers,
-                                  )
-                                  as ImageProvider;
+                                    headers: widget.manga.customHeaders,
+                                  ) as ImageProvider;
 
-                        return PhotoViewGalleryPageOptions(
-                          imageProvider: provider,
-                          minScale: PhotoViewComputedScale.contained,
-                          maxScale: PhotoViewComputedScale.covered * 3.0,
-                        );
-                      },
-                    ),
+                            return PhotoViewGalleryPageOptions(
+                              imageProvider: provider,
+                              minScale: PhotoViewComputedScale.contained,
+                              maxScale: PhotoViewComputedScale.covered * 3.0,
+                            );
+                          },
+                        ),
 
-                  // BARRA SUPERIOR (HUD)
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 220),
-                    top: _showHud ? 0 : -110,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(8, 42, 12, 12),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.85),
-                      ),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: () => Navigator.pop(context),
+                      // BARRA SUPERIOR (HUD)
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 220),
+                        top: _showHud ? 0 : -110,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(8, 42, 12, 12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.85),
                           ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.manga.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      widget.manga.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Cap. ${widget.chapter.chapterNumber} • $totalPages págs ${_isOfflineMode ? "(OFFLINE)" : ""}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: YomiPalette.sakuraPink,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  'Cap. ${widget.chapter.chapterNumber} • $totalPages págs ${_isOfflineMode ? "(OFFLINE)" : ""}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFFC084FC),
-                                  ),
+                              ),
+                              if (nextCh != null)
+                                IconButton(
+                                  tooltip: 'Próximo: Cap. ${nextCh.chapterNumber}',
+                                  icon: const Icon(Icons.skip_next_rounded),
+                                  onPressed: () => _goToChapter(nextCh),
                                 ),
-                              ],
-                            ),
+                              IconButton(
+                                tooltip: 'Alternar Webtoon / Paginado',
+                                icon: Icon(
+                                  _isWebtoonMode
+                                      ? Icons.view_day_rounded
+                                      : Icons.view_carousel_rounded,
+                                  color: YomiPalette.ensoRed,
+                                ),
+                                onPressed: () {
+                                  setState(
+                                      () => _isWebtoonMode = !_isWebtoonMode);
+                                },
+                              ),
+                            ],
                           ),
-                          if (nextCh != null)
-                            IconButton(
-                              tooltip: 'Próximo: Cap. ${nextCh.chapterNumber}',
-                              icon: const Icon(Icons.skip_next_rounded),
-                              onPressed: () => _goToChapter(nextCh),
-                            ),
-                          IconButton(
-                            tooltip: 'Alternar Webtoon / Paginado',
-                            icon: Icon(
-                              _isWebtoonMode
-                                  ? Icons.view_day_rounded
-                                  : Icons.view_carousel_rounded,
-                              color: const Color(0xFF8B5CF6),
-                            ),
-                            onPressed: () {
-                              setState(() => _isWebtoonMode = !_isWebtoonMode);
-                            },
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
     );
   }
 }

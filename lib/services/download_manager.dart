@@ -26,7 +26,7 @@ class DownloadManager {
     _updateProgress(chapter.id, 0.01);
 
     try {
-      final pagesData = await MangaDexService.fetchChapterPages(chapter.id);
+      final pagesData = await MangaDexService.fetchChapterPages(chapter);
       final urls = pagesData.getUrls(useDataSaver: useDataSaver);
 
       if (urls.isEmpty) throw Exception('Capítulo sem páginas disponíveis.');
@@ -42,32 +42,31 @@ class DownloadManager {
 
       const int batchSize = 3;
       for (int i = 0; i < urls.length; i += batchSize) {
-        final end = (i + batchSize < urls.length) ? i + batchSize : urls.length;
+        final end =
+            (i + batchSize < urls.length) ? i + batchSize : urls.length;
         final batchIndices = List.generate(end - i, (index) => i + index);
 
-        await Future.wait(
-          batchIndices.map((pageIndex) async {
-            final url = urls[pageIndex];
-            final ext = url.split('.').last.split('?').first;
-            final fileName = '${pageIndex.toString().padLeft(3, '0')}.$ext';
-            final file = File('${chapterDir.path}/$fileName');
+        await Future.wait(batchIndices.map((pageIndex) async {
+          final url = urls[pageIndex];
+          final ext = url.split('.').last.split('?').first;
+          final fileName = '${pageIndex.toString().padLeft(3, '0')}.$ext';
+          final file = File('${chapterDir.path}/$fileName');
 
-            final response = await http.get(
-              Uri.parse(url),
-              headers: MangaDexService.headers,
-            );
+          final response = await http.get(
+            Uri.parse(url),
+            headers: manga.customHeaders,
+          );
 
-            if (response.statusCode == 200) {
-              await file.writeAsBytes(response.bodyBytes);
-              savedPaths[pageIndex] = file.path;
-            } else {
-              throw Exception('Falha ao baixar página ${pageIndex + 1}');
-            }
+          if (response.statusCode == 200) {
+            await file.writeAsBytes(response.bodyBytes);
+            savedPaths[pageIndex] = file.path;
+          } else {
+            throw Exception('Falha ao baixar página ${pageIndex + 1}');
+          }
 
-            completed++;
-            _updateProgress(chapter.id, completed / urls.length);
-          }),
-        );
+          completed++;
+          _updateProgress(chapter.id, completed / urls.length);
+        }));
       }
 
       await StorageService.downloadsBox.put(chapter.id, {
