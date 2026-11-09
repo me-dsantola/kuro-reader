@@ -2,7 +2,7 @@ name: Build KuroReader APK
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "refactor/kuro-reader-v2" ]
   workflow_dispatch: # Permite clicar em um botão no GitHub para gerar o APK quando quiser
 
 jobs:
@@ -30,10 +30,12 @@ jobs:
         run: flutter pub get
 
       - name: 5. Compilar APK Release Otimizado
+        env:
+          ORG_GRADLE_PROJECT_betaBuild: ${{ github.ref_name == 'refactor/kuro-reader-v2' && 'true' || 'false' }}
         run: flutter build apk --release --split-per-abi
 
       - name: 6. Disponibilizar APK para Download
         uses: actions/upload-artifact@v4
         with:
-          name: KuroReader-Android-APK
+          name: ${{ github.ref_name == 'refactor/kuro-reader-v2' && 'KuroReader-Beta-Android-APK' || 'KuroReader-Stable-Android-APK' }}
           path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
