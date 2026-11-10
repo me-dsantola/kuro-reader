@@ -55,6 +55,8 @@ class FavoriteUpdatesService {
     for (final chapter in fresh) {
       if (pendingIds.add(chapter.id)) pending.add(chapter);
     }
+    // Retain the most recent notifications, not the oldest 100.
+    pending.sort((a, b) => b.numericChapter.compareTo(a.numericChapter));
 
     // Bounded local state. Do not rely on chapter counts or estimated totals.
     final updatedKnown = <String>{
