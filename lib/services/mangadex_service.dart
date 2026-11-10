@@ -1071,9 +1071,15 @@ class MangaDexService {
 
   /// Descoberta Unificada de Fontes com UMA ÚNICA requisição de capítulos!
   /// Compara a quantidade de capítulos em cada fonte e seleciona de cara a mais completa.
+  static final Map<String, bool> _olderChapterPages = {};
+
+  static bool hasOlderChapters(String mangaId) =>
+      _olderChapterPages[mangaId] ?? false;
+
   static Future<Map<MangaSourceType, List<Chapter>>> discoverAllSourcesForManga(
-    Manga manga,
-  ) async {
+    Manga manga, {
+    int offset = 0,
+  }) async {
     final Map<MangaSourceType, List<Chapter>> sourceChaptersMap = {};
 
     // Only MangaDex IDs (including legacy MangaDex-backed entries) may be
@@ -1111,7 +1117,7 @@ class MangaDexService {
     // Older chapter pagination should be exposed as an explicit "load more"
     // action rather than blocking the initial view.
     const pageSize = 500;
-    final fullUrl = '$_baseUrl/manga/$targetUuid/feed?limit=$pageSize'
+    final fullUrl = '$_baseUrl/manga/$targetUuid/feed?limit=$pageSize&offset=$offset'
         '&translatedLanguage[]=pt-br&translatedLanguage[]=en&translatedLanguage[]=es&translatedLanguage[]=es-la'
         '&includes[]=scanlation_group'
         '&order[chapter]=desc'
@@ -1119,6 +1125,9 @@ class MangaDexService {
     final response = await safeHttpGet(fullUrl);
     final data = jsonDecode(response.body);
     final List entries = data['data'] ?? [];
+    final total = data['total'];
+    _olderChapterPages[manga.id] =
+        total is int ? offset + entries.length < total : entries.length == pageSize;
     final List<Chapter> rawAll = entries
         .whereType<Map<String, dynamic>>()
         .map((entry) => Chapter.fromJson(
@@ -1199,7 +1208,10 @@ class MangaDexService {
     final bestList = preferredList.length >= mdxList.length
         ? preferredList
         : mdxList;
-    await StorageService.cacheMangaChapters(manga.id, bestList);
+    // A follow-up page should not overwrite the previously cached window.
+    if (offset == 0) {
+      await StorageService.cacheMangaChapters(manga.id, bestList);
+    }
 
     return sourceChaptersMap;
   }
