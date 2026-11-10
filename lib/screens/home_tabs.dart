@@ -2541,7 +2541,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Cole abaixo o código que você copiou anteriormente para recuperar seu Perfil, Métricas, Histórico e Favoritos após reinstalar o app.',
+              'Cole o backup para mesclar perfil, favoritos, histórico e preferências. Imagens baixadas não são restauradas. O código não é criptografado.',
               style: TextStyle(fontSize: 12.5, color: Colors.white70),
             ),
             const SizedBox(height: 12),
@@ -2563,20 +2563,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () async {
-                  final ok =
-                      await StorageService.importFullBackupJson(ctrl.text);
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          ok
-                              ? 'Perfil, Favoritos e Métricas restaurados com sucesso!'
-                              : 'Código de backup inválido.',
-                        ),
+                  final confirmed = await showDialog<bool>(
+                    context: ctx,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Restaurar dados?'),
+                      content: const Text(
+                        'O backup será mesclado aos dados locais. '
+                        'Itens com a mesma chave serão substituídos. '
+                        'Salve um backup atual antes de continuar.',
                       ),
-                    );
-                  }
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancelar'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('Restaurar'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true || !ctx.mounted) return;
+                  final ok = await StorageService.importFullBackupJson(ctrl.text);
+                  if (!ctx.mounted) return;
+                  if (ok) Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok
+                          ? 'Perfil, favoritos e histórico mesclados com sucesso.'
+                          : 'Backup inválido ou incompatível. Nenhum dado foi importado.'),
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.restore_rounded),
                 label: const Text('Restaurar Agora'),
@@ -2790,7 +2808,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Além do backup automático do Android, você pode copiar seu código de perfil abaixo para salvar no WhatsApp/Bloco de Notas e restaurar tudo em 1 segundo se apagar o app.',
+                          'Backup manual: o código contém seus favoritos, perfil e histórico, inclusive obras sensíveis. Base64 NÃO é criptografia. Guarde em local privado. Imagens baixadas não estão incluídas.',
                           style: TextStyle(fontSize: 12, color: Colors.white60),
                         ),
                         const SizedBox(height: 12),
