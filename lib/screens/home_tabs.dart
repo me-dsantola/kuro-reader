@@ -587,7 +587,11 @@ class ProfileDashboardScreen extends StatelessWidget {
         valueListenable: StorageService.profileNotifier,
         builder: (context, profile, _) {
           return ValueListenableBuilder(
-            valueListenable: StorageService.historyBox.listenable(),
+            // Recompute profile statistics only when reading events or
+            // recents change, not on every saved reader page/scroll offset.
+            valueListenable: StorageService.historyBox.listenable(
+              keys: ['reading_events_log', 'recent_reading_list'],
+            ),
             builder: (context, Box historyBox, _) {
               return ValueListenableBuilder(
                 valueListenable: StorageService.favBox.listenable(),
