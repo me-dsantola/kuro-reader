@@ -94,6 +94,28 @@ class _ReaderScreenState extends State<ReaderScreen> {
     );
   }
 
+  void _warmNextPage(List<String> urls) {
+    if (urls.isEmpty || !mounted) return;
+    final next = _currentPage + 1;
+    if (next >= urls.length) return;
+    // Only one upcoming page; do not eagerly decode the entire chapter.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = ResizeImage(
+        NetworkImage(
+          urls[next],
+          headers: kIsWeb ? null : widget.manga.customHeaders,
+        ),
+        width: (MediaQuery.sizeOf(context).width *
+                MediaQuery.devicePixelRatioOf(context))
+            .ceil()
+            .clamp(480, 1440)
+            .toInt(),
+      );
+      precacheImage(provider, context).catchError((Object _) {});
+    });
+  }
+
   Future<void> _initReaderSource() async {
     if (!kIsWeb && StorageService.isChapterDownloaded(widget.chapter.id)) {
       final localPaths = StorageService.getDownloadedChapterPaths(
@@ -119,7 +141,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
           _isOfflineMode = false;
           _isLoading = false;
         });
-        // A lista carrega páginas sob demanda; evita antecipar seis imagens.
+        // Warm just one nearby page to reduce the first swipe delay.
+        _warmNextPage(data.getUrls(
+          useDataSaver: StorageService.dataSaverEnabled,
+        ));
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
@@ -438,7 +463,12 @@ class _KeepAlivePageTileState extends State<_KeepAlivePageTile> {
       headers: kIsWeb ? null : widget.headers,
       fit: BoxFit.fitWidth,
       gaplessPlayback: true,
-      cacheWidth: (MediaQuery.sizeOf(context).width * MediaQuery.devicePixelRatioOf(context)).ceil(),
+      // Keep decoded webtoon pages bounded on high-DPI phones.
+      cacheWidth: (MediaQuery.sizeOf(context).width *
+              MediaQuery.devicePixelRatioOf(context))
+          .ceil()
+          .clamp(480, 1440)
+          .toInt(),
       filterQuality: FilterQuality.low,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
