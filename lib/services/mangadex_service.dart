@@ -652,6 +652,17 @@ class AdultVaultAdapter implements IMangaSourceAdapter {
       if (tag.mangadexUuid != null) {
         buf.write('&includedTags[]=${tag.mangadexUuid}');
       }
+      if (tag.mangadexLang != null) {
+        buf.write('&originalLanguage[]=${tag.mangadexLang}');
+      }
+      if (tag.mangadexDemographic != null) {
+        buf.write('&publicationDemographic[]=${tag.mangadexDemographic}');
+      }
+    }
+    for (final tag in filter.excludedTags) {
+      if (tag.mangadexUuid != null) {
+        buf.write('&excludedTags[]=${tag.mangadexUuid}');
+      }
     }
     if (filter.query.trim().isNotEmpty) {
       buf.write('&title=${Uri.encodeQueryComponent(filter.query.trim())}');
@@ -666,13 +677,32 @@ class AdultVaultAdapter implements IMangaSourceAdapter {
     final List list = data['data'] ?? [];
     final int total = data['total'] ?? 0;
 
-    final items = list
-        .map((json) => Manga.fromJson(
-              json,
-              overrideSource: MangaSourceType.adultSource,
-              forceNsfwFlag: true,
-            ))
-        .toList();
+    final excludedLanguages = filter.excludedTags
+        .map((tag) => tag.mangadexLang)
+        .whereType<String>()
+        .toSet();
+    final excludedDemographics = filter.excludedTags
+        .map((tag) => tag.mangadexDemographic)
+        .whereType<String>()
+        .toSet();
+
+    final items = <Manga>[];
+    for (final entry in list) {
+      if (entry is! Map) continue;
+      final json = Map<String, dynamic>.from(entry);
+      final attributes = json['attributes'];
+      if (attributes is Map) {
+        if (excludedLanguages.contains(attributes['originalLanguage']) ||
+            excludedDemographics.contains(attributes['publicationDemographic'])) {
+          continue;
+        }
+      }
+      items.add(Manga.fromJson(
+        json,
+        overrideSource: MangaSourceType.adultSource,
+        forceNsfwFlag: true,
+      ));
+    }
 
     return PaginatedSourceResponse(
       items: items,
