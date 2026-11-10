@@ -59,6 +59,16 @@ void main() {
     expect(StorageService.computeReadingMetrics().totalPagesRead, 15);
   });
 
+  test('marking a completed chapter unread also corrects statistics', () async {
+    await StorageService.markChapterAsRead(manga, chapter);
+    expect(StorageService.computeReadingMetrics().totalChaptersRead, 1);
+    await StorageService.markChapterAsRead(manga, chapter, read: false);
+    expect(StorageService.isChapterRead(chapter.id), isFalse);
+    expect(StorageService.computeReadingMetrics().totalChaptersRead, 0);
+    await StorageService.markChapterAsRead(manga, chapter);
+    expect(StorageService.computeReadingMetrics().totalChaptersRead, 1);
+  });
+
   test('webtoon position coexists with legacy page index', () async {
     await StorageService.saveLastPageIndex(chapter.id, 4);
     await StorageService.saveWebtoonOffset(chapter.id, 1850.5);
