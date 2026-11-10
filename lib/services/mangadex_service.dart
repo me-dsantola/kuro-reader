@@ -1002,12 +1002,6 @@ class MangaDexService {
     return slice;
   }
 
-  static bool _isTitleBasedId(String id) {
-    return id.startsWith('ani_title_') ||
-        id.startsWith('mal_title_') ||
-        id.startsWith('cmk_title_');
-  }
-
   static String _cleanMangaDexUuid(String rawId) {
     return rawId
         .replaceFirst('cmk_mdx_', '')
