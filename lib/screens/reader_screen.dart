@@ -294,7 +294,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                           controller: _webtoonScrollController,
                           padding: EdgeInsets.zero,
                           // Mantém apenas uma pequena janela ao redor da área visível.
-                          cacheExtent: 800,
+                          scrollCacheExtent: 800,
                           addAutomaticKeepAlives: false,
                           addRepaintBoundaries: true,
                           itemCount: totalPages + 1,
