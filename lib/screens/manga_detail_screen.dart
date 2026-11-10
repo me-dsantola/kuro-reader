@@ -81,17 +81,34 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   List<Chapter> get _currentSourceChapters =>
       _chaptersBySource[_selectedSource] ?? [];
 
+  List<Chapter>? _memoChapters;
+  List<Chapter>? _memoSource;
+  MangaSourceType? _memoSelectedSource;
+  String? _memoLanguage;
+  bool? _memoAscending;
+
   List<Chapter> _getFilteredAndSortedChapters() {
     final base = _currentSourceChapters;
+    if (identical(base, _memoSource) &&
+        _memoSelectedSource == _selectedSource &&
+        _memoLanguage == _selectedLang &&
+        _memoAscending == _sortAscending &&
+        _memoChapters != null) {
+      return _memoChapters!;
+    }
     final filtered = _selectedLang == 'TODOS'
         ? List<Chapter>.from(base)
         : base.where((c) => c.language.contains(_selectedLang)).toList();
-
     filtered.sort(
       (a, b) => _sortAscending
           ? a.numericChapter.compareTo(b.numericChapter)
           : b.numericChapter.compareTo(a.numericChapter),
     );
+    _memoSource = base;
+    _memoSelectedSource = _selectedSource;
+    _memoLanguage = _selectedLang;
+    _memoAscending = _sortAscending;
+    _memoChapters = filtered;
     return filtered;
   }
 
