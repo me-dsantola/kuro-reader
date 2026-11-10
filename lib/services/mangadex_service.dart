@@ -461,7 +461,7 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
                 (poster['medium'] ?? poster['large'] ?? '').toString();
             final String coverLarge =
                 (poster['large'] ?? poster['original'] ?? coverSmall).toString();
-            final int chCount = (attr['chapterCount'] as int?) ?? 60;
+            final int chCount = (attr['chapterCount'] as num?)?.toInt() ?? -1;
             final String subtype =
                 (attr['subtype'] ?? 'manga').toString().toUpperCase();
 
@@ -474,10 +474,10 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
                 status: (attr['status'] ?? 'current').toString().toUpperCase(),
                 directCoverUrl: coverSmall,
                 directHighResCoverUrl: coverLarge,
-                tags: ['Scans Plus Multi-Idioma', subtype],
+                tags: ['Catálogo Kitsu', subtype],
                 isNsfw: false,
                 updatedAt: DateTime.now().subtract(const Duration(minutes: 25)),
-                availableChaptersCount: chCount > 0 ? chCount + 5 : 55,
+                availableChaptersCount: chCount,
               ),
             );
           }
@@ -506,9 +506,6 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
     final List list = data['data'] ?? [];
     final items = list.map((json) {
       final base = Manga.fromJson(json, overrideSource: MangaSourceType.comick);
-      final int boostedCount = base.availableChaptersCount > 0
-          ? base.availableChaptersCount + 10
-          : 38;
       return Manga(
         id: 'cmk_mdx_${base.id}',
         source: MangaSourceType.comick,
@@ -516,10 +513,10 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
         description: base.description,
         status: base.status,
         coverFileName: base.coverFileName,
-        tags: [...base.tags.take(4), 'Scan Plus Multi-Idioma'],
+        tags: ['Resultado MangaDex', ...base.tags.take(4)],
         isNsfw: base.isNsfw,
         updatedAt: base.updatedAt,
-        availableChaptersCount: boostedCount,
+        availableChaptersCount: base.availableChaptersCount,
       );
     }).toList();
 
