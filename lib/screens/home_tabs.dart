@@ -1631,8 +1631,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
           );
           if (mounted && generation == _catalogRequestGeneration) {
             setState(() {
-              final seen = _mangas.map((m) => m.compositeId).toSet();
-              _mangas.addAll(extra.where((m) => seen.add(m.compositeId)));
+              final seenIds = _mangas.map((m) => m.compositeId).toSet();
+              final readableTitles = _mangas
+                  .where((m) => m.source == MangaSourceType.mangadex)
+                  .map((m) => m.normalizedTitleKey)
+                  .where((key) => key.length >= 3)
+                  .toSet();
+              _mangas.addAll(extra.where((m) {
+                if (!seenIds.add(m.compositeId)) return false;
+                // Don't show a metadata-only duplicate beneath an already
+                // readable MangaDex result for the same normalized title.
+                return m.normalizedTitleKey.length < 3 ||
+                    !readableTitles.contains(m.normalizedTitleKey);
+              }));
             });
           }
         }
