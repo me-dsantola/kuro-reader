@@ -74,6 +74,10 @@ class _MainNavigationShellState extends State<MainNavigationShell>
   @override
   void initState() {
     super.initState();
+    // Preserve the user's existing startup preference after moving Profile
+    // to its own tab. Older installations defaulted to opening Profile.
+    _selectedIndex =
+        StorageService.profileNotifier.value.openOnProfileByDefault ? 4 : 0;
     WidgetsBinding.instance.addObserver(this);
   }
 
