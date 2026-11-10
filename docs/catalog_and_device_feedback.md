@@ -65,3 +65,12 @@ são simulados; requer confirmação em Android físico.
 
 A falha de imagens relatada na 1.1.3 continua pendente de reprodução real.
 Este lote não deve ser interpretado como correção comprovada desse problema.
+
+
+## Ajuste de posição — Beta 1.1.5+7
+
+A logo YOMI passa ao centro da linha superior. Busca e filtros ficam juntos
+na linha seguinte; a ordenação ocupa uma linha logo abaixo da busca, alinhada
+à direita, com o rótulo “Ordenar por”. A altura reservada ao cabeçalho acompanha
+essa composição para que o catálogo comece abaixo de todos os controles.
+As três ordens e os indicadores de estado mantêm seu comportamento.

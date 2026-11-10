@@ -1949,89 +1949,129 @@ class _ExploreScreenState extends State<ExploreScreen> {
       displayed.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
     }
     final latestRoll = displayed.where((m) => !m.isCoverOnly).take(10).toList();
-    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 64;
+    const catalogControlsHeight = 112.0;
+    final headerHeight =
+        MediaQuery.paddingOf(context).top +
+        kToolbarHeight +
+        catalogControlsHeight;
     final allowNsfw = StorageService.nsfwMode.allowNsfwFetch;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: YomiEnsoLogo(fontSize: 24)),
-        centerTitle: false,
-        actions: [
-          CatalogSortControl(value: _catalogSort, onChanged: (sort) {
-            if (sort == _catalogSort) return;
-            _searchDebounce?.cancel();
-            setState(() => _catalogSort = sort);
-            _loadMangas(reset: true);
-          }),
-        ],
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: YomiEnsoLogo(fontSize: 24),
+        ),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         flexibleSpace: const FrostedSurface(child: SizedBox.expand()),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(64),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    textInputAction: TextInputAction.search,
-                    onChanged: _scheduleTitleSearch,
-                    onSubmitted: (_) {
-                      _searchDebounce?.cancel();
-                      _loadMangas(reset: true);
-                    },
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText:
-                          'Buscar obras (One Piece, Solo Leveling, Batman...)',
-                      hintStyle:
-                          TextStyle(color: Colors.white.withValues(alpha: 0.38)),
-                      prefixIcon: const Icon(Icons.search,
-                          color: YomiPalette.ensoRed),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear,
-                                  color: Colors.white54),
-                              onPressed: () {
-                                _searchDebounce?.cancel();
-                                _searchController.clear();
-                                _loadMangas(reset: true);
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: YomiPalette.surface,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
+          preferredSize: const Size.fromHeight(catalogControlsHeight),
+          child: SizedBox(
+            height: catalogControlsHeight,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          textInputAction: TextInputAction.search,
+                          onChanged: _scheduleTitleSearch,
+                          onSubmitted: (_) {
+                            _searchDebounce?.cancel();
+                            _loadMangas(reset: true);
+                          },
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText:
+                                'Buscar obras (One Piece, Solo Leveling, Batman...)',
+                            hintStyle: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.38),
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: YomiPalette.ensoRed,
+                            ),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.white54,
+                                    ),
+                                    onPressed: () {
+                                      _searchDebounce?.cancel();
+                                      _searchController.clear();
+                                      _loadMangas(reset: true);
+                                    },
+                                  )
+                                : null,
+                            filled: true,
+                            fillColor: YomiPalette.surface,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 0,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Badge(
-                  isLabelVisible:
-                      _includedTags.isNotEmpty || _excludedTags.isNotEmpty,
-                  label: Text('${_includedTags.length + _excludedTags.length}'),
-                  backgroundColor: YomiPalette.ensoRed,
-                  child: IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      backgroundColor: YomiPalette.surface,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                      const SizedBox(width: 10),
+                      Badge(
+                        isLabelVisible:
+                            _includedTags.isNotEmpty ||
+                            _excludedTags.isNotEmpty,
+                        label: Text(
+                          '${_includedTags.length + _excludedTags.length}',
+                        ),
+                        backgroundColor: YomiPalette.ensoRed,
+                        child: IconButton.filledTonal(
+                          style: IconButton.styleFrom(
+                            backgroundColor: YomiPalette.surface,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: _openTagFilterModal,
+                          icon: const Icon(
+                            Icons.tune_rounded,
+                            color: YomiPalette.sakuraPink,
+                          ),
+                        ),
                       ),
-                    ),
-                    onPressed: _openTagFilterModal,
-                    icon: const Icon(Icons.tune_rounded,
-                        color: YomiPalette.sakuraPink),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Ordenar por',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                      ),
+                      CatalogSortControl(
+                        value: _catalogSort,
+                        onChanged: (sort) {
+                          if (sort == _catalogSort) return;
+                          _searchDebounce?.cancel();
+                          setState(() => _catalogSort = sort);
+                          _loadMangas(reset: true);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
