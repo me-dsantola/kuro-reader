@@ -27,6 +27,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   MangaSourceType? _recommendedMostCompleteSource;
 
   bool _loadingChapters = true;
+  bool _loadingOlderChapters = false;
+  bool _canLoadOlderChapters = false;
+  int _nextChapterOffset = 500;
   String _selectedLang = 'TODOS';
   bool _sortAscending = false;
 
@@ -66,6 +69,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         _recommendedMostCompleteSource = bestSource;
         _selectedSource = bestSource;
         _loadingChapters = false;
+        _nextChapterOffset = 500;
+        _canLoadOlderChapters =
+            MangaDexService.hasOlderChapters(widget.manga.id);
       });
     } catch (_) {
       final cached = StorageService.getCachedMangaChapters(widget.manga.id);
@@ -75,6 +81,46 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           _loadingChapters = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadOlderChapters() async {
+    if (_loadingOlderChapters || !_canLoadOlderChapters) return;
+    setState(() => _loadingOlderChapters = true);
+    try {
+      final older = await MangaDexService.discoverAllSourcesForManga(
+        widget.manga,
+        offset: _nextChapterOffset,
+      );
+      if (!mounted) return;
+      final updated = <MangaSourceType, List<Chapter>>{};
+      for (final entry in _chaptersBySource.entries) {
+        final seen = entry.value.map((ch) => ch.id).toSet();
+        final extra = older[entry.key] ?? older[MangaSourceType.mangadex] ??
+            const <Chapter>[];
+        updated[entry.key] = [
+          ...entry.value,
+          ...extra.where((ch) => seen.add(ch.id)),
+        ];
+      }
+      final primary = updated[_selectedSource] ?? const <Chapter>[];
+      await StorageService.cacheMangaChapters(widget.manga.id, primary);
+      if (!mounted) return;
+      setState(() {
+        _chaptersBySource = updated;
+        _nextChapterOffset += 500;
+        _canLoadOlderChapters =
+            MangaDexService.hasOlderChapters(widget.manga.id);
+        _loadingOlderChapters = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingOlderChapters = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Não foi possível buscar os capítulos antigos. Tente novamente.'),
+        ),
+      );
     }
   }
 
@@ -606,6 +652,25 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                       );
                     },
                     childCount: filteredChapters.length,
+                  ),
+                ),
+              if (!_loadingChapters && _canLoadOlderChapters)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                    child: OutlinedButton.icon(
+                      onPressed: _loadingOlderChapters ? null : _loadOlderChapters,
+                      icon: _loadingOlderChapters
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.expand_more_rounded),
+                      label: Text(_loadingOlderChapters
+                          ? 'Carregando capítulos antigos...'
+                          : 'Carregar capítulos anteriores'),
+                    ),
                   ),
                 ),
             ],
