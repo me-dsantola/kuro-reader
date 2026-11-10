@@ -1180,17 +1180,17 @@ class MangaDexService {
         .where((ch) => ch.pages > 0)
         .toList();
 
-    // Fonte 1: ComicK / Scans Plus (Sequência completa sem lacunas combinando PT-BR > EN > ES)
-    final Map<String, Chapter> comickUnified = {};
-    // Fonte 2: MangaDex Oficial (Apenas PT-BR e EN separados por idioma)
+    // Both chapter views below come from MangaDex. Do not present either
+    // as a separate ComicK provider until a real ComicK adapter exists.
+    final Map<String, Chapter> preferredLanguageChapters = {};
     final Map<String, Chapter> mdxStandard = {};
 
     for (final ch in rawAll) {
       final numKey = ch.chapterNumber;
-      if (!comickUnified.containsKey(numKey)) {
-        comickUnified[numKey] = Chapter(
+      if (!preferredLanguageChapters.containsKey(numKey)) {
+        preferredLanguageChapters[numKey] = Chapter(
           id: ch.id,
-          source: MangaSourceType.comick,
+          source: MangaSourceType.mangadex,
           chapterNumber: ch.chapterNumber,
           title: ch.title,
           language: ch.language,
@@ -1198,7 +1198,7 @@ class MangaDexService {
           scanlator: ch.scanlator,
         );
       } else {
-        final existing = comickUnified[numKey]!;
+        final existing = preferredLanguageChapters[numKey]!;
         // Prefer PT-BR, then English, then Spanish regardless of API order.
         const languagePriority = <String, int>{
           'PT-BR': 0,
@@ -1208,9 +1208,9 @@ class MangaDexService {
         };
         if ((languagePriority[ch.language] ?? 99) <
             (languagePriority[existing.language] ?? 99)) {
-          comickUnified[numKey] = Chapter(
+          preferredLanguageChapters[numKey] = Chapter(
             id: ch.id,
-            source: MangaSourceType.comick,
+            source: MangaSourceType.mangadex,
             chapterNumber: ch.chapterNumber,
             title: ch.title,
             language: ch.language,
@@ -1237,20 +1237,20 @@ class MangaDexService {
       }
     }
 
-    final comickList = comickUnified.values.toList();
+    final preferredList = preferredLanguageChapters.values.toList();
     final mdxList = mdxStandard.values.toList();
 
-    // Registra a fonte original clicada pelo usuário + alternativas para permitir alternância imediata
-    sourceChaptersMap[manga.source] =
-        manga.source == MangaSourceType.comick ? comickList : mdxList;
-    sourceChaptersMap[MangaSourceType.comick] = comickList;
+    // Preserve the existing selection keys for old library entries, but
+    // chapter.source truthfully identifies the MangaDex API.
+    sourceChaptersMap[manga.source] = mdxList;
     sourceChaptersMap[MangaSourceType.mangadex] = mdxList;
-
     for (final alt in manga.alternativeSources) {
       sourceChaptersMap.putIfAbsent(alt.source, () => mdxList);
     }
 
-    final bestList = comickList.length >= mdxList.length ? comickList : mdxList;
+    final bestList = preferredList.length >= mdxList.length
+        ? preferredList
+        : mdxList;
     await StorageService.cacheMangaChapters(manga.id, bestList);
 
     return sourceChaptersMap;
