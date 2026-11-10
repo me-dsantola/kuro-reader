@@ -37,6 +37,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   void initState() {
     super.initState();
     _selectedSource = widget.manga.source;
+    final savedOffset = StorageService.settingsBox.get(
+      'chapter_feed_offset_${widget.manga.id}',
+      defaultValue: 500,
+    );
+    if (savedOffset is int && savedOffset >= 500) {
+      _nextChapterOffset = savedOffset;
+    }
     final cached = StorageService.getCachedMangaChapters(widget.manga.id);
     if (cached.isNotEmpty) {
       _chaptersBySource = {widget.manga.source: cached};
@@ -64,12 +71,21 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         }
       }
 
+      // Network refresh returns the newest feed page. Keep older pages
+      // previously fetched and cached, rather than hiding them on reopen.
+      final cached = StorageService.getCachedMangaChapters(widget.manga.id);
+      for (final entry in map.entries) {
+        final ids = entry.value.map((ch) => ch.id).toSet();
+        map[entry.key] = [
+          ...entry.value,
+          ...cached.where((ch) => ids.add(ch.id)),
+        ];
+      }
       setState(() {
         _chaptersBySource = map;
         _recommendedMostCompleteSource = bestSource;
         _selectedSource = bestSource;
         _loadingChapters = false;
-        _nextChapterOffset = 500;
         _canLoadOlderChapters =
             MangaDexService.hasOlderChapters(widget.manga.id);
       });
@@ -105,6 +121,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       }
       final primary = updated[_selectedSource] ?? const <Chapter>[];
       await StorageService.cacheMangaChapters(widget.manga.id, primary);
+      await StorageService.settingsBox.put(
+        'chapter_feed_offset_${widget.manga.id}',
+        _nextChapterOffset + 500,
+      );
       if (!mounted) return;
       setState(() {
         _chaptersBySource = updated;
