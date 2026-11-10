@@ -158,6 +158,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
     );
   }
 
+  Future<void> _markCurrentChapterFinished() async {
+    await StorageService.markChapterAsRead(widget.manga, widget.chapter);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Capítulo marcado como concluído')),
+    );
+  }
+
   int _lastPrefetchedPage = -1;
 
   void _warmNextPage(List<String> urls) {
@@ -397,6 +405,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
                                   onPressed: () => _goToChapter(nextCh),
                                 ),
                               IconButton(
+                                tooltip: 'Marcar capítulo como concluído',
+                                icon: const Icon(
+                                  Icons.check_circle_outline_rounded,
+                                  color: YomiPalette.sakuraPink,
+                                ),
+                                onPressed: _markCurrentChapterFinished,
+                              ),
+                              IconButton(
                                 tooltip: 'Alternar Rolagem Contínua / Paginado',
                                 icon: Icon(
                                   _isWebtoonMode
@@ -439,11 +455,20 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
           ),
           const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: _markCurrentChapterFinished,
+            icon: const Icon(Icons.check_circle_outline_rounded),
+            label: const Text('Marcar como concluído'),
+          ),
+          const SizedBox(height: 12),
           if (nextCh != null)
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: () => _goToChapter(nextCh),
+                onPressed: () {
+                  StorageService.markChapterAsRead(widget.manga, widget.chapter);
+                  _goToChapter(nextCh);
+                },
                 icon: const Icon(Icons.skip_next_rounded),
                 label: Text('Ler Próximo: Cap. ${nextCh.chapterNumber}'),
                 style: FilledButton.styleFrom(
