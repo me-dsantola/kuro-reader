@@ -9,7 +9,7 @@ on:
         description: 'Tipo de APK (Beta: Debug rápido ou Release)'
         required: true
         type: choice
-        default: debug
+        default: release
         options:
           - debug
           - release
@@ -48,20 +48,26 @@ jobs:
       - name: 4. Instalar dependências do pubspec.yaml
         run: flutter pub get
 
+      - name: 4a. Análise estática (erros e avisos)
+        run: flutter analyze --no-fatal-infos
+
+      - name: 4b. Testes automatizados
+        run: flutter test
+
       - name: 5. Compilar APK Debug Beta (arm64)
-        if: github.ref_name == 'refactor/kuro-reader-v2' && (github.event_name == 'push' || inputs.build_type == 'debug')
+        if: github.ref_name == 'refactor/kuro-reader-v2' && github.event_name == 'workflow_dispatch' && inputs.build_type == 'debug'
         env:
           ORG_GRADLE_PROJECT_betaBuild: 'true'
         run: flutter build apk --debug --target-platform android-arm64 --split-per-abi
 
       - name: 6. Compilar APK Release (arm64)
-        if: github.ref_name != 'refactor/kuro-reader-v2' || (github.event_name == 'workflow_dispatch' && inputs.build_type == 'release')
+        if: github.ref_name != 'refactor/kuro-reader-v2' || github.event_name == 'push' || inputs.build_type == 'release'
         env:
           ORG_GRADLE_PROJECT_betaBuild: ${{ github.ref_name == 'refactor/kuro-reader-v2' && 'true' || 'false' }}
         run: flutter build apk --release --target-platform android-arm64 --split-per-abi
 
       - name: 7. Disponibilizar APK Debug Beta
-        if: github.ref_name == 'refactor/kuro-reader-v2' && (github.event_name == 'push' || inputs.build_type == 'debug')
+        if: github.ref_name == 'refactor/kuro-reader-v2' && github.event_name == 'workflow_dispatch' && inputs.build_type == 'debug'
         uses: actions/upload-artifact@v4
         with:
           name: KuroReader-Beta-Debug-Android-APK
