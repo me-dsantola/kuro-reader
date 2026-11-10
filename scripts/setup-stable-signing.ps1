@@ -36,27 +36,46 @@ function Set-YomiSecret([string]$Name, [string]$Value) {
     if ($LASTEXITCODE -ne 0) { throw "Nao foi possivel configurar $Name. Nenhum valor sera exibido." }
 }
 
+function Invoke-YomiKeytool([string[]]$ToolArguments) {
+    # Windows PowerShell 5.1 wraps redirected Java warnings in NativeCommandError.
+    # Check the real process exit code instead of treating stderr as a failure.
+    $KeytoolErrorAction = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & keytool @ToolArguments *> $null
+        return $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $KeytoolErrorAction
+    }
+}
+
 try {
     $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
     $env:YOMI_SETUP_PASSWORD = $PlainPassword
     $Parent = Split-Path -Parent $KeystorePath
     [System.IO.Directory]::CreateDirectory($Parent) | Out-Null
     if (-not (Test-Path -LiteralPath $KeystorePath)) {
-        & keytool -genkeypair -storetype JKS -keyalg RSA -keysize 4096 -sigalg SHA256withRSA `
-            -validity 10000 -alias $KeyAlias -keystore $KeystorePath `
-            -storepass:env YOMI_SETUP_PASSWORD -keypass:env YOMI_SETUP_PASSWORD `
-            -dname 'CN=YOMI Release' -noprompt
-        if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar a chave. Nenhum segredo foi enviado.' }
+        $KeytoolStatus = Invoke-YomiKeytool -ToolArguments @(
+            '-genkeypair', '-storetype', 'JKS', '-keyalg', 'RSA', '-keysize', '4096', '-sigalg', 'SHA256withRSA',
+            '-validity', '10000', '-alias', $KeyAlias, '-keystore', $KeystorePath,
+            '-storepass:env', 'YOMI_SETUP_PASSWORD', '-keypass:env', 'YOMI_SETUP_PASSWORD',
+            '-dname', 'CN=YOMI Release', '-noprompt'
+        )
+        if ($KeytoolStatus -ne 0) { throw 'Falha ao criar a chave. Nenhum segredo foi enviado.' }
     } else {
         Write-Host 'Arquivo existente encontrado: ele sera reutilizado, nunca substituido.'
     }
-    & keytool -list -alias $KeyAlias -keystore $KeystorePath -storepass:env YOMI_SETUP_PASSWORD *> $null
-    if ($LASTEXITCODE -ne 0) { throw 'Arquivo, alias ou senha invalidos. A chave existente foi preservada.' }
+    $KeytoolStatus = Invoke-YomiKeytool -ToolArguments @(
+        '-list', '-alias', $KeyAlias, '-keystore', $KeystorePath, '-storepass:env', 'YOMI_SETUP_PASSWORD'
+    )
+    if ($KeytoolStatus -ne 0) { throw 'Arquivo, alias ou senha invalidos. A chave existente foi preservada.' }
     $CheckFile = [System.IO.Path]::GetTempFileName()
     try {
-        & keytool -certreq -alias $KeyAlias -keystore $KeystorePath -storepass:env YOMI_SETUP_PASSWORD `
-            -keypass:env YOMI_SETUP_PASSWORD -file $CheckFile *> $null
-        if ($LASTEXITCODE -ne 0) { throw 'A senha da chave privada precisa corresponder a senha informada. Nenhum segredo foi enviado.' }
+        $KeytoolStatus = Invoke-YomiKeytool -ToolArguments @(
+            '-certreq', '-alias', $KeyAlias, '-keystore', $KeystorePath, '-storepass:env', 'YOMI_SETUP_PASSWORD',
+            '-keypass:env', 'YOMI_SETUP_PASSWORD', '-file', $CheckFile
+        )
+        if ($KeytoolStatus -ne 0) { throw 'A senha da chave privada precisa corresponder a senha informada. Nenhum segredo foi enviado.' }
     } finally { Remove-Item -LiteralPath $CheckFile -ErrorAction SilentlyContinue }
     $Encoded = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($KeystorePath))
     Set-YomiSecret 'YOMI_KEYSTORE_BASE64' $Encoded

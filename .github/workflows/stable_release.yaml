@@ -30,9 +30,23 @@ jobs:
       - name: Validate release tooling
         run: python3 -m unittest discover -s scripts/tests -v
 
+  signing-helper:
+    name: Test signing assistant on Windows PowerShell 5.1
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/yomi-stable-validation'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Check warnings, reuse and real failures
+        shell: powershell
+        run: '& .\scripts\tests\test-stable-signing.ps1'
+
   signed-apks:
     name: Build and verify production APKs
-    needs: quality
+    needs: [quality, signing-helper]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.package.outputs.version }}
