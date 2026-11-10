@@ -33,6 +33,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
   bool _isWebtoonMode = true;
   bool _showHud = true;
   int _currentPage = 0;
+  int _lastSavedPage = -1;
+
+  void _recordPage(int index) {
+    if (index == _lastSavedPage) return;
+    _currentPage = index;
+    _lastSavedPage = index;
+    StorageService.saveLastPageIndex(widget.chapter.id, index);
+  }
 
   late PageController _pageController;
   final ScrollController _webtoonScrollController = ScrollController();
@@ -52,6 +60,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     PaintingBinding.instance.imageCache.maximumSize = 80;
 
     _currentPage = StorageService.getSavedPageIndex(widget.chapter.id);
+    _lastSavedPage = _currentPage;
     _pageController = PageController(initialPage: _currentPage);
     _initReaderSource();
   }
@@ -235,13 +244,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                               onAspectRatioResolved: (ratio) {
                                 _pageAspectRatios[index] = ratio;
                               },
-                              onPageVisible: () {
-                                _currentPage = index;
-                                StorageService.saveLastPageIndex(
-                                  widget.chapter.id,
-                                  index,
-                                );
-                              },
+                              onPageVisible: () => _recordPage(index),
                             );
                           },
                         )
@@ -250,11 +253,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
                           pageController: _pageController,
                           itemCount: totalPages,
                           onPageChanged: (index) {
-                            setState(() => _currentPage = index);
-                            StorageService.saveLastPageIndex(
-                              widget.chapter.id,
-                              index,
-                            );
+                            _recordPage(index);
+                            setState(() {});
                           },
                           builder: (context, index) {
                             final ImageProvider provider = _isOfflineMode
