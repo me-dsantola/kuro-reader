@@ -35,6 +35,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   void initState() {
     super.initState();
     _selectedSource = widget.manga.source;
+    final cached = StorageService.getCachedMangaChapters(widget.manga.id);
+    if (cached.isNotEmpty) {
+      _chaptersBySource = {widget.manga.source: cached};
+      _loadingChapters = false;
+    }
+    // Refresh the cached list without blocking the initial chapter view.
     _discoverAndSelectBestSource();
   }
 
@@ -115,7 +121,11 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
     return Scaffold(
       body: ValueListenableBuilder(
-        valueListenable: StorageService.historyBox.listenable(),
+        // Rebuild the header when this manga's last chapter changes, not on
+        // every page-position write from the reader (which causes scroll jank).
+        valueListenable: StorageService.historyBox.listenable(
+          keys: ['last_${widget.manga.id}'],
+        ),
         builder: (context, Box historyBox, _) {
           final lastChapter =
               StorageService.getLastReadChapter(widget.manga.id);
@@ -567,12 +577,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                           chapter: chapter,
                         ),
                         onTap: () => _openChapter(chapter, filteredChapters),
-                        onLongPress: () {
-                          StorageService.markChapterAsRead(
+                        onLongPress: () async {
+                          await StorageService.markChapterAsRead(
                             widget.manga,
                             chapter,
                             read: !isRead,
                           );
+                          if (mounted) setState(() {});
                         },
                       );
                     },
