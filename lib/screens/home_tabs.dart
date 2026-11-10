@@ -1,3 +1,4 @@
+import 'favorite_updates_screen.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'dart:ui';
@@ -2245,6 +2246,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Central de atualizações',
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const FavoriteUpdatesScreen(),
+              ),
+            ),
+          ),
+          IconButton(
             tooltip: 'Verificar novos capítulos dos favoritos',
             onPressed: _checkingUpdates ? null : _checkUpdates,
             icon: _checkingUpdates
@@ -2253,7 +2264,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.notifications_active_outlined),
+                : const Icon(Icons.sync_rounded),
           ),
         ],
       ),
