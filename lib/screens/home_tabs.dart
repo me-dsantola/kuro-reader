@@ -157,7 +157,7 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
                 ? MediaQuery.sizeOf(context).width
                 : MediaQuery.sizeOf(context).width / 3);
         final pixelRatio = MediaQuery.devicePixelRatioOf(context);
-        return (logicalWidth * pixelRatio).ceil().clamp(160, 1080);
+        return (logicalWidth * pixelRatio).ceil().clamp(160, 1080).toInt();
       })(),
       gaplessPlayback: true,
       loadingBuilder: (context, child, loadingProgress) {
