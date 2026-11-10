@@ -484,6 +484,28 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         const SizedBox(height: 16),
                       ],
 
+                      if (lastChapter == null &&
+                          filteredChapters.isNotEmpty) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => _openChapter(
+                              _sortAscending
+                                  ? filteredChapters.first
+                                  : filteredChapters.last,
+                              filteredChapters,
+                            ),
+                            icon: const Icon(Icons.menu_book_rounded),
+                            label: const Text('Começar a ler'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: YomiPalette.ensoRed,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       if (lastChapter != null) ...[
                         SizedBox(
                           width: double.infinity,
