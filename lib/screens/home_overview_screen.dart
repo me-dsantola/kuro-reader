@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
 import '../services/storage_service.dart';
+import '../services/favorite_updates_service.dart';
+import 'favorite_updates_screen.dart';
+import 'reader_screen.dart';
 import 'home_tabs.dart';
-import 'manga_detail_screen.dart';
 
 /// Lightweight reading-first home. The detailed profile and metrics remain
 /// available on the Profile tab instead of being forced on app startup.
@@ -65,6 +67,35 @@ class HomeOverviewScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
+                ValueListenableBuilder(
+                  valueListenable: StorageService.settingsBox.listenable(),
+                  builder: (context, Box settings, _) {
+                    final count = StorageService.getFavorites().fold<int>(
+                      0,
+                      (total, manga) =>
+                          total + FavoriteUpdatesService.pendingFor(manga).length,
+                    );
+                    return Card(
+                      color: YomiPalette.surface,
+                      child: ListTile(
+                        leading: const Icon(Icons.notifications_outlined,
+                            color: YomiPalette.sakuraPink),
+                        title: const Text('Novos capítulos dos favoritos'),
+                        subtitle: Text(count == 0
+                            ? 'Confira as atualizações na Biblioteca'
+                            : '$count capítulo(s) aguardando leitura'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FavoriteUpdatesScreen(),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 28),
                 const Text(
                   'Continuar lendo',
@@ -97,17 +128,31 @@ class HomeOverviewScreen extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          subtitle: Text('Última leitura: cap. ${chapter.chapterNumber}'),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => MangaDetailScreen(
-                                manga: manga,
-                                heroTag: 'home_${manga.compositeId}',
-                              ),
-                            ),
+                          subtitle: Text(
+                            'Cap. ${chapter.chapterNumber} • página ${StorageService.getSavedPageIndex(chapter.id) + 1}',
                           ),
+                          trailing: const Icon(Icons.play_arrow_rounded),
+                          onTap: () {
+                            final cached =
+                                StorageService.getCachedMangaChapters(manga.id);
+                            final chapters = <Chapter>[
+                              ...cached,
+                              if (!cached.any((c) => c.id == chapter.id))
+                                chapter,
+                            ]..sort(
+                                (a, b) => a.numericChapter.compareTo(b.numericChapter),
+                              );
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ReaderScreen(
+                                  manga: manga,
+                                  chapter: chapter,
+                                  allChapters: chapters,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       );
                     }),
