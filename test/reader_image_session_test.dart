@@ -254,8 +254,9 @@ void main() {
         expect(calls, 2);
         final directory = (await root.list().toList()).single as Directory;
         final watch = root.watch().listen((event) {
-          if (event is FileSystemDeleteEvent && !cleaned.isCompleted)
+          if (event is FileSystemDeleteEvent && !cleaned.isCompleted) {
             cleaned.complete();
+          }
         });
         session.close();
         await cleaned.future.timeout(const Duration(seconds: 5));
