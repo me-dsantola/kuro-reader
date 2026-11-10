@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'backup_codec.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
@@ -344,10 +344,11 @@ class StorageService {
     );
   }
 
-  // --- SISTEMA DE BACKUP & RESTAURAÇÃO PERSISTENTE (SOBREVIVE A REINSTALAÇÃO) ---
+  // --- BACKUP LOCAL. Base64 is a transport format, not encryption. ---
   static String exportFullBackupJson() {
     final payload = {
-      'version': 3,
+      'format': 'yomi-local-backup',
+      'version': BackupCodec.currentVersion,
       'exportedAt': DateTime.now().toIso8601String(),
       'profile': userProfile.toMap(),
       'favorites': favBox.toMap(),
@@ -358,34 +359,48 @@ class StorageService {
         'data_saver_mode': dataSaverEnabled,
       },
     };
-    return base64Encode(utf8.encode(jsonEncode(payload)));
+    // Offline image files are not embedded. Never report an unbundled
+    // downloaded chapter as restored offline content.
+    return BackupCodec.encode(payload);
   }
 
   static Future<bool> importFullBackupJson(String rawInput) async {
     try {
-      final cleaned = rawInput.trim();
-      final String jsonStr = cleaned.startsWith('{')
-          ? cleaned
-          : utf8.decode(base64Decode(cleaned));
-      final Map<String, dynamic> data = jsonDecode(jsonStr);
+      // Parse and validate every section before mutating any Hive box.
+      // Older backups without a version number remain supported.
+      final data = BackupCodec.decode(rawInput);
+      final favs = data['favorites'] is Map
+          ? Map<String, dynamic>.from(data['favorites'] as Map)
+          : <String, dynamic>{};
+      final hist = data['history'] is Map
+          ? Map<String, dynamic>.from(data['history'] as Map)
+          : <String, dynamic>{};
+      final settings = data['settings'] is Map
+          ? Map<String, dynamic>.from(data['settings'] as Map)
+          : <String, dynamic>{};
+      final profile = data['profile'] is Map
+          ? UserProfile.fromMap(
+              Map<String, dynamic>.from(data['profile'] as Map),
+            )
+          : null;
 
-      if (data['profile'] is Map) {
-        final prof =
-            UserProfile.fromMap(Map<String, dynamic>.from(data['profile']));
-        await updateUserProfile(prof);
+      // Verify serializable map values before writing; otherwise malformed
+      // imports can leave a partially restored user profile.
+      for (final entry in hist.entries) {
+        if (entry.key.isEmpty) throw const FormatException('Histórico inválido');
       }
-      if (data['favorites'] is Map) {
-        final favs = Map<String, dynamic>.from(data['favorites']);
-        for (final entry in favs.entries) {
-          await favBox.put(entry.key, entry.value);
-        }
+
+      if (favs.isNotEmpty) await favBox.putAll(favs);
+      if (hist.isNotEmpty) await historyBox.putAll(hist);
+      for (final key in [
+        'lock_nsfw_on_startup',
+        'hide_zero_chapters',
+        'data_saver_mode',
+      ]) {
+        final value = settings[key];
+        if (value is bool) await settingsBox.put(key, value);
       }
-      if (data['history'] is Map) {
-        final hist = Map<String, dynamic>.from(data['history']);
-        for (final entry in hist.entries) {
-          await historyBox.put(entry.key, entry.value);
-        }
-      }
+      if (profile != null) await updateUserProfile(profile);
       return true;
     } catch (e) {
       debugPrint('Erro ao restaurar backup: $e');
