@@ -1520,6 +1520,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   List<Manga> _mangas = [];
   bool _isLoading = true;
   bool _isLoadingMore = false;
+  bool _isEnrichingCatalog = false;
   String? _error;
   int _catalogRequestGeneration = 0;
 
@@ -1564,7 +1565,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 450 &&
         !_isLoading &&
-        !_isLoadingMore) {
+        !_isLoadingMore &&
+        !_isEnrichingCatalog) {
       _loadMoreMangas();
     }
   }
@@ -1583,6 +1585,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final generation = ++_catalogRequestGeneration;
     setState(() {
       _isLoading = true;
+      _isEnrichingCatalog = false;
       _error = null;
     });
     try {
@@ -1618,6 +1621,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
           {MangaSourceType.mangadex},
         );
         if (secondary.isNotEmpty) {
+          _isEnrichingCatalog = true;
+          try {
           final extra = await MangaDexService.fetchMergedCatalog(
             filter: YomiSearchFilter(
               query: filter.query,
@@ -1646,6 +1651,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
               }));
             });
           }
+          } finally {
+            if (mounted && generation == _catalogRequestGeneration) {
+              _isEnrichingCatalog = false;
+            }
+          }
         }
       }
     } catch (e) {
@@ -1659,7 +1669,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _loadMoreMangas() async {
-    if (_isLoading || _isLoadingMore) return;
+    if (_isLoading || _isLoadingMore || _isEnrichingCatalog) return;
     final generation = _catalogRequestGeneration;
     setState(() => _isLoadingMore = true);
     try {
