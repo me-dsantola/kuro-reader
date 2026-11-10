@@ -7,6 +7,7 @@ import '../models/manga_models.dart';
 import '../services/mangadex_service.dart';
 import '../services/storage_service.dart';
 import '../services/download_manager.dart';
+import '../services/favorite_updates_service.dart';
 import 'manga_detail_screen.dart';
 import 'reader_screen.dart';
 
@@ -2105,8 +2106,41 @@ class _ExploreScreenState extends State<ExploreScreen> {
 // ============================================================================
 // ABA 2: MINHA BIBLIOTECA
 // ============================================================================
-class LibraryScreen extends StatelessWidget {
+class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
+
+  @override
+  State<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends State<LibraryScreen> {
+  bool _checkingUpdates = false;
+
+  Future<void> _checkUpdates() async {
+    if (_checkingUpdates) return;
+    setState(() => _checkingUpdates = true);
+    var newChapters = 0;
+    var failures = 0;
+    // Explicit action only: no background polling or notification permission.
+    final favorites = StorageService.getFavorites();
+    for (final manga in favorites) {
+      if (!mounted) break;
+      try {
+        newChapters += await FavoriteUpdatesService.checkFavorite(manga);
+      } catch (_) {
+        failures++;
+      }
+    }
+    if (!mounted) return;
+    setState(() => _checkingUpdates = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        failures > 0
+            ? 'Verificação parcial: $newChapters capítulos novos; $failures obras indisponíveis.'
+            : '$newChapters capítulos novos. Na primeira verificação, o histórico é inicializado.',
+      ),
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2119,6 +2153,19 @@ class LibraryScreen extends StatelessWidget {
             Text('Minha Biblioteca'),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Verificar novos capítulos dos favoritos',
+            onPressed: _checkingUpdates ? null : _checkUpdates,
+            icon: _checkingUpdates
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.notifications_active_outlined),
+          ),
+        ],
       ),
       body: ValueListenableBuilder<NsfwDisplayMode>(
         valueListenable: StorageService.nsfwModeNotifier,
@@ -2158,19 +2205,65 @@ class LibraryScreen extends StatelessWidget {
                 );
               }
 
-              return GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  childAspectRatio: 0.62,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 16,
-                ),
-                itemCount: favorites.length,
-                itemBuilder: (context, index) => MangaGridCard(
-                  manga: favorites[index],
-                  heroPrefix: 'lib',
-                ),
+              return ValueListenableBuilder(
+                valueListenable: StorageService.settingsBox.listenable(),
+                builder: (context, Box settings, _) {
+                  return Column(
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: Text(
+                          'Toque no sino para verificar novidades. A primeira verificação registra os capítulos atuais sem alertas antigos.',
+                          style: TextStyle(fontSize: 12, color: Colors.white60),
+                        ),
+                      ),
+                      Expanded(
+                        child: GridView.builder(
+                          padding: const EdgeInsets.all(16),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            childAspectRatio: 0.62,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 16,
+                          ),
+                          itemCount: favorites.length,
+                          itemBuilder: (context, index) {
+                            final manga = favorites[index];
+                            final count =
+                                FavoriteUpdatesService.pendingFor(manga).length;
+                            return Stack(
+                              children: [
+                                MangaGridCard(manga: manga, heroPrefix: 'lib'),
+                                if (count > 0)
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: YomiPalette.ensoRed,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '$count novos',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
               );
             },
           );
