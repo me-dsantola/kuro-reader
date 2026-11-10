@@ -458,8 +458,18 @@ class _KeepAlivePageTileState extends State<_KeepAlivePageTile> {
     super.initState();
     _candidates = yomiCandidateImageUrls(widget.imageUrl ?? '');
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onPageVisible();
+      if (mounted) widget.onPageVisible();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant _KeepAlivePageTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl ||
+        oldWidget.localPath != widget.localPath) {
+      _candidates = yomiCandidateImageUrls(widget.imageUrl ?? '');
+      _mirrorIdx = 0;
+    }
   }
 
   @override
@@ -538,10 +548,32 @@ class _KeepAlivePageTileState extends State<_KeepAlivePageTile> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.refresh_rounded, color: YomiPalette.ensoRed),
+              IconButton(
+                tooltip: 'Tentar carregar esta página novamente',
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: YomiPalette.ensoRed,
+                ),
+                onPressed: () {
+                  final url = activeUrl;
+                  final decodeWidth = (MediaQuery.sizeOf(context).width *
+                          MediaQuery.devicePixelRatioOf(context))
+                      .ceil()
+                      .clamp(480, 1440)
+                      .toInt();
+                  ResizeImage(
+                    NetworkImage(
+                      url,
+                      headers: kIsWeb ? null : widget.headers,
+                    ),
+                    width: decodeWidth,
+                  ).evict();
+                  setState(() => _mirrorIdx = 0);
+                },
+              ),
               const SizedBox(height: 6),
               Text(
-                'Pág. ${widget.pageIndex + 1}',
+                'Pág. ${widget.pageIndex + 1} • Tentar novamente',
                 style: const TextStyle(fontSize: 12, color: Colors.white70),
               ),
             ],
