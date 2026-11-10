@@ -1,0 +1,34 @@
+name: Validate and publish YOMI stable
+
+on:
+  push:
+    branches: [release/yomi-stable-validation, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yomi-stable-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  signing-preflight:
+    name: Validate production signing prerequisites
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required signing settings
+        env:
+          YOMI_KEYSTORE_BASE64: ${{ secrets.YOMI_KEYSTORE_BASE64 }}
+          YOMI_STORE_PASSWORD: ${{ secrets.YOMI_STORE_PASSWORD }}
+          YOMI_KEY_ALIAS: ${{ secrets.YOMI_KEY_ALIAS }}
+          YOMI_KEY_PASSWORD: ${{ secrets.YOMI_KEY_PASSWORD }}
+        shell: python
+        run: |
+          import os, sys
+          names = ('YOMI_KEYSTORE_BASE64', 'YOMI_STORE_PASSWORD', 'YOMI_KEY_ALIAS', 'YOMI_KEY_PASSWORD')
+          missing = [name for name in names if not os.environ.get(name)]
+          if missing:
+              print('::error::Production signing settings unavailable: ' + ', '.join(missing))
+              sys.exit(1)
+          print('All four production signing settings are available. No values were logged.')
