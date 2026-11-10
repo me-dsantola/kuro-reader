@@ -584,24 +584,27 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
         filter.includedTags.contains(CanonicalTag.westernIndieHq);
 
     List<String> keywords = _generalHqKeywords;
-    String badgeTag = 'HQ • Comics';
+
 
     if (wantMarvel && !wantDc) {
       keywords = _marvelKeywords;
-      badgeTag = 'Marvel Comics';
     } else if (wantDc && !wantMarvel) {
       keywords = _dcKeywords;
-      badgeTag = 'DC Comics';
     } else if (wantIndie) {
       keywords = ['Star Wars', 'Cyberpunk', 'The Witcher', 'Sonic', 'Avatar'];
-      badgeTag = 'HQ • Dark Horse / Indie';
     }
 
-    final int kwIndex = (cursor ~/ 16) % keywords.length;
+    final int kwIndex = cursor ~/ 16;
+    if (q.isEmpty && kwIndex >= keywords.length) {
+      return const PaginatedSourceResponse(
+        items: [], nextCursor: 0, hasMore: false,
+      );
+    }
     final String activeSearch = q.isNotEmpty ? q : keywords[kwIndex];
+    final int apiOffset = q.isNotEmpty ? cursor : 0;
 
     final buf = StringBuffer(
-      'https://api.mangadex.org/manga?limit=16&offset=0'
+      'https://api.mangadex.org/manga?limit=16&offset=$apiOffset'
       '&includes[]=cover_art&hasAvailableChapters=true'
       '&contentRating[]=safe&contentRating[]=suggestive'
       '&title=${Uri.encodeQueryComponent(activeSearch)}'
@@ -612,38 +615,36 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
     final data = jsonDecode(response.body);
     final List list = data['data'] ?? [];
 
-    final items = list.map((json) {
-      final base =
-          Manga.fromJson(json, overrideSource: MangaSourceType.comicsHq);
-      final isMarvelTitle = _marvelKeywords
-          .any((k) => base.title.toLowerCase().contains(k.toLowerCase()));
-      final isDcTitle = _dcKeywords
-          .any((k) => base.title.toLowerCase().contains(k.toLowerCase()));
-
-      final String publisherLabel = isMarvelTitle
-          ? 'Marvel Comics'
-          : (isDcTitle ? 'DC Comics' : badgeTag);
-
-      return Manga(
+    // These are MangaDex search results, not verified publisher releases.
+    // Preserve the original metadata rather than inventing publisher labels
+    // or chapter counts from a matching title keyword.
+    final items = <Manga>[];
+    for (final entry in list) {
+      if (entry is! Map) continue;
+      final base = Manga.fromJson(
+        Map<String, dynamic>.from(entry),
+        overrideSource: MangaSourceType.comicsHq,
+      );
+      items.add(Manga(
         id: 'hq_mdx_${base.id}',
         source: MangaSourceType.comicsHq,
         title: base.title,
         description: base.description,
         status: base.status,
         coverFileName: base.coverFileName,
-        tags: [publisherLabel, ...base.tags.take(5)],
-        isNsfw: false,
+        tags: ['Resultado MangaDex', ...base.tags.take(5)],
+        isNsfw: base.isNsfw,
         updatedAt: base.updatedAt,
-        availableChaptersCount: base.availableChaptersCount > 0
-            ? base.availableChaptersCount
-            : 14,
-      );
-    }).toList();
+        availableChaptersCount: base.availableChaptersCount,
+      ));
+    }
 
     return PaginatedSourceResponse(
       items: items,
       nextCursor: cursor + 16,
-      hasMore: q.isEmpty ? (kwIndex + 1 < keywords.length) : items.length >= 16,
+      hasMore: q.isEmpty
+          ? (kwIndex + 1 < keywords.length)
+          : (cursor + 16) < (data['total'] as num? ?? 0),
     );
   }
 }
