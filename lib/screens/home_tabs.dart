@@ -1623,34 +1623,34 @@ class _ExploreScreenState extends State<ExploreScreen> {
         if (secondary.isNotEmpty) {
           _isEnrichingCatalog = true;
           try {
-          final extra = await MangaDexService.fetchMergedCatalog(
-            filter: YomiSearchFilter(
-              query: filter.query,
-              includedTags: filter.includedTags,
-              excludedTags: filter.excludedTags,
-              enabledSources: secondary,
-              allowNsfw: filter.allowNsfw,
-              sortByLatest: filter.sortByLatest,
-              hideZeroChapters: filter.hideZeroChapters,
-            ),
-          );
-          if (mounted && generation == _catalogRequestGeneration) {
-            setState(() {
-              final seenIds = _mangas.map((m) => m.compositeId).toSet();
-              final readableTitles = _mangas
-                  .where((m) => m.source == MangaSourceType.mangadex)
-                  .map((m) => m.normalizedTitleKey)
-                  .where((key) => key.length >= 3)
-                  .toSet();
-              _mangas.addAll(extra.where((m) {
-                if (!seenIds.add(m.compositeId)) return false;
-                // Don't show a metadata-only duplicate beneath an already
-                // readable MangaDex result for the same normalized title.
-                return m.normalizedTitleKey.length < 3 ||
-                    !readableTitles.contains(m.normalizedTitleKey);
-              }));
-            });
-          }
+            final extra = await MangaDexService.fetchMergedCatalog(
+              filter: YomiSearchFilter(
+                query: filter.query,
+                includedTags: filter.includedTags,
+                excludedTags: filter.excludedTags,
+                enabledSources: secondary,
+                allowNsfw: filter.allowNsfw,
+                sortByLatest: filter.sortByLatest,
+                hideZeroChapters: filter.hideZeroChapters,
+              ),
+            );
+            if (mounted && generation == _catalogRequestGeneration) {
+              setState(() {
+                final seenIds = _mangas.map((m) => m.compositeId).toSet();
+                final readableTitles = _mangas
+                    .where((m) => m.source == MangaSourceType.mangadex)
+                    .map((m) => m.normalizedTitleKey)
+                    .where((key) => key.length >= 3)
+                    .toSet();
+                _mangas.addAll(extra.where((m) {
+                  if (!seenIds.add(m.compositeId)) return false;
+                  // Don't show a metadata-only duplicate beneath an already
+                  // readable MangaDex result for the same normalized title.
+                  return m.normalizedTitleKey.length < 3 ||
+                      !readableTitles.contains(m.normalizedTitleKey);
+                }));
+              });
+            }
           } finally {
             if (mounted && generation == _catalogRequestGeneration) {
               _isEnrichingCatalog = false;
@@ -1688,7 +1688,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     } catch (_) {
       // Keep the current catalog visible if a later page fails.
     } finally {
-      if (mounted) setState(() => _isLoadingMore = false);
+      if (mounted && generation == _catalogRequestGeneration) {
+        setState(() => _isLoadingMore = false);
+      }
     }
   }
 
