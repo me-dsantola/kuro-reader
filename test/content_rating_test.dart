@@ -70,4 +70,20 @@ void main() {
     });
     expect(verified.isNsfw, isFalse);
   });
+
+  test(
+    'legacy MangaDex-backed entries retain their existing classification',
+    () {
+      for (final source in ['comick', 'jikanMal']) {
+        final restored = Manga.fromMap({
+          'id': source == 'comick' ? 'cmk_mdx_uuid' : 'mal_mdx_uuid',
+          'title': 'Resultado MangaDex',
+          'source': source,
+          'isNsfw': false,
+        });
+        expect(restored.isNsfw, isFalse);
+        expect(restored.contentRatingKnown, isTrue);
+      }
+    },
+  );
 }

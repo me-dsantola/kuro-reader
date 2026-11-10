@@ -564,13 +564,16 @@ class Manga {
   factory Manga.fromMap(Map<String, dynamic> map) {
     final rawPreloaded = map['preloadedChapters'] as List?;
     final source = MangaSourceType.fromName(map['source']?.toString());
+    final id = (map['id'] ?? '').toString();
+    final legacyMangaDex = id.startsWith('cmk_mdx_') || id.startsWith('mal_mdx_');
     // Older Jikan/Kitsu records hard-coded isNsfw=false. Preserve their data
     // and IDs, but require sensitive mode until a fresh classified lookup.
     final known = map['contentRatingKnown'] is bool
         ? map['contentRatingKnown'] == true
-        : source != MangaSourceType.jikanMal && source != MangaSourceType.comick;
+        : legacyMangaDex ||
+            (source != MangaSourceType.jikanMal && source != MangaSourceType.comick);
     return Manga(
-      id: (map['id'] ?? '').toString(),
+      id: id,
       source: source,
       title: (map['title'] ?? 'Sem Título').toString(),
       description: (map['description'] ?? '').toString(),

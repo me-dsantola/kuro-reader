@@ -25,7 +25,8 @@ Beta: `1.1.1+3`. Base: `74a9118`, branch `refactor/kuro-reader-v2`.
 - Flutter fixado em 3.47.9 no CI; nenhuma nova dependência de execução.
 
 Os nomes das caixas Hive e IDs existentes são preservados. O campo opcional
-`contentRatingKnown` é aditivo. Favoritos antigos Jikan/Kitsu sem classificação
+`contentRatingKnown` é aditivo. Registros legados identificados como resultados
+MangaDex mantêm sua classificação original. Favoritos antigos Jikan/Kitsu sem classificação
 confiável continuam armazenados e podem ser vistos ao habilitar conteúdo
 sensível; não foram excluídos. Atualização automática da classificação desses
 registros fica para um lote posterior.
@@ -34,7 +35,7 @@ registros fica para um lote posterior.
 
 - `flutter pub get`
 - `flutter analyze --no-fatal-infos`
-- `flutter test` — 43 testes, incluindo regressões de importação, recuperação de
+- `flutter test` — 44 testes, incluindo regressões de importação, recuperação de
   restauração interrompida, requisições antigas, adaptação dos provedores,
   navegação offline, escudo sobre rotas e inicialização com falha.
 - O GitHub Actions executa novamente análise, testes e compilação Beta ARM64.
