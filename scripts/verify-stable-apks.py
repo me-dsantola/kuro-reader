@@ -30,14 +30,23 @@ def verify_metadata(badging, signature, version, build, fingerprint, abi):
         r'^Signer \(minSdkVersion=\d+(?: \(dev release=true\))?, maxSdkVersion=\d+\) certificate SHA-256 digest: ([a-fA-F0-9:]+)$',
         signature, re.M,
     )
+    schemes = re.findall(
+        r'^(V[1-4](?:\.1)?) Signer(?: #1)?: certificate SHA-256 digest: ([a-fA-F0-9:]+)$',
+        signature, re.M,
+    )
     normalize = lambda value: value.replace(':', '').lower()
     expected = fingerprint.lower()
-    normalized = [normalize(value) for _, value in numbered] + [normalize(value) for value in ranged]
-    valid_numbered = len(numbered) == 1 and numbered[0][0] == '1' and not ranged
-    valid_ranged = bool(ranged) and not numbered
-    reported_count = sum(line.startswith('Signer ') and ' certificate SHA-256 digest:' in line
+    normalized = ([normalize(value) for _, value in numbered]
+                  + [normalize(value) for value in ranged]
+                  + [normalize(value) for _, value in schemes])
+    valid_numbered = len(numbered) == 1 and numbered[0][0] == '1' and not ranged and not schemes
+    valid_ranged = bool(ranged) and not numbered and not schemes
+    valid_schemes = (bool(schemes) and not numbered and not ranged
+                     and len({name for name, _ in schemes}) == len(schemes))
+    reported_count = sum(' certificate SHA-256 digest:' in line
+                         and not line.startswith('Source Stamp Signer certificate SHA-256 digest:')
                          for line in signature.splitlines())
-    if (not (valid_numbered or valid_ranged) or reported_count != len(normalized)
+    if (not (valid_numbered or valid_ranged or valid_schemes) or reported_count != len(normalized)
             or any(value != expected for value in normalized) or 'android debug' in signature.lower()):
         certificate_lines = [line for line in signature.splitlines() if 'certificate' in line.lower()]
         raise ValueError('APK does not use the expected permanent production certificate. ' + json.dumps({
