@@ -180,7 +180,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   }
 
   void _openChapter(Chapter chapter, List<Chapter> currentList) {
-    StorageService.markChapterAsRead(widget.manga, chapter, read: true);
+    // Opening a chapter is not the same as completing it. ReaderScreen
+    // records it under Continue Reading without inflating read statistics.
     final orderedAsc = List<Chapter>.from(currentList)
       ..sort((a, b) => a.numericChapter.compareTo(b.numericChapter));
 
