@@ -13,14 +13,28 @@ class DownloadManager {
   static bool isDownloading(String chapterId) =>
       activeDownloads.value.containsKey(chapterId);
 
+  /// A Hive index alone does not prove every offline page still exists.
+  static Future<bool> hasCompleteDownload(String chapterId) async {
+    if (!StorageService.isChapterDownloaded(chapterId)) return false;
+    final paths = StorageService.getDownloadedChapterPaths(chapterId);
+    if (paths.isEmpty || paths.any((path) => path.isEmpty)) return false;
+    for (final path in paths) {
+      final file = File(path);
+      if (!await file.exists() || await file.length() == 0) return false;
+    }
+    return true;
+  }
+
   static Future<void> downloadChapter({
     required Manga manga,
     required Chapter chapter,
     bool useDataSaver = false,
   }) async {
-    if (isDownloading(chapter.id) ||
-        StorageService.isChapterDownloaded(chapter.id)) {
-      return;
+    if (isDownloading(chapter.id)) return;
+    if (StorageService.isChapterDownloaded(chapter.id)) {
+      if (await hasCompleteDownload(chapter.id)) return;
+      // Metadata was stale. Reuse valid partial page files on the next pass.
+      await StorageService.downloadsBox.delete(chapter.id);
     }
 
     _updateProgress(chapter.id, 0.01);
