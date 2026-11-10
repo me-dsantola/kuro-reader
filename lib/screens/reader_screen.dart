@@ -8,6 +8,7 @@ import 'package:photo_view/photo_view_gallery.dart';
 import '../models/manga_models.dart';
 import '../services/mangadex_service.dart';
 import '../services/storage_service.dart';
+import '../services/download_manager.dart';
 import 'home_tabs.dart';
 
 class ReaderScreen extends StatefulWidget {
@@ -193,10 +194,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   Future<void> _initReaderSource() async {
     if (!kIsWeb && StorageService.isChapterDownloaded(widget.chapter.id)) {
-      final localPaths = StorageService.getDownloadedChapterPaths(
-        widget.chapter.id,
-      );
-      if (localPaths.isNotEmpty && await File(localPaths.first).exists()) {
+      if (await DownloadManager.hasCompleteDownload(widget.chapter.id)) {
+        final localPaths = StorageService.getDownloadedChapterPaths(
+          widget.chapter.id,
+        );
         if (mounted) {
           setState(() {
             _localFilePaths = localPaths;
@@ -206,6 +207,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
         }
         return;
       }
+      // Preserve existing partial files for resuming, but stop advertising
+      // a broken offline chapter as successfully downloaded.
+      await StorageService.downloadsBox.delete(widget.chapter.id);
     }
 
     try {
