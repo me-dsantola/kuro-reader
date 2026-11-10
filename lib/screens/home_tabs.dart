@@ -1575,8 +1575,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _error = null;
     });
     try {
+      final filter = _currentFilter;
+      final fastSearch = reset &&
+          filter.query.trim().isNotEmpty &&
+          filter.enabledSources.contains(MangaSourceType.mangadex);
+      final primaryFilter = fastSearch
+          ? YomiSearchFilter(
+              query: filter.query,
+              includedTags: filter.includedTags,
+              excludedTags: filter.excludedTags,
+              enabledSources: {MangaSourceType.mangadex},
+              allowNsfw: filter.allowNsfw,
+              sortByLatest: filter.sortByLatest,
+              hideZeroChapters: filter.hideZeroChapters,
+            )
+          : filter;
       final result = await MangaDexService.fetchMergedCatalog(
-        filter: _currentFilter,
+        filter: primaryFilter,
         reset: reset,
       );
       if (mounted && generation == _catalogRequestGeneration) {
@@ -1584,6 +1599,32 @@ class _ExploreScreenState extends State<ExploreScreen> {
           _mangas = result;
           _isLoading = false;
         });
+      }
+      // Show real readable MangaDex matches immediately, then enrich with
+      // secondary catalogs. Never make the first result wait for all APIs.
+      if (fastSearch && mounted && generation == _catalogRequestGeneration) {
+        final secondary = filter.enabledSources.difference(
+          {MangaSourceType.mangadex},
+        );
+        if (secondary.isNotEmpty) {
+          final extra = await MangaDexService.fetchMergedCatalog(
+            filter: YomiSearchFilter(
+              query: filter.query,
+              includedTags: filter.includedTags,
+              excludedTags: filter.excludedTags,
+              enabledSources: secondary,
+              allowNsfw: filter.allowNsfw,
+              sortByLatest: filter.sortByLatest,
+              hideZeroChapters: filter.hideZeroChapters,
+            ),
+          );
+          if (mounted && generation == _catalogRequestGeneration) {
+            setState(() {
+              final seen = _mangas.map((m) => m.compositeId).toSet();
+              _mangas.addAll(extra.where((m) => seen.add(m.compositeId)));
+            });
+          }
+        }
       }
     } catch (e) {
       if (mounted && generation == _catalogRequestGeneration) {
