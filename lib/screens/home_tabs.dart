@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -1506,6 +1507,15 @@ class ExploreScreen extends StatefulWidget {
 class _ExploreScreenState extends State<ExploreScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  Timer? _searchDebounce;
+
+  void _scheduleTitleSearch(String value) {
+    setState(() {}); // Keep the clear-search button in sync.
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 450), () {
+      if (mounted) _loadMangas(reset: true);
+    });
+  }
 
   List<Manga> _mangas = [];
   bool _isLoading = true;
@@ -1536,6 +1546,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void dispose() {
     StorageService.nsfwModeNotifier.removeListener(_onNsfwModeChanged);
+    _searchDebounce?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -1923,7 +1934,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   child: TextField(
                     controller: _searchController,
                     textInputAction: TextInputAction.search,
-                    onSubmitted: (_) => _loadMangas(reset: true),
+                    onChanged: _scheduleTitleSearch,
+                    onSubmitted: (_) {
+                      _searchDebounce?.cancel();
+                      _loadMangas(reset: true);
+                    },
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText:
@@ -1937,6 +1952,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               icon: const Icon(Icons.clear,
                                   color: Colors.white54),
                               onPressed: () {
+                                _searchDebounce?.cancel();
                                 _searchController.clear();
                                 _loadMangas(reset: true);
                               },
