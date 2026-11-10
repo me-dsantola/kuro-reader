@@ -38,12 +38,13 @@ String yomiSafeImageUrl(String rawUrl) {
 }
 
 enum MangaSourceType {
-  mangadex('MDX', 'MangaDex Global', Color(0xFFE11D48)),
-  anilist('ANI', 'AniList GraphQL', Color(0xFF02A9FF)),
-  jikanMal('MAL', 'MyAnimeList / Jikan', Color(0xFF2E51A2)),
-  comick('CMK', 'ComicK / Scans Plus', Color(0xFF10B981)),
-  comicsHq('HQs', 'Marvel • DC • Comics', Color(0xFFF59E0B)),
-  adultSource('18+', 'Yomi Adult Vault', Color(0xFFF472B6));
+  mangadex('MDX', 'MangaDex (leitura)', Color(0xFFE11D48)),
+  anilist('ANI', 'AniList (metadados)', Color(0xFF02A9FF)),
+  jikanMal('MAL', 'MAL/Jikan (metadados)', Color(0xFF2E51A2)),
+  // Legacy enum names are retained to avoid breaking old saved favorites.
+  comick('CAT', 'Kitsu / MangaDex (catálogo)', Color(0xFF10B981)),
+  comicsHq('HQs', 'HQs (pesquisa MangaDex)', Color(0xFFF59E0B)),
+  adultSource('18+', 'MangaDex (filtro 18+)', Color(0xFFF472B6));
 
   final String badge;
   final String label;
