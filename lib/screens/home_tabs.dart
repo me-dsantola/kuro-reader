@@ -149,6 +149,16 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
       height: widget.height,
       fit: widget.fit,
       headers: kIsWeb ? null : widget.manga.customHeaders,
+      // Decode covers close to their displayed size. Without this, large
+      // source images can consume tens of MB per grid item and cause jank.
+      cacheWidth: (() {
+        final logicalWidth = widget.width ??
+            (widget.highRes
+                ? MediaQuery.sizeOf(context).width
+                : MediaQuery.sizeOf(context).width / 3);
+        final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+        return (logicalWidth * pixelRatio).ceil().clamp(160, 1080);
+      })(),
       gaplessPlayback: true,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
