@@ -122,12 +122,35 @@ class MangaDexAdapter implements IMangaSourceAdapter {
     final List list = data['data'] ?? [];
     final int total = data['total'] ?? 0;
 
-    final items = list.map((json) {
+    // MangaDex accepts excludedTags[] for genre UUIDs, but does not offer
+    // exclusion parameters for originalLanguage or publicationDemographic.
+    // Apply those exclusions locally instead of silently ignoring them.
+    final excludedLanguages = filter.excludedTags
+        .map((tag) => tag.mangadexLang)
+        .whereType<String>()
+        .toSet();
+    final excludedDemographics = filter.excludedTags
+        .map((tag) => tag.mangadexDemographic)
+        .whereType<String>()
+        .toSet();
+
+    final items = <Manga>[];
+    for (final json in list) {
+      if (json is! Map) continue;
+      final attributes = json['attributes'];
+      if (attributes is Map) {
+        final language = attributes['originalLanguage']?.toString();
+        final demographic = attributes['publicationDemographic']?.toString();
+        if (excludedLanguages.contains(language) ||
+            excludedDemographics.contains(demographic)) {
+          continue;
+        }
+      }
       final m = Manga.fromJson(json, overrideSource: MangaSourceType.mangadex);
       final knownCount =
           StorageService.getKnownChaptersCount(m.id, m.availableChaptersCount);
-      return m.copyWith(availableChaptersCount: knownCount);
-    }).toList();
+      items.add(m.copyWith(availableChaptersCount: knownCount));
+    }
 
     return PaginatedSourceResponse(
       items: items,
