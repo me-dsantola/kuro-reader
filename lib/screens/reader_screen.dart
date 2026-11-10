@@ -269,10 +269,19 @@ class _ReaderScreenState extends State<ReaderScreen> {
                           builder: (context, index) {
                             final ImageProvider provider = _isOfflineMode
                                 ? FileImage(File(_localFilePaths[index]))
-                                : NetworkImage(
-                                    onlineUrls[index],
-                                    headers: kIsWeb ? null : widget.manga.customHeaders,
-                                  ) as ImageProvider;
+                                : ResizeImage(
+                                    NetworkImage(
+                                      onlineUrls[index],
+                                      headers: kIsWeb
+                                          ? null
+                                          : widget.manga.customHeaders,
+                                    ),
+                                    width: (MediaQuery.sizeOf(context).width *
+                                            MediaQuery.devicePixelRatioOf(context))
+                                        .ceil()
+                                        .clamp(480, 1440)
+                                        .toInt(),
+                                  );
 
                             return PhotoViewGalleryPageOptions(
                               imageProvider: provider,
