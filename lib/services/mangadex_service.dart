@@ -1100,20 +1100,31 @@ class MangaDexService {
     }
 
     // 3. Faz UMA ÚNICA chamada ao feed multi-idioma (PT-BR, EN, ES, ES-LA) e distribui para as fontes!
-    final fullUrl = '$_baseUrl/manga/$targetUuid/feed?limit=500'
-        '&translatedLanguage[]=pt-br&translatedLanguage[]=en&translatedLanguage[]=es&translatedLanguage[]=es-la'
-        '&includes[]=scanlation_group'
-        '&order[chapter]=desc'
-        '&includeExternalUrl=0';
-
-    final response = await safeHttpGet(fullUrl);
-    final data = jsonDecode(response.body);
-    final List list = data['data'] ?? [];
-
-    final rawAll = list
-        .map((json) => Chapter.fromJson(json, source: manga.source))
-        .where((ch) => ch.pages > 0)
-        .toList();
+    // MangaDex feed is paginated. A single 500-item request silently drops
+    // older chapters for long-running series; fetch additional pages with a
+    // bounded request budget to protect mobile data and API rate limits.
+    final List<Chapter> rawAll = [];
+    const pageSize = 500;
+    const maxPages = 4;
+    for (var page = 0; page < maxPages; page++) {
+      final fullUrl = '$_baseUrl/manga/$targetUuid/feed?limit=$pageSize'
+          '&offset=${page * pageSize}'
+          '&translatedLanguage[]=pt-br&translatedLanguage[]=en&translatedLanguage[]=es&translatedLanguage[]=es-la'
+          '&includes[]=scanlation_group'
+          '&order[chapter]=desc'
+          '&includeExternalUrl=0';
+      final response = await safeHttpGet(fullUrl);
+      final data = jsonDecode(response.body);
+      final List entries = data['data'] ?? [];
+      rawAll.addAll(entries
+          .whereType<Map<String, dynamic>>()
+          .map((entry) => Chapter.fromJson(
+                entry,
+                source: MangaSourceType.mangadex,
+              ))
+          .where((ch) => ch.pages > 0));
+      if (entries.length < pageSize) break;
+    }
 
     // Both chapter views below come from MangaDex. Do not present either
     // as a separate ComicK provider until a real ComicK adapter exists.
