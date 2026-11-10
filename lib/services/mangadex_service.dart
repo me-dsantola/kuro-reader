@@ -1199,7 +1199,15 @@ class MangaDexService {
         );
       } else {
         final existing = comickUnified[numKey]!;
-        if (ch.language == 'PT-BR' && existing.language != 'PT-BR') {
+        // Prefer PT-BR, then English, then Spanish regardless of API order.
+        const languagePriority = <String, int>{
+          'PT-BR': 0,
+          'EN': 1,
+          'ES': 2,
+          'ES-LA': 3,
+        };
+        if ((languagePriority[ch.language] ?? 99) <
+            (languagePriority[existing.language] ?? 99)) {
           comickUnified[numKey] = Chapter(
             id: ch.id,
             source: MangaSourceType.comick,
