@@ -897,8 +897,14 @@ class MangaDexService {
         final cursor = _cursors[type] ?? 0;
         final breaker = _breakers[type]!;
         try {
-          final res =
-              await adapter.fetchCatalog(filter: filter, cursor: cursor);
+          // Metadata-only sources must not hold the entire search screen
+          // hostage on high-latency mobile networks. MangaDex remains the
+          // primary readable source and keeps its normal request timeout.
+          final request = adapter.fetchCatalog(filter: filter, cursor: cursor);
+          final res = type == MangaSourceType.mangadex ||
+                  type == MangaSourceType.adultSource
+              ? await request
+              : await request.timeout(const Duration(seconds: 5));
           if (generation != _catalogGeneration) return <Manga>[];
           breaker.recordSuccess();
           _cursors[type] = res.nextCursor;
