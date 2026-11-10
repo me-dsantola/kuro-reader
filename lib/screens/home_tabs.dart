@@ -2613,6 +2613,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Abrir o Perfil ao iniciar'),
+                    subtitle: const Text(
+                      'Desative para iniciar pela tela de leituras recentes.',
+                      style: TextStyle(fontSize: 12, color: Colors.white60),
+                    ),
+                    activeThumbColor: YomiPalette.ensoRed,
+                    value: StorageService.profileNotifier.value
+                        .openOnProfileByDefault,
+                    onChanged: (enabled) async {
+                      final current = StorageService.profileNotifier.value;
+                      await StorageService.updateUserProfile(UserProfile(
+                        name: current.name,
+                        bio: current.bio,
+                        avatarIndex: current.avatarIndex,
+                        favoriteGenre: current.favoriteGenre,
+                        openOnProfileByDefault: enabled,
+                        isConfigured: current.isConfigured,
+                      ));
+                    },
+                  ),
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 10),
                   const Text(
                     'Filtro de Conteúdo Sensível / Adulto (18+)',
                     style: TextStyle(
