@@ -161,7 +161,7 @@ class StorageService {
       'chapter': chapter.toMap(),
       'timestamp': DateTime.now().toIso8601String(),
     });
-    if (rawRecent.length > 25) rawRecent.removeRange(25);
+    if (rawRecent.length > 25) rawRecent.removeRange(25, rawRecent.length);
     await historyBox.put('recent_reading_list', rawRecent);
   }
 
