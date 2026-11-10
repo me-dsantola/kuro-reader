@@ -208,11 +208,24 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
     final String genreFilter =
         genres.isNotEmpty ? ', genre_in: [${genres.join(",")}]' : '';
 
+    // AniList supports explicit genre exclusions in its GraphQL search.
+    final excludedGenres = <String>[];
+    for (final tag in filter.excludedTags) {
+      if (tag.group == TagCategoryGroup.genres &&
+          tag.comicTopic != null &&
+          tag.comicTopic != 'superhero') {
+        excludedGenres.add(jsonEncode(tag.comicTopic));
+      }
+    }
+    final String excludedGenreFilter = excludedGenres.isNotEmpty
+        ? ', genre_not_in: [${excludedGenres.join(",")}]'
+        : '';
+
     final String searchArg = filter.query.trim().isNotEmpty
         ? ', search: ${jsonEncode(filter.query.trim())}'
         : '';
 
-    final String gqlQuery = 'query { Page(page: $page, perPage: 20) { pageInfo { hasNextPage } media(type: MANGA, isAdult: ${filter.allowNsfw ? "null" : "false"}, sort: [$sortMode]$searchArg$countryFilter$genreFilter) { id title { english romaji } description(asHtml: false) status chapters genres isAdult coverImage { large extraLarge } } } }';
+    final String gqlQuery = 'query { Page(page: $page, perPage: 20) { pageInfo { hasNextPage } media(type: MANGA, isAdult: ${filter.allowNsfw ? "null" : "false"}, sort: [$sortMode]$searchArg$countryFilter$genreFilter$excludedGenreFilter) { id title { english romaji } description(asHtml: false) status chapters genres isAdult coverImage { large extraLarge } } } }';
 
     final response = await http
         .post(
