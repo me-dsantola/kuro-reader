@@ -74,15 +74,16 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       // Network refresh returns the newest feed page. Keep older pages
       // previously fetched and cached, rather than hiding them on reopen.
       final cached = StorageService.getCachedMangaChapters(widget.manga.id);
+      final mergedMap = <MangaSourceType, List<Chapter>>{};
       for (final entry in map.entries) {
         final ids = entry.value.map((ch) => ch.id).toSet();
-        map[entry.key] = [
+        mergedMap[entry.key] = [
           ...entry.value,
           ...cached.where((ch) => ids.add(ch.id)),
         ];
       }
       setState(() {
-        _chaptersBySource = map;
+        _chaptersBySource = mergedMap;
         _recommendedMostCompleteSource = bestSource;
         _selectedSource = bestSource;
         _loadingChapters = false;
