@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:photo_view/photo_view.dart';
@@ -50,7 +51,42 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   late PageController _pageController;
-  final ScrollController _webtoonScrollController = ScrollController();
+  late final ScrollController _webtoonScrollController;
+  final Map<int, GlobalKey> _webtoonItemKeys = {};
+  Timer? _webtoonProgressTimer;
+
+  void _onWebtoonScroll() {
+    _webtoonProgressTimer?.cancel();
+    _webtoonProgressTimer = Timer(
+      const Duration(milliseconds: 250),
+      _saveWebtoonPosition,
+    );
+  }
+
+  void _saveWebtoonPosition() {
+    if (!mounted || !_webtoonScrollController.hasClients) return;
+    final position = _webtoonScrollController.position;
+    final offset = position.pixels.clamp(0.0, position.maxScrollExtent).toDouble();
+    StorageService.saveWebtoonOffset(widget.chapter.id, offset);
+
+    // ListView builds tiles beyond the visible area. Only the viewport,
+    // measured after scrolling settles, can determine the current page.
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    int? visiblePage;
+    double closestBottom = double.infinity;
+    for (final entry in _webtoonItemKeys.entries) {
+      final render = entry.value.currentContext?.findRenderObject();
+      if (render is! RenderBox || !render.hasSize) continue;
+      final top = render.localToGlobal(Offset.zero).dy;
+      final bottom = top + render.size.height;
+      if (bottom <= 0 || top >= viewportHeight) continue;
+      if (bottom < closestBottom) {
+        closestBottom = bottom;
+        visiblePage = entry.key;
+      }
+    }
+    if (visiblePage != null) _recordPage(visiblePage);
+  }
 
   // Cache em memória da proporção real (altura/largura) de cada página já carregada.
   // Isso garante que se qualquer página precisar de layout ao rolar para cima, a altura seja 100% idêntica, sem pulos!
@@ -69,11 +105,23 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _currentPage = StorageService.getSavedPageIndex(widget.chapter.id);
     _lastSavedPage = _currentPage;
     _pageController = PageController(initialPage: _currentPage);
+    _webtoonScrollController = ScrollController(
+      initialScrollOffset: StorageService.getSavedWebtoonOffset(widget.chapter.id),
+    )..addListener(_onWebtoonScroll);
+    StorageService.recordChapterOpened(widget.manga, widget.chapter);
     _initReaderSource();
   }
 
   @override
   void dispose() {
+    _webtoonProgressTimer?.cancel();
+    if (_isWebtoonMode && _webtoonScrollController.hasClients) {
+      final position = _webtoonScrollController.position;
+      StorageService.saveWebtoonOffset(
+        widget.chapter.id,
+        position.pixels.clamp(0.0, position.maxScrollExtent).toDouble(),
+      );
+    }
     _webtoonScrollController.dispose();
     _pageController.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -97,7 +145,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   void _goToChapter(Chapter target) {
-    StorageService.markChapterAsRead(widget.manga, target, read: true);
+    // The next reader records the newly opened chapter as in progress.
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -244,7 +292,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             }
 
                             return _KeepAlivePageTile(
-                              key: ValueKey('page_${widget.chapter.id}_$index'),
+                              key: _webtoonItemKeys.putIfAbsent(
+                                index,
+                                () => GlobalKey(),
+                              ),
                               pageIndex: index,
                               isOffline: _isOfflineMode,
                               localPath: _isOfflineMode ? _localFilePaths[index] : null,
@@ -254,7 +305,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
                               onAspectRatioResolved: (ratio) {
                                 _pageAspectRatios[index] = ratio;
                               },
-                              onPageVisible: () => _recordPage(index),
                             );
                           },
                         )
@@ -431,7 +481,6 @@ class _KeepAlivePageTile extends StatefulWidget {
   final Map<String, String> headers;
   final double? cachedAspectRatio;
   final ValueChanged<double> onAspectRatioResolved;
-  final VoidCallback onPageVisible;
 
   const _KeepAlivePageTile({
     super.key,
@@ -442,7 +491,6 @@ class _KeepAlivePageTile extends StatefulWidget {
     required this.headers,
     this.cachedAspectRatio,
     required this.onAspectRatioResolved,
-    required this.onPageVisible,
   });
 
   @override
@@ -457,9 +505,6 @@ class _KeepAlivePageTileState extends State<_KeepAlivePageTile> {
   void initState() {
     super.initState();
     _candidates = yomiCandidateImageUrls(widget.imageUrl ?? '');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.onPageVisible();
-    });
   }
 
   @override
