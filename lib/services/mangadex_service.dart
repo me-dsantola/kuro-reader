@@ -1099,8 +1099,35 @@ class MangaDexService {
       final res = await safeHttpGet(url);
       final data = jsonDecode(res.body);
       final List list = data['data'] ?? [];
-      if (list.isNotEmpty && list.first is Map) {
-        final foundId = list.first['id']?.toString();
+      // A text search is fuzzy. Never attach chapters from an unrelated
+      // title just because MangaDex returned it first.
+      String normalizeTitle(String value) => value
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]'), '');
+      final requested = normalizeTitle(title);
+      if (requested.isEmpty) return null;
+      for (final entry in list) {
+        if (entry is! Map) continue;
+        final attributes = entry['attributes'];
+        if (attributes is! Map) continue;
+        final candidates = <String>[];
+        final localizedTitles = attributes['title'];
+        if (localizedTitles is Map) {
+          candidates.addAll(localizedTitles.values.whereType<String>());
+        }
+        final alternativeTitles = attributes['altTitles'];
+        if (alternativeTitles is List) {
+          for (final alternative in alternativeTitles) {
+            if (alternative is Map) {
+              candidates.addAll(alternative.values.whereType<String>());
+            }
+          }
+        }
+        if (!candidates.any((candidate) =>
+            normalizeTitle(candidate) == requested)) {
+          continue;
+        }
+        final foundId = entry['id']?.toString();
         if (foundId != null && foundId.isNotEmpty) {
           _resolvedTitleUuidCache[normKey] = foundId;
           return foundId;
