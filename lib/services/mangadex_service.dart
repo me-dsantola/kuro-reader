@@ -946,8 +946,19 @@ class MangaDexService {
       if (group.length == 1) {
         consolidated.add(group.first);
       } else {
-        group.sort((a, b) =>
-            b.availableChaptersCount.compareTo(a.availableChaptersCount));
+        // Prefer a genuine MangaDex catalog entry over metadata-only
+        // providers. A chapter count reported by AniList or MAL is not
+        // evidence that pages can be read inside YOMI.
+        group.sort((a, b) {
+          final aReadable = a.source == MangaSourceType.mangadex ||
+              a.source == MangaSourceType.adultSource;
+          final bReadable = b.source == MangaSourceType.mangadex ||
+              b.source == MangaSourceType.adultSource;
+          if (aReadable != bReadable) return aReadable ? -1 : 1;
+          return b.availableChaptersCount.compareTo(
+            a.availableChaptersCount,
+          );
+        });
         final primary = group.first;
         final alternatives = group.sublist(1);
         consolidated.add(primary.copyWith(alternativeSources: alternatives));
