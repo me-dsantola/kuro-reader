@@ -146,7 +146,10 @@ class MangaDexAdapter implements IMangaSourceAdapter {
           continue;
         }
       }
-      final m = Manga.fromJson(json, overrideSource: MangaSourceType.mangadex);
+      final m = Manga.fromJson(
+        Map<String, dynamic>.from(json),
+        overrideSource: MangaSourceType.mangadex,
+      );
       final knownCount =
           StorageService.getKnownChaptersCount(m.id, m.availableChaptersCount);
       items.add(m.copyWith(availableChaptersCount: knownCount));
