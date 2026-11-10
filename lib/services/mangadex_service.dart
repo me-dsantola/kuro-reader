@@ -252,7 +252,8 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
       final String coverLarge = (coverObj['large'] ?? '').toString();
       final String coverXL = (coverObj['extraLarge'] ?? coverLarge).toString();
 
-      final int chCount = (m['chapters'] as int?) ?? 45;
+      // AniList may omit chapter totals; unknown is not a fabricated count.
+      final int chCount = (m['chapters'] as num?)?.toInt() ?? -1;
       final List<String> parsedGenres =
           List<String>.from(m['genres'] ?? []).take(6).toList();
 
@@ -268,7 +269,7 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
           tags: ['AniList Oficial', ...parsedGenres],
           isNsfw: isAdult,
           updatedAt: DateTime.now().subtract(const Duration(minutes: 15)),
-          availableChaptersCount: chCount > 0 ? chCount : 35,
+          availableChaptersCount: chCount,
         ),
       );
     }
