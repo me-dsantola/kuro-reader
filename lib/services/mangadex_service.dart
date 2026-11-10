@@ -1144,20 +1144,29 @@ class MangaDexService {
   ) async {
     final Map<MangaSourceType, List<Chapter>> sourceChaptersMap = {};
 
-    // 1. Tenta encontrar um UUID direto já presente no manga principal ou nas fontes alternativas agrupadas
-    String? targetUuid;
-    if (!_isTitleBasedId(manga.id)) {
-      targetUuid = _cleanMangaDexUuid(manga.id);
-    } else {
-      for (final alt in manga.alternativeSources) {
-        if (!_isTitleBasedId(alt.id)) {
-          targetUuid = _cleanMangaDexUuid(alt.id);
-          break;
-        }
-      }
+    // Only MangaDex IDs (including legacy MangaDex-backed entries) may be
+    // used directly in the MangaDex chapter endpoint. AniList, MAL and Kitsu
+    // identifiers belong to other services and must never be sent as UUIDs.
+    final uuidPattern = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
+    String? mangadexIdFor(Manga candidate) {
+      final isMangaDexBacked =
+          candidate.source == MangaSourceType.mangadex ||
+          candidate.source == MangaSourceType.adultSource ||
+          candidate.id.startsWith('cmk_mdx_') ||
+          candidate.id.startsWith('hq_mdx_') ||
+          candidate.id.startsWith('ani_mdx_') ||
+          candidate.id.startsWith('mal_mdx_');
+      if (!isMangaDexBacked) return null;
+      final id = _cleanMangaDexUuid(candidate.id);
+      return uuidPattern.hasMatch(id) ? id : null;
     }
 
-    // 2. Se todas as fontes do grupo eram baseadas em título (ANI/MAL/Kitsu), resolve o UUID uma única vez
+    String? targetUuid = mangadexIdFor(manga);
+    for (final alt in manga.alternativeSources) {
+      targetUuid ??= mangadexIdFor(alt);
+    }
     targetUuid ??= await _resolveMangaDexUuidByTitle(manga.title);
 
     if (targetUuid == null || targetUuid.isEmpty) {
