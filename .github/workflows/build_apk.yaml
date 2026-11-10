@@ -5,6 +5,10 @@ on:
     branches: [ "main", "master", "refactor/kuro-reader-v2" ]
   workflow_dispatch: # Permite clicar em um botão no GitHub para gerar o APK quando quiser
 
+concurrency:
+  group: android-apk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-android:
     name: Compilar APK Release (arm64)
@@ -19,6 +23,12 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            android/*.gradle*
+            android/gradle/wrapper/gradle-wrapper.properties
+            android/settings.gradle.kts
+            android/app/build.gradle.kts
 
       - name: 3. Instalar Flutter SDK (Canal Stable)
         uses: subosito/flutter-action@v2
@@ -32,7 +42,7 @@ jobs:
       - name: 5. Compilar APK Release Otimizado
         env:
           ORG_GRADLE_PROJECT_betaBuild: ${{ github.ref_name == 'refactor/kuro-reader-v2' && 'true' || 'false' }}
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
 
       - name: 6. Disponibilizar APK para Download
         uses: actions/upload-artifact@v4
