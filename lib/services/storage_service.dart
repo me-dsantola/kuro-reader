@@ -191,6 +191,14 @@ class StorageService {
         });
         await historyBox.put('reading_events_log', rawEvents);
       }
+    } else if (wasRead) {
+      // Manually reverting a completion must also update metrics.
+      final List rawEvents =
+          List.from(historyBox.get('reading_events_log', defaultValue: []));
+      rawEvents.removeWhere(
+        (event) => event is Map && event['chapterId'] == chapter.id,
+      );
+      await historyBox.put('reading_events_log', rawEvents);
     }
   }
 
