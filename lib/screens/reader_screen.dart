@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -294,7 +295,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                           controller: _webtoonScrollController,
                           padding: EdgeInsets.zero,
                           // Mantém apenas uma pequena janela ao redor da área visível.
-                          scrollCacheExtent: 800,
+                          scrollCacheExtent: const ScrollCacheExtent.pixels(800.0),
                           addAutomaticKeepAlives: false,
                           addRepaintBoundaries: true,
                           itemCount: totalPages + 1,
