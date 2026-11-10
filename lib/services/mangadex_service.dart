@@ -858,83 +858,6 @@ class MangaDexService {
   static final Set<String> _seenIds = {};
   static final ValueNotifier<String?> sourceStatusBanner = ValueNotifier(null);
 
-  static List<Manga> _getEmergencySeedCatalog() {
-    return [
-      Manga(
-        id: 'a1c7c817-4e59-43b7-9365-09675a149a6f',
-        source: MangaSourceType.mangadex,
-        title: 'One Piece',
-        description:
-            'Monkey D. Luffy recusa-se a deixar que alguém ou alguma coisa o impeça de buscar o tesouro One Piece e se tornar o Rei dos Piratas.',
-        status: 'ONGOING',
-        directCoverUrl: 'https://cdn.myanimelist.net/images/manga/2/253146l.jpg',
-        directHighResCoverUrl: 'https://cdn.myanimelist.net/images/manga/2/253146l.jpg',
-        tags: const ['Ação', 'Aventura', 'Fantasia', 'Shounen'],
-        availableChaptersCount: 1130,
-      ),
-      Manga(
-        id: '32d76d19-8a05-4db0-9fc2-e0b0648fe9d0',
-        source: MangaSourceType.comick,
-        title: 'Solo Leveling',
-        description:
-            'Em um mundo onde caçadores despertados enfrentam monstros em masmorras, Sung Jinwoo, o caçador mais fraco da humanidade, recebe um Sistema único de evolução.',
-        status: 'COMPLETED',
-        directCoverUrl: 'https://cdn.myanimelist.net/images/manga/3/222295l.jpg',
-        directHighResCoverUrl: 'https://cdn.myanimelist.net/images/manga/3/222295l.jpg',
-        tags: const ['Manhwa', 'Ação', 'Fantasia', 'Sistema RPG', 'Colorido'],
-        availableChaptersCount: 200,
-      ),
-      Manga(
-        id: '801513ba-a712-498c-8f57-cae55b38cc92',
-        source: MangaSourceType.anilist,
-        title: 'Berserk',
-        description:
-            'Guts, conhecido como o Espadachim Negro, busca refúgio das forças demoníacas que o perseguem em uma jornada épica de fantasia sombria.',
-        status: 'ONGOING',
-        directCoverUrl: 'https://cdn.myanimelist.net/images/manga/1/157897l.jpg',
-        directHighResCoverUrl: 'https://cdn.myanimelist.net/images/manga/1/157897l.jpg',
-        tags: const ['Seinen', 'Ação', 'Fantasia Sombria', 'Sobrenatural'],
-        availableChaptersCount: 378,
-      ),
-      Manga(
-        id: 'a77742b1-befd-49a4-bff5-1ad4e6b0ef7b',
-        source: MangaSourceType.jikanMal,
-        title: 'Chainsaw Man',
-        description:
-            'Denji é um jovem endividado que caça demônios com seu cão-demônio Pochita, até ser traído e renascer como o letal Chainsaw Man.',
-        status: 'ONGOING',
-        directCoverUrl: 'https://cdn.myanimelist.net/images/manga/3/216464l.jpg',
-        directHighResCoverUrl: 'https://cdn.myanimelist.net/images/manga/3/216464l.jpg',
-        tags: const ['Shounen', 'Ação', 'Sobrenatural', 'Horror'],
-        availableChaptersCount: 185,
-      ),
-      Manga(
-        id: 'c52b2ce3-7f95-469c-96b0-479524fb7a1a',
-        source: MangaSourceType.mangadex,
-        title: 'Jujutsu Kaisen',
-        description:
-            'Yuji Itadori engole um artefato amaldiçoado de grau especial para salvar seus amigos e passa a dividir o corpo com Ryomen Sukuna, o Rei das Maldições.',
-        status: 'COMPLETED',
-        directCoverUrl: 'https://cdn.myanimelist.net/images/manga/3/210341l.jpg',
-        directHighResCoverUrl: 'https://cdn.myanimelist.net/images/manga/3/210341l.jpg',
-        tags: const ['Shounen', 'Ação', 'Sobrenatural', 'Vida Escolar'],
-        availableChaptersCount: 271,
-      ),
-      Manga(
-        id: 'd8a959f7-648e-4c8d-8f23-f1f3f8e129f3',
-        source: MangaSourceType.comick,
-        title: 'One-Punch Man',
-        description:
-            'Saitama é um herói por passatempo que treinou tanto que consegue derrotar qualquer inimigo com apenas um único soco.',
-        status: 'ONGOING',
-        directCoverUrl: 'https://cdn.myanimelist.net/images/manga/3/80661l.jpg',
-        directHighResCoverUrl: 'https://cdn.myanimelist.net/images/manga/3/80661l.jpg',
-        tags: const ['Seinen', 'Ação', 'Super-Heróis', 'Comédia'],
-        availableChaptersCount: 245,
-      ),
-    ];
-  }
-
   // Invalidates in-flight catalog requests when search or filters change.
   static int _catalogGeneration = 0;
 
@@ -996,14 +919,6 @@ class MangaDexService {
           if (_seenIds.add(manga.compositeId)) {
             _lookaheadBuffer.add(manga);
           }
-        }
-      }
-    }
-
-    if (_lookaheadBuffer.isEmpty && reset && filter.query.trim().isEmpty) {
-      for (final seed in _getEmergencySeedCatalog()) {
-        if (_seenIds.add(seed.compositeId)) {
-          _lookaheadBuffer.add(seed);
         }
       }
     }
