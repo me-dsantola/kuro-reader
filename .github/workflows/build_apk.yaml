@@ -54,6 +54,21 @@ jobs:
       - name: 4b. Testes automatizados
         run: flutter test
 
+      - name: 4c. Preparar assinatura privada do aplicativo estável
+        if: github.ref_name != 'refactor/kuro-reader-v2'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.YOMI_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.YOMI_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.YOMI_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.YOMI_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Configure os quatro secrets de assinatura YOMI antes de compilar a versão estável."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$PWD/android/app/yomi-release.jks"
+          echo "YOMI_KEYSTORE_PATH=$PWD/android/app/yomi-release.jks" >> "$GITHUB_ENV"
+
       - name: 5. Compilar APK Debug Beta (arm64)
         if: github.ref_name == 'refactor/kuro-reader-v2' && github.event_name == 'workflow_dispatch' && inputs.build_type == 'debug'
         env:
@@ -64,6 +79,9 @@ jobs:
         if: github.ref_name != 'refactor/kuro-reader-v2' || github.event_name == 'push' || inputs.build_type == 'release'
         env:
           ORG_GRADLE_PROJECT_betaBuild: ${{ github.ref_name == 'refactor/kuro-reader-v2' && 'true' || 'false' }}
+          YOMI_STORE_PASSWORD: ${{ secrets.YOMI_STORE_PASSWORD }}
+          YOMI_KEY_ALIAS: ${{ secrets.YOMI_KEY_ALIAS }}
+          YOMI_KEY_PASSWORD: ${{ secrets.YOMI_KEY_PASSWORD }}
         run: flutter build apk --release --target-platform android-arm64 --split-per-abi
 
       - name: 7. Disponibilizar APK Debug Beta
