@@ -788,7 +788,7 @@ class UserProfile {
     this.bio = 'Explorando universos de mangás, manhwas e HQs.',
     this.avatarIndex = 0,
     this.favoriteGenre = 'Ação, Fantasia & Seinen',
-    this.openOnProfileByDefault = true,
+    this.openOnProfileByDefault = false,
     this.isConfigured = true,
   });
 
@@ -806,7 +806,9 @@ class UserProfile {
         bio: (map['bio'] ?? 'Explorando universos de mangás, manhwas e HQs.').toString(),
         avatarIndex: (map['avatarIndex'] as int?) ?? 0,
         favoriteGenre: (map['favoriteGenre'] ?? 'Ação, Fantasia & Seinen').toString(),
-        openOnProfileByDefault: map['openOnProfileByDefault'] != false,
+        // Keep the saved preference when present; new installations start
+        // in the reading-focused Home screen.
+        openOnProfileByDefault: map['openOnProfileByDefault'] == true,
         isConfigured: map['isConfigured'] != false,
       );
 }
