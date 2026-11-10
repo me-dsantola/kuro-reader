@@ -1,10 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:photo_view/photo_view.dart';
-import 'package:photo_view/photo_view_gallery.dart';
 import '../models/manga_models.dart';
 import '../services/mangadex_service.dart';
 import '../services/storage_service.dart';
@@ -14,6 +11,11 @@ import '../models/reader_page_geometry.dart';
 import '../widgets/reader_page_image.dart';
 import '../widgets/reader_toolbar.dart';
 import '../widgets/webtoon_view.dart';
+import '../widgets/reader_scroll_controller.dart';
+import '../services/reader_image_session.dart';
+import '../widgets/reader_page_provider.dart';
+import '../widgets/reader_paged_view.dart';
+import '../models/reader_anchor.dart';
 import 'home_tabs.dart';
 
 class ReaderScreen extends StatefulWidget {
@@ -45,6 +47,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   ReaderPageGeometry? _geometry;
   double _pageWidth = 0;
   bool _replacingChapter = false;
+  ReaderImageSession? _images;
+  final Map<int, int> _imageAttempts = {};
+  final Set<int> _retryingImages = {};
 
   void _recordPage(int index) {
     if (index == _lastSavedPage) return;
@@ -52,6 +57,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _visiblePage.value = index;
     _lastSavedPage = index;
     StorageService.saveLastPageIndex(widget.chapter.id, index);
+    if (!_isWebtoonMode) {
+      StorageService.saveWebtoonAnchor(
+        widget.chapter.id,
+        ReaderAnchor(index, 0),
+      );
+    }
     // Warm the next page as reading advances, not just at chapter open.
     if (!_isOfflineMode && _onlinePagesData != null) {
       final urls = _onlinePagesData!.getUrls(
@@ -62,7 +73,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   late PageController _pageController;
-  late final ScrollController _webtoonScrollController;
+  late ReaderScrollController _webtoonScrollController;
   Timer? _webtoonProgressTimer;
 
   void _onWebtoonScroll() {
@@ -83,6 +94,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     final geometry = _geometry;
     if (geometry != null && geometry.pageCount > 0 && _pageWidth > 0) {
+      StorageService.saveWebtoonAnchor(
+        widget.chapter.id,
+        geometry.anchorAt(offset, _pageWidth),
+      );
       _recordPage(
         geometry.pageAt(offset, _pageWidth).clamp(0, geometry.pageCount - 1),
       );
@@ -100,6 +115,22 @@ class _ReaderScreenState extends State<ReaderScreen> {
       _currentPage = restored;
     }
     _visiblePage.value = _currentPage;
+    final saved = StorageService.getWebtoonAnchor(widget.chapter.id);
+    final legacyOffset = StorageService.getSavedWebtoonOffset(
+      widget.chapter.id,
+    );
+    final anchor =
+        saved ??
+        (legacyOffset == 0 && _currentPage > 0
+            ? ReaderAnchor(_currentPage, 0)
+            : null);
+    final initialOffset = anchor == null
+        ? legacyOffset
+        : _geometry!.offsetFor(anchor, MediaQuery.sizeOf(context).width);
+    _webtoonScrollController.dispose();
+    _webtoonScrollController = ReaderScrollController(
+      initialScrollOffset: initialOffset,
+    )..addListener(_onWebtoonScroll);
     _pageController.dispose();
     _pageController = PageController(
       initialPage: _currentPage,
@@ -116,22 +147,16 @@ class _ReaderScreenState extends State<ReaderScreen> {
         keepPage: false,
       );
     }
-    setState(() => _isWebtoonMode = !_isWebtoonMode);
-    if (_isWebtoonMode) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted ||
-            !_webtoonScrollController.hasClients ||
-            _geometry == null) {
-          return;
-        }
-        final target = _geometry!.offsetOf(_currentPage, _pageWidth);
-        _webtoonScrollController.jumpTo(
-          target
-              .clamp(0.0, _webtoonScrollController.position.maxScrollExtent)
-              .toDouble(),
-        );
-      });
+    if (!_isWebtoonMode && _geometry != null) {
+      final saved = StorageService.getWebtoonAnchor(widget.chapter.id);
+      final anchor = saved?.page == _currentPage
+          ? saved!
+          : ReaderAnchor(_currentPage, 0);
+      _webtoonScrollController.correctLayoutOffset(
+        _geometry!.offsetFor(anchor, MediaQuery.sizeOf(context).width),
+      );
     }
+    setState(() => _isWebtoonMode = !_isWebtoonMode);
   }
 
   @override
@@ -148,7 +173,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _lastSavedPage = _currentPage;
     _visiblePage.value = _currentPage;
     _pageController = PageController(initialPage: _currentPage);
-    _webtoonScrollController = ScrollController(
+    _webtoonScrollController = ReaderScrollController(
       initialScrollOffset: StorageService.getSavedWebtoonOffset(
         widget.chapter.id,
       ),
@@ -162,6 +187,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _webtoonProgressTimer?.cancel();
     if (_isWebtoonMode && _webtoonScrollController.hasClients) {
       final position = _webtoonScrollController.position;
+      if (_geometry != null && _pageWidth > 0) {
+        final anchor = _geometry!.anchorAt(position.pixels, _pageWidth);
+        StorageService.saveWebtoonAnchor(widget.chapter.id, anchor);
+        StorageService.saveLastPageIndex(widget.chapter.id, anchor.page);
+      }
       StorageService.saveWebtoonOffset(
         widget.chapter.id,
         position.pixels.clamp(0.0, position.maxScrollExtent).toDouble(),
@@ -170,6 +200,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _webtoonScrollController.dispose();
     _pageController.dispose();
     _visiblePage.dispose();
+    _images?.close();
     if (!_replacingChapter) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
@@ -225,18 +256,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     // Only one upcoming page; do not eagerly decode the entire chapter.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final provider = ResizeImage(
-        NetworkImage(
-          urls[next],
-          headers: kIsWeb ? null : widget.manga.customHeaders,
-        ),
-        width:
-            (MediaQuery.sizeOf(context).width *
-                    MediaQuery.devicePixelRatioOf(context))
-                .ceil()
-                .clamp(480, 1440)
-                .toInt(),
-      );
+      final provider = _providerFor(next);
       precacheImage(provider, context).catchError((Object _) {});
     });
   }
@@ -249,6 +269,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
         );
         final ratios = await LocalPageDimensions.read(localPaths);
         if (mounted) {
+          _images = ReaderImageSession(localPaths: localPaths);
           _prepareGeometry(localPaths.length, ratios);
           setState(() {
             _localFilePaths = localPaths;
@@ -266,6 +287,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
     try {
       final data = await MangaDexService.fetchChapterPages(widget.chapter);
       if (mounted) {
+        _images = ReaderImageSession(
+          urls: data.getUrls(useDataSaver: StorageService.dataSaverEnabled),
+          headers: widget.manga.customHeaders,
+          reloadUrls: () async => (await MangaDexService.fetchChapterPages(
+            widget.chapter,
+          )).getUrls(useDataSaver: StorageService.dataSaverEnabled),
+        );
         _prepareGeometry(
           data.getUrls(useDataSaver: StorageService.dataSaverEnabled).length,
         );
@@ -352,52 +380,22 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       onWidth: (width) => _pageWidth = width,
                       localDimensionsKnown: _isOfflineMode,
                       footer: _buildEndOfChapterFooter(nextCh, prevCh),
-                      pageBuilder: (context, index, onRatio) =>
-                          _WebtoonPageTile(
-                            key: ValueKey('page-$index'),
-                            pageIndex: index,
-                            localPath: _isOfflineMode
-                                ? _localFilePaths[index]
-                                : null,
-                            imageUrl: _isOfflineMode ? null : onlineUrls[index],
-                            headers: widget.manga.customHeaders,
-                            onRatio: onRatio,
-                          ),
+                      pageBuilder: (context, index, onRatio) => ReaderPageImage(
+                        key: ValueKey('$index-${_imageAttempts[index] ?? 0}'),
+                        image: _providerFor(index),
+                        pageNumber: index + 1,
+                        onRatio: onRatio,
+                        onRetry: () => _retryImage(index),
+                      ),
                     )
                   else
-                    PhotoViewGallery.builder(
-                      pageController: _pageController,
-                      itemCount: totalPages,
-                      onPageChanged: (index) {
-                        _recordPage(index);
-                        setState(() {});
-                      },
-                      builder: (context, index) {
-                        final ImageProvider provider = _isOfflineMode
-                            ? FileImage(File(_localFilePaths[index]))
-                            : ResizeImage(
-                                NetworkImage(
-                                  onlineUrls[index],
-                                  headers: kIsWeb
-                                      ? null
-                                      : widget.manga.customHeaders,
-                                ),
-                                width:
-                                    (MediaQuery.sizeOf(context).width *
-                                            MediaQuery.devicePixelRatioOf(
-                                              context,
-                                            ))
-                                        .ceil()
-                                        .clamp(480, 1440)
-                                        .toInt(),
-                              );
-
-                        return PhotoViewGalleryPageOptions(
-                          imageProvider: provider,
-                          minScale: PhotoViewComputedScale.contained,
-                          maxScale: PhotoViewComputedScale.covered * 3.0,
-                        );
-                      },
+                    ReaderPagedView(
+                      controller: _pageController,
+                      pageCount: totalPages,
+                      imageForPage: _providerFor,
+                      onPageChanged: (index) => _recordPage(index),
+                      onRetry: _retryImage,
+                      onToggleHud: () => setState(() => _showHud = !_showHud),
                     ),
 
                   Positioned(
@@ -444,6 +442,34 @@ class _ReaderScreenState extends State<ReaderScreen> {
     );
   }
 
+  ImageProvider _providerFor(int index) {
+    final width =
+        (MediaQuery.sizeOf(context).width *
+                MediaQuery.devicePixelRatioOf(context))
+            .ceil()
+            .clamp(480, 1440)
+            .toInt();
+    return ResizeImage(
+      ReaderPageProvider(_images!, index, attempt: _imageAttempts[index] ?? 0),
+      width: width,
+    );
+  }
+
+  Future<void> _retryImage(int index) async {
+    if (_images == null || !_retryingImages.add(index)) return;
+    try {
+      await _providerFor(index).evict();
+      await _images!.retry(index);
+      if (mounted) {
+        setState(
+          () => _imageAttempts[index] = (_imageAttempts[index] ?? 0) + 1,
+        );
+      }
+    } finally {
+      _retryingImages.remove(index);
+    }
+  }
+
   Widget _buildEndOfChapterFooter(Chapter? nextCh, Chapter? prevCh) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
@@ -471,12 +497,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: () {
-                  StorageService.markChapterAsRead(
+                onPressed: () async {
+                  await StorageService.markChapterAsRead(
                     widget.manga,
                     widget.chapter,
                   );
-                  _goToChapter(nextCh);
+                  if (mounted) _goToChapter(nextCh);
                 },
                 icon: const Icon(Icons.skip_next_rounded),
                 label: Text('Ler Próximo: Cap. ${nextCh.chapterNumber}'),
@@ -502,75 +528,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
           ],
         ],
       ),
-    );
-  }
-}
-
-/// Recycled page content. Its extent is always supplied by chapter geometry.
-class _WebtoonPageTile extends StatefulWidget {
-  final int pageIndex;
-  final String? localPath;
-  final String? imageUrl;
-  final Map<String, String> headers;
-  final ValueChanged<double> onRatio;
-
-  const _WebtoonPageTile({
-    super.key,
-    required this.pageIndex,
-    this.localPath,
-    this.imageUrl,
-    required this.headers,
-    required this.onRatio,
-  });
-
-  @override
-  State<_WebtoonPageTile> createState() => _WebtoonPageTileState();
-}
-
-class _WebtoonPageTileState extends State<_WebtoonPageTile> {
-  int _mirror = 0;
-  int _retry = 0;
-
-  @override
-  void didUpdateWidget(covariant _WebtoonPageTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUrl != widget.imageUrl ||
-        oldWidget.localPath != widget.localPath) {
-      _mirror = 0;
-      _retry++;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final urls = yomiCandidateImageUrls(widget.imageUrl ?? '');
-    final url = urls.isEmpty
-        ? (widget.imageUrl ?? '')
-        : urls[_mirror.clamp(0, urls.length - 1)];
-    final width =
-        (MediaQuery.sizeOf(context).width *
-                MediaQuery.devicePixelRatioOf(context))
-            .ceil()
-            .clamp(480, 1440)
-            .toInt();
-    final ImageProvider source = widget.localPath != null
-        ? FileImage(File(widget.localPath!))
-        : NetworkImage(url, headers: kIsWeb ? null : widget.headers);
-    final provider = ResizeImage(source, width: width);
-    return ReaderPageImage(
-      key: ValueKey('${widget.localPath ?? url}_$_retry'),
-      image: provider,
-      pageNumber: widget.pageIndex + 1,
-      onRatio: widget.onRatio,
-      onError: () {
-        if (widget.localPath == null && _mirror + 1 < urls.length) {
-          setState(() => _mirror++);
-        }
-      },
-      onRetry: () async {
-        await provider.evict();
-        if (mounted) setState(() => _retry++);
-      },
     );
   }
 }

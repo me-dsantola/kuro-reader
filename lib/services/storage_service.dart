@@ -2,6 +2,7 @@ import 'backup_codec.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
+import '../models/reader_anchor.dart';
 
 class StorageService {
   static const String favBoxName = 'favorites_box';
@@ -268,6 +269,17 @@ class StorageService {
   static Future<void> saveWebtoonOffset(String chapterId, double offset) async {
     if (!offset.isFinite || offset < 0) return;
     await historyBox.put('webtoon_offset_$chapterId', offset);
+  }
+
+  static ReaderAnchor? getWebtoonAnchor(String chapterId) =>
+      ReaderAnchor.fromMap(historyBox.get('webtoon_anchor_$chapterId'));
+
+  static Future<void> saveWebtoonAnchor(
+    String chapterId,
+    ReaderAnchor anchor,
+  ) async {
+    if (ReaderAnchor.fromMap(anchor.toMap()) == null) return;
+    await historyBox.put('webtoon_anchor_$chapterId', anchor.toMap());
   }
 
   /// Calcula todas as métricas de leitura em tempo real (Dia, Semana, Mais Lido, Menos Lido, Maior e Menor Capítulo)

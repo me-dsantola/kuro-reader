@@ -12,7 +12,6 @@ import 'package:kuro_reader/models/manga_models.dart';
 import 'package:kuro_reader/screens/home_overview_screen.dart';
 import 'package:kuro_reader/screens/home_tabs.dart';
 import 'package:kuro_reader/services/storage_service.dart';
-import 'package:kuro_reader/widgets/catalog_sort_menu.dart';
 import 'package:kuro_reader/widgets/reader_toolbar.dart';
 
 void main() {
@@ -223,7 +222,7 @@ void main() {
   );
 
   testWidgets(
-    'catalog sorting preserves scroll position and does not refetch sources',
+    'catalog omits partial sorting and keeps title search functional',
     (tester) async {
       screen(tester);
       var catalogCalls = 0;
@@ -238,19 +237,14 @@ void main() {
               .controller!;
           scroll.jumpTo(400);
           await tester.pumpAndSettle();
-          final before = catalogCalls;
-          await tester.tap(find.byTooltip('Ordenar catálogo'));
-          await tester.pumpAndSettle();
-          await tester.tap(find.byKey(const ValueKey('catalog-sort-title')));
-          await tester.pumpAndSettle();
-          expect(catalogCalls, before);
+          expect(find.text('Ordenar'), findsNothing);
+          expect(find.byTooltip('Ordenar catálogo'), findsNothing);
           expect(scroll.offset, 400);
-          expect(find.byType(CircularProgressIndicator), findsNothing);
-          expect(find.byType(CatalogSortMenu), findsOneWidget);
-          expect(
-            tester.widget<CatalogSortMenu>(find.byType(CatalogSortMenu)).value,
-            CatalogOrder.title,
-          );
+          final before = catalogCalls;
+          await tester.enterText(find.byType(TextField), 'Obra');
+          await tester.pump(const Duration(milliseconds: 500));
+          await tester.pumpAndSettle();
+          expect(catalogCalls, greaterThan(before));
           expect(tester.takeException(), isNull);
         },
         () => MockClient((request) async {
@@ -294,32 +288,6 @@ void main() {
           );
         }),
       );
-    },
-  );
-
-  test(
-    'title sorting keeps source results intact and does not use estimated counts',
-    () {
-      final a = Manga(
-        id: 'a',
-        title: 'Alpha',
-        description: '',
-        status: '',
-        tags: [],
-        availableChaptersCount: 0,
-      );
-      final z = Manga(
-        id: 'z',
-        title: 'Zeta',
-        description: '',
-        status: '',
-        tags: [],
-        availableChaptersCount: 999,
-      );
-      final original = [z, a];
-      expect(orderCatalog(original, CatalogOrder.title), [a, z]);
-      expect(orderCatalog(original, CatalogOrder.source), [z, a]);
-      expect(original, [z, a]);
     },
   );
 }

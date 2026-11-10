@@ -79,6 +79,7 @@ void main() {
     'page_chapter': '3',
     'read_chapter': 'true',
     'webtoon_offset_chapter': -1,
+    'webtoon_anchor_chapter': {'page': 3, 'fraction': 1.5},
     'chapters_count_manga': 2.5,
     'last_manga': {'id': 'chapter', 'pages': '15'},
     'chapters_manga': [42],

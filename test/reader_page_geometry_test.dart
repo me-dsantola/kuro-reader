@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kuro_reader/models/reader_page_geometry.dart';
 import 'package:kuro_reader/services/local_page_dimensions.dart';
+import 'package:kuro_reader/models/reader_anchor.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -67,4 +68,15 @@ void main() {
       }
     },
   );
+
+  test('saved chapter anchor restores at a different screen width', () {
+    final geometry = ReaderPageGeometry(10)
+      ..updateRatios({for (var i = 0; i < 10; i++) i: 0.5}, 360, 0);
+    final anchor = geometry.anchorAt(1800, 360);
+    final restored = ReaderAnchor.fromMap(anchor.toMap())!;
+    expect(restored.page, 2);
+    expect(restored.fraction, 0.5);
+    expect(geometry.offsetFor(restored, 640), 3200);
+    expect(ReaderAnchor.fromMap({'page': -1, 'fraction': 0.5}), isNull);
+  });
 }

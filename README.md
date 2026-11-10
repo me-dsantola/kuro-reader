@@ -1,7 +1,7 @@
 # YOMI — Kuro Reader
 
 Leitor pessoal de mangás, manhwas e quadrinhos feito em Flutter. A versão
-**1.1.0 (build 2)** é a candidata Beta para validação antes do merge na `main`.
+**1.1.3 (build 5)** é a candidata Beta para validação antes do merge na `main`.
 
 ## Experiência
 

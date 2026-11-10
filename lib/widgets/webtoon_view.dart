@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import '../models/reader_page_geometry.dart';
+import 'reader_scroll_controller.dart';
 
 typedef WebtoonPageBuilder =
     Widget Function(
@@ -10,10 +11,10 @@ typedef WebtoonPageBuilder =
     );
 
 /// Page geometry survives image disposal and cache eviction. New online
-/// dimensions are applied between gestures with the visible page anchored.
+/// dimensions are applied during layout with the visible page anchored.
 class WebtoonView extends StatefulWidget {
   final ReaderPageGeometry geometry;
-  final ScrollController controller;
+  final ReaderScrollController controller;
   final WebtoonPageBuilder pageBuilder;
   final Widget footer;
   final ValueChanged<double> onWidth;
@@ -35,26 +36,8 @@ class WebtoonView extends StatefulWidget {
 
 class _WebtoonViewState extends State<WebtoonView> {
   final Map<int, double> _pending = {};
-  ScrollPosition? _position;
   double _width = 0;
   bool _scheduled = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !widget.controller.hasClients) return;
-      _position = widget.controller.position;
-      _position!.isScrollingNotifier.addListener(_activityChanged);
-      _schedule();
-    });
-  }
-
-  @override
-  void dispose() {
-    _position?.isScrollingNotifier.removeListener(_activityChanged);
-    super.dispose();
-  }
 
   void _ratio(int index, double ratio) {
     if (!ratio.isFinite || ratio <= 0) return;
@@ -67,10 +50,6 @@ class _WebtoonViewState extends State<WebtoonView> {
     _schedule();
   }
 
-  void _activityChanged() {
-    if (_position?.isScrollingNotifier.value == false) _schedule();
-  }
-
   void _schedule() {
     if (_scheduled || _pending.isEmpty) return;
     _scheduled = true;
@@ -78,20 +57,13 @@ class _WebtoonViewState extends State<WebtoonView> {
       _scheduled = false;
       if (!mounted || _width <= 0 || !widget.controller.hasClients) return;
       final position = widget.controller.position;
-      if (position.isScrollingNotifier.value) return;
       final corrected = widget.geometry.updateRatios(
         _pending,
         _width,
         position.pixels,
       );
+      widget.controller.correctLayoutOffset(corrected);
       setState(_pending.clear);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !widget.controller.hasClients) return;
-        final pos = widget.controller.position;
-        if (pos.isScrollingNotifier.value) return;
-        final target = corrected.clamp(0.0, pos.maxScrollExtent).toDouble();
-        if ((target - pos.pixels).abs() > 0.5) widget.controller.jumpTo(target);
-      });
     });
     WidgetsBinding.instance.ensureVisualUpdate();
   }
@@ -99,6 +71,16 @@ class _WebtoonViewState extends State<WebtoonView> {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      if (_width > 0 &&
+          constraints.maxWidth != _width &&
+          widget.controller.hasClients) {
+        final corrected = widget.geometry.reflowOffset(
+          widget.controller.offset,
+          _width,
+          constraints.maxWidth,
+        );
+        widget.controller.correctLayoutOffset(corrected);
+      }
       _width = constraints.maxWidth;
       widget.onWidth(_width);
       return CustomScrollView(

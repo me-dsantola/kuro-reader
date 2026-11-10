@@ -113,31 +113,9 @@ class _ReaderPageImageState extends State<ReaderPageImage> {
       );
     }
     if (_failed) {
-      final retry = IconButton(
-        tooltip: 'Tentar carregar a página ${widget.pageNumber} novamente',
-        onPressed: widget.onRetry,
-        icon: const Icon(Icons.refresh_rounded, color: Color(0xFFE11D48)),
-      );
-      return LayoutBuilder(
-        builder: (context, constraints) => Center(
-          child: constraints.maxHeight < 110
-              ? retry
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    retry,
-                    const SizedBox(height: 6),
-                    Text(
-                      'Página ${widget.pageNumber} indisponível',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-        ),
+      return PageLoadFailure(
+        pageNumber: widget.pageNumber,
+        onRetry: widget.onRetry,
       );
     }
     final total = _progress?.expectedTotalBytes;
@@ -156,4 +134,42 @@ class _ReaderPageImageState extends State<ReaderPageImage> {
       ),
     );
   }
+}
+
+/// Both reading modes offer the same recovery action for a failed page.
+class PageLoadFailure extends StatelessWidget {
+  final int pageNumber;
+  final VoidCallback onRetry;
+  const PageLoadFailure({
+    super.key,
+    required this.pageNumber,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final retry = IconButton(
+        tooltip: 'Tentar carregar a página $pageNumber novamente',
+        onPressed: onRetry,
+        icon: const Icon(Icons.refresh_rounded, color: Color(0xFFE11D48)),
+      );
+      return Center(
+        child: constraints.maxHeight < 110
+            ? retry
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  retry,
+                  const SizedBox(height: 6),
+                  Text(
+                    'Página $pageNumber indisponível',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ],
+              ),
+      );
+    },
+  );
 }

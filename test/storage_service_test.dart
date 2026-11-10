@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:kuro_reader/models/manga_models.dart';
 import 'package:kuro_reader/services/storage_service.dart';
 import 'package:kuro_reader/services/backup_codec.dart';
+import 'package:kuro_reader/models/reader_anchor.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -205,6 +206,25 @@ void main() {
       expect(StorageService.getFavorites(), hasLength(1));
       expect(StorageService.getContinueReadingList(), hasLength(1));
       expect(StorageService.getAllDownloadedChapters(), hasLength(1));
+    },
+  );
+
+  test(
+    'reading anchor survives backup without losing legacy positions',
+    () async {
+      await StorageService.saveWebtoonAnchor(
+        chapter.id,
+        const ReaderAnchor(4, 0.65),
+      );
+      await StorageService.saveLastPageIndex(chapter.id, 4);
+      await StorageService.saveWebtoonOffset(chapter.id, 1850);
+      final backup = StorageService.exportFullBackupJson();
+      await StorageService.historyBox.clear();
+      expect(await StorageService.importFullBackupJson(backup), isTrue);
+      expect(StorageService.getWebtoonAnchor(chapter.id)?.page, 4);
+      expect(StorageService.getWebtoonAnchor(chapter.id)?.fraction, 0.65);
+      expect(StorageService.getSavedPageIndex(chapter.id), 4);
+      expect(StorageService.getSavedWebtoonOffset(chapter.id), 1850);
     },
   );
 }

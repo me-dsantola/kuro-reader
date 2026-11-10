@@ -11,7 +11,6 @@ import '../services/storage_service.dart';
 import '../services/download_manager.dart';
 import '../services/favorite_updates_service.dart';
 import '../services/catalog_request_state.dart';
-import '../widgets/catalog_sort_menu.dart';
 import '../widgets/frosted_surface.dart';
 import 'manga_detail_screen.dart';
 import 'reader_screen.dart';
@@ -1550,7 +1549,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
     MangaSourceType.comicsHq,
     MangaSourceType.adultSource,
   };
-  CatalogOrder _catalogOrder = CatalogOrder.source;
 
   @override
   void initState() {
@@ -1940,7 +1938,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final displayed = orderCatalog(_mangas, _catalogOrder);
+    final displayed = _mangas;
     final latestRoll = displayed.where((m) => !m.isCoverOnly).take(10).toList();
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 64;
     final allowNsfw = StorageService.nsfwMode.allowNsfwFetch;
@@ -1953,10 +1951,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         flexibleSpace: const FrostedSurface(child: SizedBox.expand()),
-        actions: [
-          CatalogSortMenu(value: _catalogOrder,
-            onChanged: (order) => setState(() => _catalogOrder = order)),
-        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(64),
           child: Padding(

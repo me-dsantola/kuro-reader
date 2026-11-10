@@ -165,6 +165,15 @@ class BackupCodec {
     if (key.isEmpty) _invalid('chave do histórico');
     if (key.startsWith('page_') || key.startsWith('chapters_count_')) {
       if (!_nonNegativeInt(value)) _invalid(key);
+    } else if (key.startsWith('webtoon_anchor_')) {
+      final anchor = _map(value, key);
+      if (!_nonNegativeInt(anchor['page']) ||
+          anchor['fraction'] is! num ||
+          !(anchor['fraction'] as num).isFinite ||
+          anchor['fraction'] < 0 ||
+          anchor['fraction'] > 1) {
+        _invalid(key);
+      }
     } else if (key.startsWith('webtoon_offset_')) {
       if (value is! num || !value.isFinite || value < 0) _invalid(key);
     } else if (key.startsWith('read_')) {
