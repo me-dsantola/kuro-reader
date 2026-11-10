@@ -1113,17 +1113,24 @@ class MangaDexService {
           '&includes[]=scanlation_group'
           '&order[chapter]=desc'
           '&includeExternalUrl=0';
-      final response = await safeHttpGet(fullUrl);
-      final data = jsonDecode(response.body);
-      final List entries = data['data'] ?? [];
-      rawAll.addAll(entries
-          .whereType<Map<String, dynamic>>()
-          .map((entry) => Chapter.fromJson(
-                entry,
-                source: MangaSourceType.mangadex,
-              ))
-          .where((ch) => ch.pages > 0));
-      if (entries.length < pageSize) break;
+      try {
+        final response = await safeHttpGet(fullUrl);
+        final data = jsonDecode(response.body);
+        final List entries = data['data'] ?? [];
+        rawAll.addAll(entries
+            .whereType<Map<String, dynamic>>()
+            .map((entry) => Chapter.fromJson(
+                  entry,
+                  source: MangaSourceType.mangadex,
+                ))
+            .where((ch) => ch.pages > 0));
+        if (entries.length < pageSize) break;
+      } catch (_) {
+        // Preserve successfully fetched chapters if a later page fails.
+        // Only propagate an error when no chapter page could be loaded.
+        if (page == 0) rethrow;
+        break;
+      }
     }
 
     // Both chapter views below come from MangaDex. Do not present either
