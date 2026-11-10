@@ -49,6 +49,8 @@ class YomiApp extends StatelessWidget {
         appBarTheme: const AppBarTheme(
           backgroundColor: YomiPalette.pitchBlack,
           elevation: 0,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
           centerTitle: false,
           titleTextStyle: TextStyle(
             fontSize: 22,

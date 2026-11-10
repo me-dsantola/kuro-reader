@@ -11,6 +11,8 @@ import '../services/storage_service.dart';
 import '../services/download_manager.dart';
 import '../services/favorite_updates_service.dart';
 import '../services/catalog_request_state.dart';
+import '../widgets/catalog_sort_menu.dart';
+import '../widgets/frosted_surface.dart';
 import 'manga_detail_screen.dart';
 import 'reader_screen.dart';
 
@@ -261,20 +263,27 @@ class _EnsoOPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+class YomiSakuraArtwork extends StatelessWidget {
+  const YomiSakuraArtwork({super.key});
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(painter: _ToriiSakuraBannerPainter());
+}
+
 class YomiSakuraBanner extends StatelessWidget {
   final String badgeText;
   final String subtitleText;
 
   const YomiSakuraBanner({
     super.key,
-    this.badgeText = '6 FONTES INTEGRADAS',
-    this.subtitleText = 'MangaDex • AniList • MyAnimeList • ComicK • HQs',
+    this.badgeText = 'DESCUBRA SUA PRÓXIMA LEITURA',
+    this.subtitleText = 'Leitura: MangaDex · Catálogos: AniList, MAL e Kitsu',
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 118,
+    return Container(
+      constraints: const BoxConstraints(minHeight: 118),
       width: double.infinity,
       child: CustomPaint(
         painter: _ToriiSakuraBannerPainter(),
@@ -291,7 +300,9 @@ class YomiSakuraBanner extends StatelessWidget {
             ),
           ),
           alignment: Alignment.bottomLeft,
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -310,17 +321,9 @@ class YomiSakuraBanner extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  subtitleText,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: YomiPalette.pureWhite.withValues(alpha: 0.85),
-                  ),
-                ),
-              ),
+              const SizedBox(height: 8),
+              Text(subtitleText, style: TextStyle(fontSize: 12,
+                color: YomiPalette.pureWhite.withValues(alpha: 0.85))),
             ],
           ),
         ),
@@ -1547,7 +1550,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     MangaSourceType.comicsHq,
     MangaSourceType.adultSource,
   };
-  bool _sortByLatest = true;
+  CatalogOrder _catalogOrder = CatalogOrder.source;
 
   @override
   void initState() {
@@ -1586,11 +1589,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   YomiSearchFilter get _currentFilter => YomiSearchFilter(
         query: _searchController.text,
-        includedTags: _includedTags,
-        excludedTags: _excludedTags,
-        enabledSources: _enabledSources,
+        includedTags: Set.of(_includedTags),
+        excludedTags: Set.of(_excludedTags),
+        enabledSources: Set.of(_enabledSources),
         allowNsfw: StorageService.nsfwMode.allowNsfwFetch,
-        sortByLatest: _sortByLatest,
+        sortByLatest: true,
         hideZeroChapters: StorageService.hideZeroChapterTitles,
       );
 
@@ -1601,6 +1604,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _isEnrichingCatalog = false;
       _error = null;
     });
+    if (reset && _scrollController.hasClients) _scrollController.jumpTo(0);
     try {
       final filter = _currentFilter;
       final fastSearch = reset &&
@@ -1936,30 +1940,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final latestRoll = _mangas.where((m) => !m.isCoverOnly).take(10).toList();
+    final displayed = orderCatalog(_mangas, _catalogOrder);
+    final latestRoll = displayed.where((m) => !m.isCoverOnly).take(10).toList();
+    final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 64;
     final allowNsfw = StorageService.nsfwMode.allowNsfwFetch;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const YomiEnsoLogo(),
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        flexibleSpace: const FrostedSurface(child: SizedBox.expand()),
         actions: [
-          IconButton(
-            tooltip: _sortByLatest
-                ? 'Atualizações recentes'
-                : 'Mais capítulos disponíveis',
-            icon: Icon(
-              _sortByLatest
-                  ? Icons.schedule_rounded
-                  : Icons.local_fire_department_rounded,
-              color: _sortByLatest
-                  ? YomiPalette.sakuraPink
-                  : YomiPalette.ensoRed,
-            ),
-            onPressed: () {
-              setState(() => _sortByLatest = !_sortByLatest);
-              _loadMangas(reset: true);
-            },
-          ),
+          CatalogSortMenu(value: _catalogOrder,
+            onChanged: (order) => setState(() => _catalogOrder = order)),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(64),
@@ -2061,7 +2057,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   onRefresh: () => _loadMangas(reset: true),
                   child: CustomScrollView(
                     controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
+                      SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
                       const SliverToBoxAdapter(child: YomiSakuraBanner()),
 
                       // BARRA RÁPIDA DE FONTES ATIVAS (MDX, ANI, MAL, CMK, HQs)
@@ -2127,11 +2125,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 Icon(Icons.new_releases_rounded,
                                     size: 18, color: YomiPalette.ensoRed),
                                 SizedBox(width: 6),
-                                Text(
-                                  'Destaques & Lançamentos Multi-Fonte',
-                                  style: TextStyle(
-                                    fontSize: 15.5,
-                                    fontWeight: FontWeight.w800,
+                                Expanded(
+                                  child: Text(
+                                    'Destaques & Lançamentos Multi-Fonte',
+                                    style: TextStyle(
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -2183,10 +2183,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ),
                           delegate: SliverChildBuilderDelegate(
                             (context, index) => MangaGridCard(
-                              manga: _mangas[index],
+                              manga: displayed[index],
                               heroPrefix: 'explore',
                             ),
-                            childCount: _mangas.length,
+                            childCount: displayed.length,
                           ),
                         ),
                       ),
