@@ -225,7 +225,7 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
         ? ', search: ${jsonEncode(filter.query.trim())}'
         : '';
 
-    final String gqlQuery = 'query { Page(page: $page, perPage: 20) { pageInfo { hasNextPage } media(type: MANGA, isAdult: ${filter.allowNsfw ? "null" : "false"}, sort: [$sortMode]$searchArg$countryFilter$genreFilter$excludedGenreFilter) { id title { english romaji } description(asHtml: false) status chapters genres isAdult coverImage { large extraLarge } } } }';
+    final String gqlQuery = 'query { Page(page: $page, perPage: 20) { pageInfo { hasNextPage } media(type: MANGA, isAdult: ${filter.allowNsfw ? "null" : "false"}, sort: [$sortMode]$searchArg$countryFilter$genreFilter$excludedGenreFilter) { id title { english romaji } description(asHtml: false) status chapters genres isAdult countryOfOrigin coverImage { large extraLarge } } } }';
 
     final response = await http
         .post(
@@ -252,6 +252,13 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
       if (m is! Map) continue;
       final bool isAdult = m['isAdult'] == true;
       if (!filter.allowNsfw && isAdult) continue;
+
+      final excludedCountries = <String>{
+        if (filter.excludedTags.contains(CanonicalTag.mangaJp)) 'JP',
+        if (filter.excludedTags.contains(CanonicalTag.manhwaKr)) 'KR',
+        if (filter.excludedTags.contains(CanonicalTag.manhuaCn)) 'CN',
+      };
+      if (excludedCountries.contains(m['countryOfOrigin'])) continue;
 
       final titleObj = m['title'] ?? {};
       final String title =
