@@ -2591,12 +2591,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (confirmed != true || !ctx.mounted) return;
                   final ok = await StorageService.importFullBackupJson(ctrl.text);
                   if (!ctx.mounted) return;
+                  final messenger = ScaffoldMessenger.of(ctx);
                   if (ok) Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Text(ok
                           ? 'Perfil, favoritos e histórico mesclados com sucesso.'
-                          : 'Backup inválido ou incompatível. Nenhum dado foi importado.'),
+                          : 'Backup inválido ou erro ao restaurar. Confira seus dados locais.'),
                     ),
                   );
                 },
