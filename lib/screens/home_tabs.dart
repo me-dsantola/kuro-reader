@@ -1595,11 +1595,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
       if (mounted && generation == _catalogRequestGeneration && result.isNotEmpty) {
         setState(() {
-          _mangas.addAll(result);
+          final existingIds = _mangas.map((m) => m.compositeId).toSet();
+          _mangas.addAll(
+            result.where((m) => existingIds.add(m.compositeId)),
+          );
         });
       }
-    } catch (_) {}
-    if (mounted) setState(() => _isLoadingMore = false);
+    } catch (_) {
+      // Keep the current catalog visible if a later page fails.
+    } finally {
+      if (mounted) setState(() => _isLoadingMore = false);
+    }
   }
 
   void _openTagFilterModal() {
