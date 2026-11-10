@@ -1210,7 +1210,14 @@ class MangaDexService {
         : mdxList;
     // A follow-up page should not overwrite the previously cached window.
     if (offset == 0) {
-      await StorageService.cacheMangaChapters(manga.id, bestList);
+      // Preserve older pages already fetched on a previous visit. The first
+      // network window must not silently erase the reader's chapter history.
+      final cached = StorageService.getCachedMangaChapters(manga.id);
+      final seen = bestList.map((ch) => ch.id).toSet();
+      await StorageService.cacheMangaChapters(manga.id, [
+        ...bestList,
+        ...cached.where((ch) => seen.add(ch.id)),
+      ]);
     }
 
     return sourceChaptersMap;
