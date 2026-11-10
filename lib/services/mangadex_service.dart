@@ -341,7 +341,8 @@ class JikanMalAdapter implements IMangaSourceAdapter {
       final String imgUrl = (jpgMap['image_url'] ?? '').toString();
       final String largeImgUrl =
           (jpgMap['large_image_url'] ?? imgUrl).toString();
-      final int chCount = (entry['chapters'] as int?) ?? 50;
+      // Jikan returns null when the chapter total is unknown.
+      final int chCount = (entry['chapters'] as num?)?.toInt() ?? -1;
 
       final List rawGenres = entry['genres'] ?? [];
       final tags = rawGenres
@@ -363,7 +364,7 @@ class JikanMalAdapter implements IMangaSourceAdapter {
           tags: ['MyAnimeList', ...tags],
           isNsfw: false,
           updatedAt: DateTime.now().subtract(const Duration(minutes: 35)),
-          availableChaptersCount: chCount > 0 ? chCount : 40,
+          availableChaptersCount: chCount,
         ),
       );
     }
