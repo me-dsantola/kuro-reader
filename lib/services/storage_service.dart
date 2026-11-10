@@ -146,6 +146,25 @@ class StorageService {
     return historyBox.get('read_$chapterId', defaultValue: false) == true;
   }
 
+  /// Opening a chapter resumes it, but never marks it completed.
+  /// Existing read flags remain untouched for backwards compatibility.
+  static Future<void> recordChapterOpened(Manga manga, Chapter chapter) async {
+    await historyBox.put('last_${manga.id}', chapter.toMap());
+    await historyBox.put('manga_meta_${manga.id}', manga.toMap());
+
+    final List rawRecent =
+        List.from(historyBox.get('recent_reading_list', defaultValue: []));
+    rawRecent.removeWhere((item) =>
+        item is Map && item['manga'] is Map && item['manga']['id'] == manga.id);
+    rawRecent.insert(0, {
+      'manga': manga.toMap(),
+      'chapter': chapter.toMap(),
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+    if (rawRecent.length > 25) rawRecent.removeRange(25);
+    await historyBox.put('recent_reading_list', rawRecent);
+  }
+
   static Future<void> markChapterAsRead(
     Manga manga,
     Chapter chapter, {
@@ -155,25 +174,9 @@ class StorageService {
     await historyBox.put('read_${chapter.id}', read);
 
     if (read) {
-      await historyBox.put('last_${manga.id}', chapter.toMap());
-      await historyBox.put('manga_meta_${manga.id}', manga.toMap());
+      await recordChapterOpened(manga, chapter);
 
-      // Registra na lista de "Continuar Lendo" recente
-      final List rawRecent =
-          List.from(historyBox.get('recent_reading_list', defaultValue: []));
-      rawRecent.removeWhere((item) =>
-          item is Map && item['manga'] != null && item['manga']['id'] == manga.id);
-      rawRecent.insert(0, {
-        'manga': manga.toMap(),
-        'chapter': chapter.toMap(),
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-      if (rawRecent.length > 25) {
-        rawRecent.removeRange(25, rawRecent.length);
-      }
-      await historyBox.put('recent_reading_list', rawRecent);
-
-      // Se ainda não estava marcado como lido, registra evento de métrica temporal
+      // Only completed chapters count in reading statistics.
       if (!wasRead) {
         final List rawEvents =
             List.from(historyBox.get('reading_events_log', defaultValue: []));
@@ -222,11 +225,24 @@ class StorageService {
   }
 
   static Future<void> saveLastPageIndex(String chapterId, int pageIndex) async {
+    if (getSavedPageIndex(chapterId) == pageIndex) return;
     await historyBox.put('page_$chapterId', pageIndex);
   }
 
   static int getSavedPageIndex(String chapterId) {
     return (historyBox.get('page_$chapterId', defaultValue: 0) as int?) ?? 0;
+  }
+
+  /// Pixel offset is kept separately so old page-index saves still work.
+  static double getSavedWebtoonOffset(String chapterId) {
+    final stored = historyBox.get('webtoon_offset_$chapterId');
+    if (stored is! num || !stored.isFinite || stored < 0) return 0;
+    return stored.toDouble();
+  }
+
+  static Future<void> saveWebtoonOffset(String chapterId, double offset) async {
+    if (!offset.isFinite || offset < 0) return;
+    await historyBox.put('webtoon_offset_$chapterId', offset);
   }
 
   /// Calcula todas as métricas de leitura em tempo real (Dia, Semana, Mais Lido, Menos Lido, Maior e Menor Capítulo)
