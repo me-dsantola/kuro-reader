@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
@@ -166,9 +165,11 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         manga: widget.manga,
                         highRes: true,
                       ),
-                      BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                        child: Container(color: Colors.black.withValues(alpha: 0.58)),
+                      // A full-screen backdrop blur is expensive on modest
+                      // Android GPUs, especially during chapter-list scroll.
+                      // Keep the dark cover overlay without an offscreen blur.
+                      ColoredBox(
+                        color: Colors.black.withValues(alpha: 0.66),
                       ),
                       const DecoratedBox(
                         decoration: BoxDecoration(
