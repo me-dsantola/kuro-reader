@@ -1970,7 +1970,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText:
-                          'Buscar em 6 fontes (One Piece, Solo Leveling, Batman...)',
+                          'Buscar obras (One Piece, Solo Leveling, Batman...)',
                       hintStyle:
                           TextStyle(color: Colors.white.withValues(alpha: 0.38)),
                       prefixIcon: const Icon(Icons.search,
