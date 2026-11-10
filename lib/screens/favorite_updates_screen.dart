@@ -68,11 +68,7 @@ class FavoriteUpdatesScreen extends StatelessWidget {
                       title: Text(entry.manga.title,
                           maxLines: 2, overflow: TextOverflow.ellipsis),
                       subtitle: Text(
-                        '${entry.chapters.length} novo(s) • ' +
-                            entry.chapters
-                                .take(3)
-                                .map((ch) => 'Cap. ${ch.chapterNumber}')
-                                .join(', '),
+                        '${entry.chapters.length} novo(s) • ${entry.chapters.take(3).map((ch) => 'Cap. ${ch.chapterNumber}').join(', ')}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
