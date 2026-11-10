@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/storage_service.dart';
 import 'screens/home_tabs.dart';
+import 'screens/home_overview_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,7 +67,7 @@ class MainNavigationShell extends StatefulWidget {
 
 class _MainNavigationShellState extends State<MainNavigationShell>
     with WidgetsBindingObserver {
-  // Inicia de cara na aba 0 (Perfil & Métricas), conforme solicitado!
+  // Start with lightweight reading shortcuts; keep profile one tap away.
   int _selectedIndex = 0;
   bool _isPrivacyShieldActive = false;
 
@@ -94,14 +95,20 @@ class _MainNavigationShellState extends State<MainNavigationShell>
   @override
   Widget build(BuildContext context) {
     final pages = [
-      ProfileDashboardScreen(
-        onGoToExplore: () => setState(() => _selectedIndex = 1),
-        onGoToSettings: () => setState(() => _selectedIndex = 4),
+      HomeOverviewScreen(
+        onExplore: () => setState(() => _selectedIndex = 1),
+        onLibrary: () => setState(() => _selectedIndex = 2),
       ),
       const ExploreScreen(),
       const LibraryScreen(),
       const DownloadsScreen(),
-      const SettingsScreen(),
+      ProfileDashboardScreen(
+        onGoToExplore: () => setState(() => _selectedIndex = 1),
+        onGoToSettings: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SettingsScreen()),
+        ),
+      ),
     ];
 
     return Stack(
@@ -116,10 +123,10 @@ class _MainNavigationShellState extends State<MainNavigationShell>
                 setState(() => _selectedIndex = idx),
             destinations: const [
               NavigationDestination(
-                icon: Icon(Icons.person_outline_rounded),
+                icon: Icon(Icons.home_outlined),
                 selectedIcon:
-                    Icon(Icons.person_rounded, color: YomiPalette.ensoRed),
-                label: 'Perfil',
+                    Icon(Icons.home_rounded, color: YomiPalette.ensoRed),
+                label: 'Início',
               ),
               NavigationDestination(
                 icon: Icon(Icons.explore_outlined),
@@ -142,12 +149,12 @@ class _MainNavigationShellState extends State<MainNavigationShell>
                 label: 'Offline',
               ),
               NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
+                icon: Icon(Icons.person_outline_rounded),
                 selectedIcon: Icon(
-                  Icons.settings_rounded,
+                  Icons.person_rounded,
                   color: YomiPalette.sakuraPink,
                 ),
-                label: 'Ajustes',
+                label: 'Perfil',
               ),
             ],
           ),
