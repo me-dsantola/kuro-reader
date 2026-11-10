@@ -19,6 +19,31 @@ class StableArtifactTests(unittest.TestCase):
     def test_matching_production_apk_passes(self):
         self.verify()
 
+    def test_v31_sdk_range_format_passes_with_exact_production_certificate(self):
+        self.verify(signature=self.signature.replace('Signer #1', 'Signer (minSdkVersion=33, maxSdkVersion=2147483647)'))
+
+    def test_v31_development_sdk_range_format_passes(self):
+        self.verify(signature=self.signature.replace('Signer #1', 'Signer (minSdkVersion=33 (dev release=true), maxSdkVersion=2147483647)'))
+
+    def test_multiple_sdk_ranges_must_all_use_the_same_production_certificate(self):
+        newer = self.signature.replace('Signer #1', 'Signer (minSdkVersion=33, maxSdkVersion=2147483647)')
+        older = self.signature.replace('Signer #1', 'Signer (minSdkVersion=24, maxSdkVersion=32)')
+        self.verify(signature=newer + older)
+        with self.assertRaises(ValueError):
+            self.verify(signature=newer + older.replace(self.fingerprint, 'b' * 64))
+
+    def test_unknown_signer_format_cannot_be_ignored(self):
+        with self.assertRaises(ValueError):
+            self.verify(signature=self.signature + self.signature.replace('Signer #1', 'Signer unsupported'))
+
+    def test_mixed_signer_formats_are_rejected(self):
+        with self.assertRaises(ValueError):
+            self.verify(signature=self.signature + self.signature.replace('Signer #1', 'Signer (minSdkVersion=33, maxSdkVersion=2147483647)'))
+
+    def test_missing_certificate_output_is_rejected(self):
+        with self.assertRaises(ValueError):
+            self.verify(signature='Verifies\n')
+
     def test_beta_identity_is_rejected(self):
         with self.assertRaises(ValueError):
             self.verify(self.badging.replace("kuro_reader'", "kuro_reader.beta'"))

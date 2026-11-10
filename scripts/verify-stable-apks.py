@@ -23,10 +23,27 @@ def verify_metadata(badging, signature, version, build, fingerprint, abi):
     native = re.search(r"^native-code: '([^']+)'", badging, re.M)
     if not native or native.group(1) != abi:
         raise ValueError('APK native architecture does not match the filename.')
-    digests = re.findall(r'^Signer #\d+ certificate SHA-256 digest: ([a-fA-F0-9:]+)', signature, re.M)
-    normalized = [value.replace(':', '').lower() for value in digests]
-    if normalized != [fingerprint.lower()] or 'android debug' in signature.lower():
-        raise ValueError('APK does not use the expected permanent production certificate.')
+    # apksigner reports v3.1 signers by SDK range, rather than by number.
+    # Every reported APK signer must still use the owner's exact certificate.
+    numbered = re.findall(r'^Signer #(\d+) certificate SHA-256 digest: ([a-fA-F0-9:]+)$', signature, re.M)
+    ranged = re.findall(
+        r'^Signer \(minSdkVersion=\d+(?: \(dev release=true\))?, maxSdkVersion=\d+\) certificate SHA-256 digest: ([a-fA-F0-9:]+)$',
+        signature, re.M,
+    )
+    normalize = lambda value: value.replace(':', '').lower()
+    expected = fingerprint.lower()
+    normalized = [normalize(value) for _, value in numbered] + [normalize(value) for value in ranged]
+    valid_numbered = len(numbered) == 1 and numbered[0][0] == '1' and not ranged
+    valid_ranged = bool(ranged) and not numbered
+    reported_count = sum(line.startswith('Signer ') and ' certificate SHA-256 digest:' in line
+                         for line in signature.splitlines())
+    if (not (valid_numbered or valid_ranged) or reported_count != len(normalized)
+            or any(value != expected for value in normalized) or 'android debug' in signature.lower()):
+        certificate_lines = [line for line in signature.splitlines() if 'certificate' in line.lower()]
+        raise ValueError('APK does not use the expected permanent production certificate. ' + json.dumps({
+            'expectedSha256': fingerprint.lower(), 'parsedSha256': normalized,
+            'reportedCertificates': certificate_lines,
+        }))
 
 
 def main():
