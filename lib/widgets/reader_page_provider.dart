@@ -21,7 +21,13 @@ class ReaderPageProvider extends ImageProvider<ReaderPageProvider> {
 
   Future<ui.Codec> _decode(ImageDecoderCallback decode) async {
     final bytes = await session.pageBytes(index);
-    return decode(await ui.ImmutableBuffer.fromUint8List(bytes));
+    try {
+      return await decode(await ui.ImmutableBuffer.fromUint8List(bytes));
+    } catch (_) {
+      // A valid image signature does not prove the payload is decodable.
+      await session.invalidate(index);
+      rethrow;
+    }
   }
 
   @override

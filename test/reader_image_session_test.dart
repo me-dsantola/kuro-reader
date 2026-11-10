@@ -135,24 +135,171 @@ void main() {
     },
   );
 
-  test('a failed page can refresh its source and be retried', () async {
+  test(
+    'an expired page refreshes its source and recovers automatically',
+    () async {
+      var refreshes = 0;
+      final session = ReaderImageSession(
+        urls: ['https://old.example/0.png'],
+        reloadUrls: () async {
+          refreshes++;
+          return ['https://fresh.example/0.png'];
+        },
+        client: MockClient(
+          (request) async => request.url.host == 'fresh.example'
+              ? http.Response.bytes(_png, 200)
+              : http.Response('unavailable', 503),
+        ),
+      );
+      expect(await session.pageBytes(0), _png);
+      expect(refreshes, 1);
+      session.close();
+    },
+  );
+
+  test(
+    'manual retry remains available after an unsuccessful automatic refresh',
+    () async {
+      var refreshes = 0;
+      final session = ReaderImageSession(
+        urls: ['https://old.example/0.png'],
+        reloadUrls: () async => [
+          ++refreshes == 1
+              ? 'https://old.example/0.png'
+              : 'https://fresh.example/0.png',
+        ],
+        client: MockClient(
+          (request) async => request.url.host == 'fresh.example'
+              ? http.Response.bytes(_png, 200)
+              : http.Response('expired', 503),
+        ),
+      );
+      await expectLater(session.pageBytes(0), throwsFormatException);
+      await session.retry(0);
+      expect(await session.pageBytes(0), _png);
+      expect(refreshes, 2);
+      session.close();
+    },
+  );
+
+  test('concurrent expired pages share one metadata refresh', () async {
     var refreshes = 0;
+    final ready = Completer<void>();
+    final release = Completer<void>();
     final session = ReaderImageSession(
-      urls: ['https://old.example/0.png'],
+      urls: [for (var i = 0; i < 3; i++) 'https://old.example/$i.png'],
       reloadUrls: () async {
         refreshes++;
-        return ['https://fresh.example/0.png'];
+        ready.complete();
+        await release.future;
+        return [for (var i = 0; i < 3; i++) 'https://fresh.example/$i.png'];
       },
       client: MockClient(
         (request) async => request.url.host == 'fresh.example'
             ? http.Response.bytes(_png, 200)
-            : http.Response('unavailable', 503),
+            : http.Response('expired', 503),
       ),
     );
-    await expectLater(session.pageBytes(0), throwsFormatException);
-    await session.retry(0);
-    expect(await session.pageBytes(0), _png);
+    final pages = Future.wait([
+      for (var i = 0; i < 3; i++) session.pageBytes(i),
+    ]);
+    await ready.future;
+    release.complete();
+    expect((await pages).length, 3);
     expect(refreshes, 1);
+    session.close();
+  });
+
+  test('rate limiting stops fallback requests and metadata refresh', () async {
+    var calls = 0;
+    var refreshes = 0;
+    final session = ReaderImageSession(
+      urls: ['https://pages.example/0.png'],
+      reloadUrls: () async {
+        refreshes++;
+        return ['https://new.example/0.png'];
+      },
+      client: MockClient((_) async {
+        calls++;
+        return http.Response('wait', 429);
+      }),
+    );
+    await expectLater(session.pageBytes(0), throwsFormatException);
+    expect(calls, 1);
+    expect(refreshes, 0);
+    session.close();
+  });
+
+  test(
+    'disk cache survives memory eviction and closes without orphan files',
+    () async {
+      final root = await Directory.systemTemp.createTemp('yomi_disk_test_');
+      final cleaned = Completer<void>();
+      var calls = 0;
+      final session = ReaderImageSession(
+        urls: ['https://pages.example/0.png', 'https://pages.example/1.png'],
+        maxCacheBytes: _png.length,
+        createCacheDirectory: () => root.createTemp('session_'),
+        client: MockClient((_) async {
+          calls++;
+          return calls <= 2
+              ? http.Response.bytes(_png, 200)
+              : http.Response('offline', 503);
+        }),
+      );
+      try {
+        await session.pageBytes(0);
+        await session.pageBytes(1);
+        expect(await session.pageBytes(0), _png);
+        expect(calls, 2);
+        final directory = (await root.list().toList()).single as Directory;
+        final watch = root.watch().listen((event) {
+          if (event is FileSystemDeleteEvent && !cleaned.isCompleted)
+            cleaned.complete();
+        });
+        session.close();
+        await cleaned.future.timeout(const Duration(seconds: 5));
+        await watch.cancel();
+        expect(await directory.exists(), isFalse);
+        await expectLater(session.pageBytes(0), throwsStateError);
+      } finally {
+        session.close();
+        await root.delete(recursive: true);
+      }
+    },
+  );
+
+  test(
+    'unavailable optional disk cache never fails a successful page',
+    () async {
+      final session = ReaderImageSession(
+        urls: ['https://pages.example/0.png'],
+        createCacheDirectory: () async =>
+            throw const FileSystemException('full'),
+        client: MockClient((_) async => http.Response.bytes(_png, 200)),
+      );
+      expect(await session.pageBytes(0), _png);
+      session.close();
+    },
+  );
+
+  test('a failed decode evicts corrupt bytes before a new attempt', () async {
+    var calls = 0;
+    final corrupt = _png.sublist(0, 20);
+    final session = ReaderImageSession(
+      urls: ['https://pages.example/0.png'],
+      client: MockClient(
+        (_) async => http.Response.bytes(++calls == 1 ? corrupt : _png, 200),
+      ),
+    );
+    await expectLater(
+      _resolve(ReaderPageProvider(session, 0)),
+      throwsA(anything),
+    );
+    PaintingBinding.instance.imageCache.clear();
+    final image = await _resolve(ReaderPageProvider(session, 0, attempt: 1));
+    image.dispose();
+    expect(calls, 2);
     session.close();
   });
 

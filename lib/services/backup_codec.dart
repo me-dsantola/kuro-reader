@@ -60,9 +60,17 @@ class BackupCodec {
         'lock_nsfw_on_startup',
         'hide_zero_chapters',
         'data_saver_mode',
+        'auto_hide_menus',
       ]) {
         _optional(settings, key, (v) => v is bool);
       }
+    }
+    if (settings is Map) {
+      _optional(
+        settings,
+        'interface_style',
+        (v) => v == 'enso' || v == 'glass',
+      );
     }
     return data;
   }

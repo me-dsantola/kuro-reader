@@ -1,7 +1,10 @@
+import '../services/appearance_controller.dart';
+import '../services/scroll_chrome_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/reader_cache_directory.dart';
 import '../models/manga_models.dart';
 import '../services/mangadex_service.dart';
 import '../services/storage_service.dart';
@@ -41,6 +44,20 @@ class _ReaderScreenState extends State<ReaderScreen> {
   bool _isLoading = true;
   bool _isWebtoonMode = true;
   bool _showHud = true;
+  final _chrome = ScrollChromeController();
+
+  void _syncChrome() {
+    if (mounted && _showHud != _chrome.visible) {
+      setState(() => _showHud = _chrome.visible);
+    }
+  }
+
+  void _onAppearanceChanged() {
+    if (!AppearanceController.instance.value.autoHideMenus) _chrome.show();
+  }
+
+  void _toggleHud() => _chrome.setVisible(!_showHud);
+
   int _currentPage = 0;
   int _lastSavedPage = -1;
   final _visiblePage = ValueNotifier<int>(0);
@@ -162,6 +179,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void initState() {
     super.initState();
+    _chrome.addListener(_syncChrome);
+    AppearanceController.instance.addListener(_onAppearanceChanged);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     // Limita o cache de imagens decodificadas para evitar pressão de memória.
@@ -185,6 +204,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void dispose() {
     _webtoonProgressTimer?.cancel();
+    AppearanceController.instance.removeListener(_onAppearanceChanged);
+    _chrome.dispose();
     if (_isWebtoonMode && _webtoonScrollController.hasClients) {
       final position = _webtoonScrollController.position;
       if (_geometry != null && _pageWidth > 0) {
@@ -288,6 +309,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
       final data = await MangaDexService.fetchChapterPages(widget.chapter);
       if (mounted) {
         _images = ReaderImageSession(
+          createCacheDirectory: kIsWeb ? null : ReaderCacheDirectory.create,
           urls: data.getUrls(useDataSaver: StorageService.dataSaverEnabled),
           headers: widget.manga.customHeaders,
           reloadUrls: () async => (await MangaDexService.fetchChapterPages(
@@ -370,22 +392,31 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ),
             )
           : GestureDetector(
-              onTap: () => setState(() => _showHud = !_showHud),
+              onTap: _toggleHud,
               child: Stack(
                 children: [
                   if (_isWebtoonMode)
-                    WebtoonView(
-                      geometry: _geometry!,
-                      controller: _webtoonScrollController,
-                      onWidth: (width) => _pageWidth = width,
-                      localDimensionsKnown: _isOfflineMode,
-                      footer: _buildEndOfChapterFooter(nextCh, prevCh),
-                      pageBuilder: (context, index, onRatio) => ReaderPageImage(
-                        key: ValueKey('$index-${_imageAttempts[index] ?? 0}'),
-                        image: _providerFor(index),
-                        pageNumber: index + 1,
-                        onRatio: onRatio,
-                        onRetry: () => _retryImage(index),
+                    NotificationListener<ScrollNotification>(
+                      onNotification: (notification) =>
+                          AppearanceController.instance.value.autoHideMenus
+                          ? _chrome.onScroll(notification)
+                          : false,
+                      child: WebtoonView(
+                        geometry: _geometry!,
+                        controller: _webtoonScrollController,
+                        onWidth: (width) => _pageWidth = width,
+                        localDimensionsKnown: _isOfflineMode,
+                        footer: _buildEndOfChapterFooter(nextCh, prevCh),
+                        pageBuilder: (context, index, onRatio) =>
+                            ReaderPageImage(
+                              key: ValueKey(
+                                '$index-${_imageAttempts[index] ?? 0}',
+                              ),
+                              image: _providerFor(index),
+                              pageNumber: index + 1,
+                              onRatio: onRatio,
+                              onRetry: () => _retryImage(index),
+                            ),
                       ),
                     )
                   else
@@ -395,7 +426,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       imageForPage: _providerFor,
                       onPageChanged: (index) => _recordPage(index),
                       onRetry: _retryImage,
-                      onToggleHud: () => setState(() => _showHud = !_showHud),
+                      onToggleHud: _toggleHud,
                     ),
 
                   Positioned(

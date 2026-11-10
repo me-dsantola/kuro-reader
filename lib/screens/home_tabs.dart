@@ -1,3 +1,5 @@
+import '../widgets/appearance_settings.dart';
+import '../services/appearance_controller.dart';
 import '../models/catalog_sort.dart';
 import '../widgets/catalog_sort_control.dart';
 import 'favorite_updates_screen.dart';
@@ -27,7 +29,6 @@ class YomiPalette {
   static const Color sakuraSoft = Color(0xFFFBCFE8);
   static const Color pureWhite = Color(0xFFFAFAFA);
 }
-
 
 /// Widget Inteligente de Capa Multi-CDN (Nativo sem sqflite + Fallback i0.wp.com / wsrv.nl / codetabs + Auto-Recuperação AniList)
 class YomiCoverImage extends StatefulWidget {
@@ -89,8 +90,9 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
       return;
     }
     _triedTitleRecovery = true;
-    final resolved =
-        await MangaDexService.resolveCoverUrlByTitle(widget.manga.title);
+    final resolved = await MangaDexService.resolveCoverUrlByTitle(
+      widget.manga.title,
+    );
     if (!mounted) return;
     if (resolved != null && resolved.isNotEmpty) {
       final newUrls = yomiCandidateImageUrls(resolved);
@@ -125,28 +127,32 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
         color: YomiPalette.surface,
         padding: const EdgeInsets.all(8),
         alignment: Alignment.center,
-        child: LayoutBuilder(builder: (context, constraints) {
-          final icon = Icon(
-            _triedTitleRecovery && _exhausted
-                ? Icons.auto_stories_rounded : Icons.sync_rounded,
-            color: YomiPalette.ensoRed, size: 22,
-          );
-          if (constraints.maxHeight < 60) return icon;
-          return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            icon,
-            const SizedBox(height: 4),
-            Text(
-              widget.manga.title,
-              maxLines: 2,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 10, color: Colors.white70),
-            ),
-          ],
-        );
-        }),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final icon = Icon(
+              _triedTitleRecovery && _exhausted
+                  ? Icons.auto_stories_rounded
+                  : Icons.sync_rounded,
+              color: YomiPalette.ensoRed,
+              size: 22,
+            );
+            if (constraints.maxHeight < 60) return icon;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                icon,
+                const SizedBox(height: 4),
+                Text(
+                  widget.manga.title,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10, color: Colors.white70),
+                ),
+              ],
+            );
+          },
+        ),
       );
     }
 
@@ -160,7 +166,8 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
       // Decode covers close to their displayed size. Without this, large
       // source images can consume tens of MB per grid item and cause jank.
       cacheWidth: (() {
-        final logicalWidth = widget.width ??
+        final logicalWidth =
+            widget.width ??
             (widget.highRes
                 ? MediaQuery.sizeOf(context).width
                 : MediaQuery.sizeOf(context).width / 3);
@@ -268,7 +275,8 @@ class YomiSakuraArtwork extends StatelessWidget {
   const YomiSakuraArtwork({super.key});
 
   @override
-  Widget build(BuildContext context) => CustomPaint(painter: _ToriiSakuraBannerPainter());
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: _ToriiSakuraBannerPainter());
 }
 
 class YomiSakuraBanner extends StatelessWidget {
@@ -323,8 +331,13 @@ class YomiSakuraBanner extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(subtitleText, style: TextStyle(fontSize: 12,
-                color: YomiPalette.pureWhite.withValues(alpha: 0.85))),
+              Text(
+                subtitleText,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: YomiPalette.pureWhite.withValues(alpha: 0.85),
+                ),
+              ),
             ],
           ),
         ),
@@ -351,7 +364,8 @@ class _ToriiSakuraBannerPainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18);
     canvas.drawCircle(sunCenter, 48, haloPaint);
 
-    final sunPaint = Paint()..color = YomiPalette.ensoRed.withValues(alpha: 0.88);
+    final sunPaint = Paint()
+      ..color = YomiPalette.ensoRed.withValues(alpha: 0.88);
     canvas.drawCircle(sunCenter, 34, sunPaint);
 
     final mountainPaint = Paint()..color = const Color(0xFF0D0A12);
@@ -374,12 +388,29 @@ class _ToriiSakuraBannerPainter extends CustomPainter {
 
     final tx = sunCenter.dx;
     final ty = sunCenter.dy;
-    canvas.drawLine(Offset(tx - 18, ty - 10), Offset(tx + 18, ty - 10), toriiPaint);
-    canvas.drawLine(Offset(tx - 14, ty - 4), Offset(tx + 14, ty - 4), toriiPaint);
-    canvas.drawLine(Offset(tx - 10, ty - 10), Offset(tx - 12, ty + 18), toriiPaint);
-    canvas.drawLine(Offset(tx + 10, ty - 10), Offset(tx + 12, ty + 18), toriiPaint);
+    canvas.drawLine(
+      Offset(tx - 18, ty - 10),
+      Offset(tx + 18, ty - 10),
+      toriiPaint,
+    );
+    canvas.drawLine(
+      Offset(tx - 14, ty - 4),
+      Offset(tx + 14, ty - 4),
+      toriiPaint,
+    );
+    canvas.drawLine(
+      Offset(tx - 10, ty - 10),
+      Offset(tx - 12, ty + 18),
+      toriiPaint,
+    );
+    canvas.drawLine(
+      Offset(tx + 10, ty - 10),
+      Offset(tx + 12, ty + 18),
+      toriiPaint,
+    );
 
-    final sakuraPaint = Paint()..color = YomiPalette.sakuraPink.withValues(alpha: 0.60);
+    final sakuraPaint = Paint()
+      ..color = YomiPalette.sakuraPink.withValues(alpha: 0.60);
     final petals = [
       Offset(size.width * 0.12, size.height * 0.28),
       Offset(size.width * 0.28, size.height * 0.50),
@@ -389,7 +420,10 @@ class _ToriiSakuraBannerPainter extends CustomPainter {
       Offset(size.width * 0.72, size.height * 0.18),
     ];
     for (final p in petals) {
-      canvas.drawOval(Rect.fromCenter(center: p, width: 7.5, height: 4.2), sakuraPaint);
+      canvas.drawOval(
+        Rect.fromCenter(center: p, width: 7.5, height: 4.2),
+        sakuraPaint,
+      );
     }
   }
 
@@ -448,11 +482,17 @@ class ProfileDashboardScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.tune_rounded, color: YomiPalette.ensoRed),
+                      const Icon(
+                        Icons.tune_rounded,
+                        color: YomiPalette.ensoRed,
+                      ),
                       const SizedBox(width: 8),
                       const Text(
                         'Personalizar Identidade YOMI',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -474,7 +514,9 @@ class ProfileDashboardScreen extends StatelessWidget {
                                   : YomiPalette.pitchBlack,
                               child: Icon(
                                 _avatarIcons[idx],
-                                color: isSel ? YomiPalette.sakuraSoft : Colors.white70,
+                                color: isSel
+                                    ? YomiPalette.sakuraSoft
+                                    : Colors.white70,
                               ),
                             ),
                           ),
@@ -585,7 +627,10 @@ class ProfileDashboardScreen extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Ajustes & Backup',
-            icon: const Icon(Icons.settings_outlined, color: YomiPalette.sakuraPink),
+            icon: const Icon(
+              Icons.settings_outlined,
+              color: YomiPalette.sakuraPink,
+            ),
             onPressed: onGoToSettings,
           ),
         ],
@@ -620,9 +665,7 @@ class ProfileDashboardScreen extends StatelessWidget {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            CustomPaint(
-                              painter: _ToriiSakuraBannerPainter(),
-                            ),
+                            CustomPaint(painter: _ToriiSakuraBannerPainter()),
                             Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
@@ -630,7 +673,9 @@ class ProfileDashboardScreen extends StatelessWidget {
                                   end: Alignment.bottomCenter,
                                   colors: [
                                     Colors.black.withValues(alpha: 0.15),
-                                    YomiPalette.pitchBlack.withValues(alpha: 0.95),
+                                    YomiPalette.pitchBlack.withValues(
+                                      alpha: 0.95,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -642,15 +687,21 @@ class ProfileDashboardScreen extends StatelessWidget {
                               child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: YomiPalette.surface.withValues(alpha: 0.88),
+                                  color: YomiPalette.surface.withValues(
+                                    alpha: 0.88,
+                                  ),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: YomiPalette.ensoRed.withValues(alpha: 0.45),
+                                    color: YomiPalette.ensoRed.withValues(
+                                      alpha: 0.45,
+                                    ),
                                     width: 1.2,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: YomiPalette.ensoRed.withValues(alpha: 0.14),
+                                      color: YomiPalette.ensoRed.withValues(
+                                        alpha: 0.14,
+                                      ),
                                       blurRadius: 24,
                                       offset: const Offset(0, 8),
                                     ),
@@ -665,7 +716,9 @@ class ProfileDashboardScreen extends StatelessWidget {
                                         // Avatar emoldurado pelo Círculo Enso Japonês
                                         GestureDetector(
                                           onTap: () => _openEditProfileModal(
-                                              context, profile),
+                                            context,
+                                            profile,
+                                          ),
                                           child: SizedBox(
                                             width: 68,
                                             height: 68,
@@ -674,14 +727,16 @@ class ProfileDashboardScreen extends StatelessWidget {
                                               child: Center(
                                                 child: CircleAvatar(
                                                   radius: 25,
-                                                  backgroundColor:
-                                                      const Color(0xFF1F0913),
+                                                  backgroundColor: const Color(
+                                                    0xFF1F0913,
+                                                  ),
                                                   child: Icon(
-                                                    _avatarIcons[
-                                                        profile.avatarIndex %
-                                                            _avatarIcons.length],
+                                                    _avatarIcons[profile
+                                                            .avatarIndex %
+                                                        _avatarIcons.length],
                                                     size: 28,
-                                                    color: YomiPalette.sakuraSoft,
+                                                    color:
+                                                        YomiPalette.sakuraSoft,
                                                   ),
                                                 ),
                                               ),
@@ -697,41 +752,54 @@ class ProfileDashboardScreen extends StatelessWidget {
                                               Row(
                                                 children: [
                                                   Container(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 2.5,
-                                                    ),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 2.5,
+                                                        ),
                                                     decoration: BoxDecoration(
                                                       color: YomiPalette.ensoRed
-                                                          .withValues(alpha: 0.24),
+                                                          .withValues(
+                                                            alpha: 0.24,
+                                                          ),
                                                       borderRadius:
-                                                          BorderRadius.circular(6),
+                                                          BorderRadius.circular(
+                                                            6,
+                                                          ),
                                                       border: Border.all(
-                                                        color: YomiPalette.ensoRed,
+                                                        color:
+                                                            YomiPalette.ensoRed,
                                                         width: 0.8,
                                                       ),
                                                     ),
                                                     child: Text(
-                                                      metrics.rankTitle.toUpperCase(),
+                                                      metrics.rankTitle
+                                                          .toUpperCase(),
                                                       style: const TextStyle(
                                                         fontSize: 9.5,
-                                                        fontWeight: FontWeight.w900,
+                                                        fontWeight:
+                                                            FontWeight.w900,
                                                         letterSpacing: 0.7,
-                                                        color:
-                                                            YomiPalette.sakuraSoft,
+                                                        color: YomiPalette
+                                                            .sakuraSoft,
                                                       ),
                                                     ),
                                                   ),
                                                   const Spacer(),
                                                   InkWell(
                                                     borderRadius:
-                                                        BorderRadius.circular(8),
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
                                                     onTap: () =>
                                                         _openEditProfileModal(
-                                                            context, profile),
+                                                          context,
+                                                          profile,
+                                                        ),
                                                     child: const Padding(
-                                                      padding: EdgeInsets.all(4),
+                                                      padding: EdgeInsets.all(
+                                                        4,
+                                                      ),
                                                       child: Row(
                                                         children: [
                                                           Icon(
@@ -748,7 +816,8 @@ class ProfileDashboardScreen extends StatelessWidget {
                                                               color: YomiPalette
                                                                   .sakuraPink,
                                                               fontWeight:
-                                                                  FontWeight.bold,
+                                                                  FontWeight
+                                                                      .bold,
                                                             ),
                                                           ),
                                                         ],
@@ -794,8 +863,8 @@ class ProfileDashboardScreen extends StatelessWidget {
                                         backgroundColor: Colors.white10,
                                         valueColor:
                                             const AlwaysStoppedAnimation<Color>(
-                                          YomiPalette.ensoRed,
-                                        ),
+                                              YomiPalette.ensoRed,
+                                            ),
                                       ),
                                     ),
                                     const SizedBox(height: 8),
@@ -891,8 +960,9 @@ class ProfileDashboardScreen extends StatelessWidget {
                                       Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: YomiPalette.ensoRed
-                                              .withValues(alpha: 0.18),
+                                          color: YomiPalette.ensoRed.withValues(
+                                            alpha: 0.18,
+                                          ),
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(
@@ -942,7 +1012,8 @@ class ProfileDashboardScreen extends StatelessWidget {
                                     final Chapter chapter = item['chapter'];
                                     final savedPage =
                                         StorageService.getSavedPageIndex(
-                                            chapter.id);
+                                          chapter.id,
+                                        );
 
                                     return InkWell(
                                       borderRadius: BorderRadius.circular(16),
@@ -970,8 +1041,9 @@ class ProfileDashboardScreen extends StatelessWidget {
                                               YomiPalette.surface,
                                             ],
                                           ),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
                                           border: Border.all(
                                             color: YomiPalette.ensoRed
                                                 .withValues(alpha: 0.45),
@@ -998,18 +1070,22 @@ class ProfileDashboardScreen extends StatelessWidget {
                                                     MainAxisAlignment.center,
                                                 children: [
                                                   Container(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
-                                                    ),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2,
+                                                        ),
                                                     decoration: BoxDecoration(
                                                       color: manga
-                                                          .source.accentColor
-                                                          .withValues(alpha: 0.25),
+                                                          .source
+                                                          .accentColor
+                                                          .withValues(
+                                                            alpha: 0.25,
+                                                          ),
                                                       borderRadius:
                                                           BorderRadius.circular(
-                                                              4),
+                                                            4,
+                                                          ),
                                                     ),
                                                     child: Text(
                                                       manga.source.badge,
@@ -1145,7 +1221,9 @@ class ProfileDashboardScreen extends StatelessWidget {
                                 ),
                                 borderRadius: BorderRadius.circular(18),
                                 border: Border.all(
-                                  color: YomiPalette.sakuraPink.withValues(alpha: 0.28),
+                                  color: YomiPalette.sakuraPink.withValues(
+                                    alpha: 0.28,
+                                  ),
                                 ),
                               ),
                               child: Column(
@@ -1180,7 +1258,10 @@ class ProfileDashboardScreen extends StatelessWidget {
                                         ? '${metrics.mostReadCount} capítulos lidos'
                                         : 'Abra um capítulo para iniciar o ranking',
                                   ),
-                                  const Divider(color: Colors.white10, height: 16),
+                                  const Divider(
+                                    color: Colors.white10,
+                                    height: 16,
+                                  ),
                                   _HighlightBentoRow(
                                     badge: 'MENOS LIDO',
                                     badgeColor: YomiPalette.sakuraPink,
@@ -1191,18 +1272,21 @@ class ProfileDashboardScreen extends StatelessWidget {
                                         ? '${metrics.leastReadCount} capítulo(s) lido(s)'
                                         : '-',
                                   ),
-                                  const Divider(color: Colors.white10, height: 16),
+                                  const Divider(
+                                    color: Colors.white10,
+                                    height: 16,
+                                  ),
                                   Row(
                                     children: [
                                       Expanded(
                                         child: _ExtremeChapterBox(
                                           label: 'MAIOR CAPÍTULO',
-                                          value: metrics.longestChapterRead !=
-                                                  null
+                                          value:
+                                              metrics.longestChapterRead != null
                                               ? 'Cap. ${metrics.longestChapterRead!.chapterNumber}'
                                               : '--',
-                                          sub: metrics.longestChapterRead !=
-                                                  null
+                                          sub:
+                                              metrics.longestChapterRead != null
                                               ? '${metrics.longestChapterRead!.pages} páginas'
                                               : '0 págs',
                                           color: const Color(0xFF02A9FF),
@@ -1212,11 +1296,13 @@ class ProfileDashboardScreen extends StatelessWidget {
                                       Expanded(
                                         child: _ExtremeChapterBox(
                                           label: 'MENOR CAPÍTULO',
-                                          value: metrics.shortestChapterRead !=
+                                          value:
+                                              metrics.shortestChapterRead !=
                                                   null
                                               ? 'Cap. ${metrics.shortestChapterRead!.chapterNumber}'
                                               : '--',
-                                          sub: metrics.shortestChapterRead !=
+                                          sub:
+                                              metrics.shortestChapterRead !=
                                                   null
                                               ? '${metrics.shortestChapterRead!.pages} páginas'
                                               : '0 págs',
@@ -1381,10 +1467,7 @@ class _MetricStatCard extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.white60,
-                  ),
+                  style: const TextStyle(fontSize: 11, color: Colors.white60),
                 ),
               ],
             ),
@@ -1445,10 +1528,7 @@ class _HighlightBentoRow extends StatelessWidget {
               ),
               Text(
                 subtitle,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.white54,
-                ),
+                style: const TextStyle(fontSize: 11, color: Colors.white54),
               ),
             ],
           ),
@@ -1589,14 +1669,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   YomiSearchFilter get _currentFilter => YomiSearchFilter(
-        query: _searchController.text,
-        includedTags: Set.of(_includedTags),
-        excludedTags: Set.of(_excludedTags),
-        enabledSources: Set.of(_enabledSources),
-        allowNsfw: StorageService.nsfwMode.allowNsfwFetch,
-        sort: _catalogSort,
-        hideZeroChapters: StorageService.hideZeroChapterTitles,
-      );
+    query: _searchController.text,
+    includedTags: Set.of(_includedTags),
+    excludedTags: Set.of(_excludedTags),
+    enabledSources: Set.of(_enabledSources),
+    allowNsfw: StorageService.nsfwMode.allowNsfwFetch,
+    sort: _catalogSort,
+    hideZeroChapters: StorageService.hideZeroChapterTitles,
+  );
 
   Future<void> _loadMangas({bool reset = true}) async {
     final generation = _catalogRequests.beginSearch();
@@ -1608,7 +1688,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (reset && _scrollController.hasClients) _scrollController.jumpTo(0);
     try {
       final filter = _currentFilter;
-      final fastSearch = reset &&
+      final fastSearch =
+          reset &&
           filter.query.trim().isNotEmpty &&
           filter.enabledSources.contains(MangaSourceType.mangadex);
       final primaryFilter = fastSearch
@@ -1635,9 +1716,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       // Show real readable MangaDex matches immediately, then enrich with
       // secondary catalogs. Never make the first result wait for all APIs.
       if (fastSearch && mounted && generation == _catalogRequestGeneration) {
-        final secondary = filter.enabledSources.difference(
-          {MangaSourceType.mangadex},
-        );
+        final secondary = filter.enabledSources.difference({
+          MangaSourceType.mangadex,
+        });
         if (secondary.isNotEmpty) {
           _isEnrichingCatalog = true;
           try {
@@ -1660,13 +1741,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     .map((m) => m.normalizedTitleKey)
                     .where((key) => key.length >= 3)
                     .toSet();
-                _mangas.addAll(extra.where((m) {
-                  if (!seenIds.add(m.compositeId)) return false;
-                  // Don't show a metadata-only duplicate beneath an already
-                  // readable MangaDex result for the same normalized title.
-                  return m.normalizedTitleKey.length < 3 ||
-                      !readableTitles.contains(m.normalizedTitleKey);
-                }));
+                _mangas.addAll(
+                  extra.where((m) {
+                    if (!seenIds.add(m.compositeId)) return false;
+                    // Don't show a metadata-only duplicate beneath an already
+                    // readable MangaDex result for the same normalized title.
+                    return m.normalizedTitleKey.length < 3 ||
+                        !readableTitles.contains(m.normalizedTitleKey);
+                  }),
+                );
               });
             }
           } finally {
@@ -1696,12 +1779,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
         filter: _currentFilter,
         reset: false,
       );
-      if (mounted && generation == _catalogRequestGeneration && result.isNotEmpty) {
+      if (mounted &&
+          generation == _catalogRequestGeneration &&
+          result.isNotEmpty) {
         setState(() {
           final existingIds = _mangas.map((m) => m.compositeId).toSet();
-          _mangas.addAll(
-            result.where((m) => existingIds.add(m.compositeId)),
-          );
+          _mangas.addAll(result.where((m) => existingIds.add(m.compositeId)));
         });
       }
     } catch (_) {
@@ -1714,231 +1797,297 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _openTagFilterModal() {
-    final allowNsfw = StorageService.nsfwMode.allowNsfwFetch;
-    final groups = TagCategoryGroup.values.where((g) {
-      if (g == TagCategoryGroup.nsfwVault && !allowNsfw) return false;
-      return true;
-    }).toList();
+    // Edits remain local until Apply. Dismissing the sheet cancels the draft.
+    final draftIncluded = Set<CanonicalTag>.of(_includedTags);
+    final draftExcluded = Set<CanonicalTag>.of(_excludedTags);
+    final draftSources = Set<MangaSourceType>.of(_enabledSources);
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: YomiPalette.surface,
       isScrollControlled: true,
+      showDragHandle: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) {
-        return StatefulBuilder(
+      builder: (sheetContext) => ValueListenableBuilder<NsfwDisplayMode>(
+        valueListenable: StorageService.nsfwModeNotifier,
+        builder: (context, mode, _) => StatefulBuilder(
           builder: (context, setModalState) {
+            final visibleSources = MangaSourceType.values
+                .where(
+                  (source) =>
+                      mode.allowNsfwFetch ||
+                      source != MangaSourceType.adultSource,
+                )
+                .toList();
+            final groups = TagCategoryGroup.values.where(
+              (group) =>
+                  mode.allowNsfwFetch || group != TagCategoryGroup.nsfwVault,
+            );
             return DraggableScrollableSheet(
               expand: false,
               initialChildSize: 0.82,
               maxChildSize: 0.94,
               minChildSize: 0.5,
-              builder: (context, scrollCtrl) {
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              builder: (context, scrollController) => SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Expanded(child: Text(
-                            'Catálogo de Categorias & Fontes',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          const Expanded(
+                            child: Text(
+                              'Filtrar catálogo',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          )),
+                          ),
                           TextButton(
-                            onPressed: () {
-                              setModalState(() {
-                                _includedTags.clear();
-                                _excludedTags.clear();
-                              });
-                            },
-                            child: const Text(
-                              'Limpar Tudo',
-                              style: TextStyle(color: YomiPalette.sakuraPink),
-                            ),
+                            onPressed: () => setModalState(() {
+                              draftIncluded.clear();
+                              draftExcluded.clear();
+                              draftSources
+                                ..clear()
+                                ..addAll(MangaSourceType.values);
+                            }),
+                            child: const Text('Limpar filtros'),
                           ),
                         ],
                       ),
                       const Text(
-                        '1 toque = Incluir (+ Vermelho) • 2 toques = Excluir (- Sakura)',
-                        style: TextStyle(fontSize: 12, color: Colors.white54),
+                        'Toque para incluir, novamente para excluir e uma terceira vez para limpar a tag.',
+                        style: TextStyle(fontSize: 12, color: Colors.white70),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       Expanded(
                         child: ListView(
-                          controller: scrollCtrl,
+                          controller: scrollController,
                           children: [
-                            const Text(
-                              'Fontes de Catálogo Ativas (6 Motores)',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                color: YomiPalette.sakuraSoft,
+                            ExpansionTile(
+                              key: const PageStorageKey('catalog-sources'),
+                              tilePadding: EdgeInsets.zero,
+                              childrenPadding: const EdgeInsets.only(
+                                bottom: 12,
                               ),
+                              shape: const Border(),
+                              collapsedShape: const Border(),
+                              title: const Text(
+                                'Fontes de catálogo',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${visibleSources.where(draftSources.contains).length} de ${visibleSources.length} ativas',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              children: [
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    for (final source in visibleSources)
+                                      Tooltip(
+                                        message:
+                                            'Mantenha ao menos uma fonte ativa',
+                                        child: FilterChip(
+                                          selected: draftSources.contains(
+                                            source,
+                                          ),
+                                          backgroundColor:
+                                              YomiPalette.pitchBlack,
+                                          selectedColor: source.accentColor
+                                              .withValues(alpha: 0.28),
+                                          labelStyle: const TextStyle(
+                                            color: YomiPalette.pureWhite,
+                                          ),
+                                          checkmarkColor: YomiPalette.pureWhite,
+                                          label: Text(
+                                            '${source.badge} • ${source.label}',
+                                          ),
+                                          onSelected: (enabled) =>
+                                              setModalState(() {
+                                                if (enabled) {
+                                                  draftSources.add(source);
+                                                } else if (visibleSources
+                                                        .where(
+                                                          draftSources.contains,
+                                                        )
+                                                        .length >
+                                                    1) {
+                                                  draftSources.remove(source);
+                                                }
+                                              }),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: MangaSourceType.values.where((s) {
-                                if (s == MangaSourceType.adultSource &&
-                                    !allowNsfw) {
-                                  return false;
-                                }
-                                return true;
-                              }).map((src) {
-                                final isOn = _enabledSources.contains(src);
-                                return FilterChip(
-                                  labelStyle: const TextStyle(color: YomiPalette.pureWhite),
-                                  checkmarkColor: YomiPalette.pureWhite,
-                                  backgroundColor: YomiPalette.pitchBlack,
-                                  selected: isOn,
-                                  selectedColor:
-                                      src.accentColor.withValues(alpha: 0.28),
-                                  label: Text('${src.badge} • ${src.label}'),
-                                  onSelected: (val) {
-                                    setModalState(() {
-                                      if (val) {
-                                        _enabledSources.add(src);
-                                      } else if (_enabledSources.length > 1) {
-                                        _enabledSources.remove(src);
-                                      }
-                                    });
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 16),
-                            for (final group in groups) ...[
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(top: 10, bottom: 8),
-                                child: Text(
+                            for (final group in groups)
+                              ExpansionTile(
+                                key: PageStorageKey(
+                                  'catalog-tags-${group.name}',
+                                ),
+                                tilePadding: EdgeInsets.zero,
+                                childrenPadding: const EdgeInsets.only(
+                                  bottom: 12,
+                                ),
+                                shape: const Border(),
+                                collapsedShape: const Border(),
+                                initiallyExpanded:
+                                    group == TagCategoryGroup.genres,
+                                title: Text(
                                   group.title,
                                   style: const TextStyle(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
                                     color: YomiPalette.sakuraSoft,
                                   ),
                                 ),
+                                children: [
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      for (final tag
+                                          in CanonicalTag.values.where(
+                                            (tag) =>
+                                                tag.group == group &&
+                                                (mode.allowNsfwFetch ||
+                                                    !tag.isNsfwOnly),
+                                          ))
+                                        _filterTag(
+                                          tag: tag,
+                                          included: draftIncluded.contains(tag),
+                                          excluded: draftExcluded.contains(tag),
+                                          onTap: () => setModalState(() {
+                                            if (draftIncluded.remove(tag)) {
+                                              draftExcluded.add(tag);
+                                            } else if (!draftExcluded.remove(
+                                              tag,
+                                            )) {
+                                              draftIncluded.add(tag);
+                                            }
+                                          }),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: CanonicalTag.values
-                                    .where((t) =>
-                                        t.group == group &&
-                                        (allowNsfw || !t.isNsfwOnly))
-                                    .map((tag) {
-                                  final isInc = _includedTags.contains(tag);
-                                  final isExc = _excludedTags.contains(tag);
-
-                                  Color bgColor = YomiPalette.pitchBlack;
-                                  Color borderColor = Colors.white24;
-                                  IconData? icon;
-
-                                  if (isInc) {
-                                    bgColor =
-                                        YomiPalette.ensoRed.withValues(alpha: 0.25);
-                                    borderColor = YomiPalette.ensoRed;
-                                    icon = Icons.add_circle_outline;
-                                  } else if (isExc) {
-                                    bgColor =
-                                        YomiPalette.sakuraPink.withValues(alpha: 0.20);
-                                    borderColor = YomiPalette.sakuraPink;
-                                    icon = Icons.remove_circle_outline;
-                                  }
-
-                                  return InkWell(
-                                    borderRadius: BorderRadius.circular(20),
-                                    onTap: () {
-                                      setModalState(() {
-                                        if (!isInc && !isExc) {
-                                          _includedTags.add(tag);
-                                        } else if (isInc) {
-                                          _includedTags.remove(tag);
-                                          _excludedTags.add(tag);
-                                        } else {
-                                          _excludedTags.remove(tag);
-                                        }
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: bgColor,
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: borderColor),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (icon != null) ...[
-                                            Icon(icon,
-                                                size: 15, color: borderColor),
-                                            const SizedBox(width: 4),
-                                          ],
-                                          Text(
-                                            tag.label,
-                                            style: TextStyle(
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.w600,
-                                              decoration: isExc
-                                                  ? TextDecoration.lineThrough
-                                                  : null,
-                                              color: isExc
-                                                  ? YomiPalette.sakuraPink
-                                                  : YomiPalette.pureWhite,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              const SizedBox(height: 8),
-                            ],
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: YomiPalette.ensoRed,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
                           onPressed: () {
-                            Navigator.pop(context);
+                            if (!mounted) return;
+                            if (!StorageService.nsfwMode.allowNsfwFetch) {
+                              draftIncluded.removeWhere(
+                                (tag) => tag.isNsfwOnly,
+                              );
+                              draftExcluded.removeWhere(
+                                (tag) => tag.isNsfwOnly,
+                              );
+                            }
+                            setState(() {
+                              _includedTags
+                                ..clear()
+                                ..addAll(draftIncluded);
+                              _excludedTags
+                                ..clear()
+                                ..addAll(draftExcluded);
+                              _enabledSources
+                                ..clear()
+                                ..addAll(draftSources);
+                            });
+                            Navigator.pop(sheetContext);
                             _loadMangas(reset: true);
                           },
                           icon: const Icon(Icons.done_all_rounded),
-                          label: const Text(
-                            'Aplicar Filtros no Catálogo',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                          label: const Text('Aplicar filtros'),
                         ),
                       ),
                     ],
                   ),
-                );
-              },
+                ),
+              ),
             );
           },
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  Widget _filterTag({
+    required CanonicalTag tag,
+    required bool included,
+    required bool excluded,
+    required VoidCallback onTap,
+  }) {
+    final accent = excluded ? YomiPalette.sakuraPink : YomiPalette.ensoRed;
+    final active = included || excluded;
+    return Semantics(
+      button: true,
+      selected: active,
+      label:
+          '${tag.label}: ${included
+              ? "incluída"
+              : excluded
+              ? "excluída"
+              : "sem filtro"}',
+      child: Material(
+        color: active ? accent.withValues(alpha: 0.2) : YomiPalette.pitchBlack,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: active ? accent : Colors.white24),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (active) ...[
+                  Icon(
+                    excluded
+                        ? Icons.remove_circle_outline
+                        : Icons.add_circle_outline,
+                    size: 16,
+                    color: accent,
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Flexible(
+                  child: Text(
+                    tag.label,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: excluded
+                          ? YomiPalette.sakuraPink
+                          : YomiPalette.pureWhite,
+                      decoration: excluded ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1946,317 +2095,359 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     final displayed = List<Manga>.of(_mangas);
     if (_catalogSort == CatalogSort.title) {
-      displayed.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+      displayed.sort(
+        (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+      );
     }
     final latestRoll = displayed.where((m) => !m.isCoverOnly).take(10).toList();
     const catalogControlsHeight = 112.0;
-    final headerHeight =
-        MediaQuery.paddingOf(context).top +
-        kToolbarHeight +
-        catalogControlsHeight;
     final allowNsfw = StorageService.nsfwMode.allowNsfwFetch;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const FittedBox(
-          fit: BoxFit.scaleDown,
-          child: YomiEnsoLogo(fontSize: 24),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        flexibleSpace: const FrostedSurface(child: SizedBox.expand()),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(catalogControlsHeight),
-          child: SizedBox(
-            height: catalogControlsHeight,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          textInputAction: TextInputAction.search,
-                          onChanged: _scheduleTitleSearch,
-                          onSubmitted: (_) {
-                            _searchDebounce?.cancel();
-                            _loadMangas(reset: true);
-                          },
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText:
-                                'Buscar obras (One Piece, Solo Leveling, Batman...)',
-                            hintStyle: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.38),
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.search,
-                              color: YomiPalette.ensoRed,
-                            ),
-                            suffixIcon: _searchController.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(
-                                      Icons.clear,
-                                      color: Colors.white54,
-                                    ),
-                                    onPressed: () {
-                                      _searchDebounce?.cancel();
-                                      _searchController.clear();
-                                      _loadMangas(reset: true);
-                                    },
-                                  )
-                                : null,
-                            filled: true,
-                            fillColor: YomiPalette.surface,
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 0,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Badge(
-                        isLabelVisible:
-                            _includedTags.isNotEmpty ||
-                            _excludedTags.isNotEmpty,
-                        label: Text(
-                          '${_includedTags.length + _excludedTags.length}',
-                        ),
-                        backgroundColor: YomiPalette.ensoRed,
-                        child: IconButton.filledTonal(
-                          style: IconButton.styleFrom(
-                            backgroundColor: YomiPalette.surface,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          onPressed: _openTagFilterModal,
-                          icon: const Icon(
-                            Icons.tune_rounded,
-                            color: YomiPalette.sakuraPink,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Ordenar por',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12, color: Colors.white70),
-                        ),
-                      ),
-                      CatalogSortControl(
-                        value: _catalogSort,
-                        onChanged: (sort) {
-                          if (sort == _catalogSort) return;
+    final catalogAppBar = AppBar(
+      title: const FittedBox(
+        fit: BoxFit.scaleDown,
+        child: YomiEnsoLogo(fontSize: 24),
+      ),
+      centerTitle: true,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      scrolledUnderElevation: 0,
+      flexibleSpace: const FrostedSurface(child: SizedBox.expand()),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(catalogControlsHeight),
+        child: SizedBox(
+          height: catalogControlsHeight,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        textInputAction: TextInputAction.search,
+                        onChanged: _scheduleTitleSearch,
+                        onSubmitted: (_) {
                           _searchDebounce?.cancel();
-                          setState(() => _catalogSort = sort);
                           _loadMangas(reset: true);
                         },
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText:
+                              'Buscar obras (One Piece, Solo Leveling, Batman...)',
+                          hintStyle: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: YomiPalette.ensoRed,
+                          ),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    color: Colors.white54,
+                                  ),
+                                  onPressed: () {
+                                    _searchDebounce?.cancel();
+                                    _searchController.clear();
+                                    _loadMangas(reset: true);
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: YomiPalette.surface,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 0,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                    const SizedBox(width: 10),
+                    Badge(
+                      isLabelVisible:
+                          _includedTags.isNotEmpty || _excludedTags.isNotEmpty,
+                      label: Text(
+                        '${_includedTags.length + _excludedTags.length}',
+                      ),
+                      backgroundColor: YomiPalette.ensoRed,
+                      child: IconButton.filledTonal(
+                        tooltip: 'Filtros de catálogo',
+                        style: IconButton.styleFrom(
+                          backgroundColor: YomiPalette.surface,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: _openTagFilterModal,
+                        icon: const Icon(
+                          Icons.tune_rounded,
+                          color: YomiPalette.sakuraPink,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Ordenar por',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                    ),
+                    CatalogSortControl(
+                      value: _catalogSort,
+                      onChanged: (sort) {
+                        if (sort == _catalogSort) return;
+                        _searchDebounce?.cancel();
+                        setState(() => _catalogSort = sort);
+                        _loadMangas(reset: true);
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: YomiPalette.ensoRed))
-          : _error != null && _mangas.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.wifi_off_rounded,
-                            size: 48, color: YomiPalette.ensoRed),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Não foi possível consultar os catálogos. Tente novamente ou leia pela aba Offline.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                        const SizedBox(height: 16),
-                        FilledButton.icon(
-                          onPressed: () => _loadMangas(reset: true),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Tentar novamente'),
-                        ),
-                      ],
+    );
+
+    return ValueListenableBuilder<AppearancePreferences>(
+      valueListenable: AppearanceController.instance,
+      builder: (context, appearance, _) => Scaffold(
+        body: RefreshIndicator(
+          color: YomiPalette.ensoRed,
+          onRefresh: () => _loadMangas(reset: true),
+          child: CustomScrollView(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverAppBar(
+                key: const ValueKey('catalog-scroll-header'),
+                title: catalogAppBar.title,
+                centerTitle: true,
+                backgroundColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                scrolledUnderElevation: 0,
+                flexibleSpace: catalogAppBar.flexibleSpace,
+                bottom: catalogAppBar.bottom,
+                floating: AppearanceController.instance.value.autoHideMenus,
+                pinned: !AppearanceController.instance.value.autoHideMenus,
+                snap:
+                    AppearanceController.instance.value.autoHideMenus &&
+                    !MediaQuery.disableAnimationsOf(context),
+              ),
+              if (_isLoading)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: YomiPalette.ensoRed,
                     ),
                   ),
                 )
-              : RefreshIndicator(
-                  color: YomiPalette.ensoRed,
-                  onRefresh: () => _loadMangas(reset: true),
-                  child: CustomScrollView(
-                    controller: _scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(child: SizedBox(height: headerHeight)),
-                      const SliverToBoxAdapter(child: YomiSakuraBanner()),
-
-                      // BARRA RÁPIDA DE FONTES ATIVAS (MDX, ANI, MAL, CMK, HQs)
-                      SliverToBoxAdapter(
-                        child: SizedBox(
-                          height: 46,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
-                            children: MangaSourceType.values.where((s) {
-                              if (s == MangaSourceType.adultSource && !allowNsfw) {
-                                return false;
-                              }
-                              return true;
-                            }).map((src) {
-                              final isOn = _enabledSources.contains(src);
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: FilterChip(
-                                  labelStyle: const TextStyle(color: YomiPalette.pureWhite),
-                                  checkmarkColor: YomiPalette.pureWhite,
-                                  visualDensity: VisualDensity.compact,
-                                  selected: isOn,
-                                  selectedColor:
-                                      src.accentColor.withValues(alpha: 0.28),
-                                  backgroundColor: YomiPalette.surface,
-                                  side: BorderSide(
-                                    color: isOn
-                                        ? src.accentColor
-                                        : Colors.white12,
-                                  ),
-                                  label: Text(
-                                    '${src.badge} • ${src.label}',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: isOn
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                  onSelected: (val) {
-                                    setState(() {
-                                      if (val) {
-                                        _enabledSources.add(src);
-                                      } else if (_enabledSources.length > 1) {
-                                        _enabledSources.remove(src);
-                                      }
-                                    });
-                                    _loadMangas(reset: true);
-                                  },
-                                ),
-                              );
-                            }).toList(),
+              else if (_error != null && _mangas.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.wifi_off_rounded,
+                            size: 48,
+                            color: YomiPalette.ensoRed,
                           ),
-                        ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Não foi possível consultar os catálogos. Tente novamente ou leia pela aba Offline.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: () => _loadMangas(reset: true),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Tentar novamente'),
+                          ),
+                        ],
                       ),
+                    ),
+                  ),
+                )
+              else ...[
+                const SliverToBoxAdapter(child: YomiSakuraBanner()),
 
-                      if (latestRoll.isNotEmpty &&
-                          _searchController.text.isEmpty) ...[
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(16, 14, 16, 10),
-                            child: Row(
-                              children: [
-                                Icon(Icons.new_releases_rounded,
-                                    size: 18, color: YomiPalette.ensoRed),
-                                SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    _catalogSort == CatalogSort.latest ? 'Atualizações dos catálogos' : _catalogSort == CatalogSort.popular ? 'Populares nos catálogos' : 'Títulos A–Z',
-                                    style: TextStyle(
-                                      fontSize: 15.5,
-                                      fontWeight: FontWeight.w800,
-                                    ),
+                // BARRA RÁPIDA DE FONTES ATIVAS (MDX, ANI, MAL, CMK, HQs)
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 46,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
+                      children: MangaSourceType.values
+                          .where((s) {
+                            if (s == MangaSourceType.adultSource &&
+                                !allowNsfw) {
+                              return false;
+                            }
+                            return true;
+                          })
+                          .map((src) {
+                            final isOn = _enabledSources.contains(src);
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                labelStyle: const TextStyle(
+                                  color: YomiPalette.pureWhite,
+                                ),
+                                checkmarkColor: YomiPalette.pureWhite,
+                                visualDensity: VisualDensity.compact,
+                                selected: isOn,
+                                selectedColor: src.accentColor.withValues(
+                                  alpha: 0.28,
+                                ),
+                                backgroundColor: YomiPalette.surface,
+                                side: BorderSide(
+                                  color: isOn
+                                      ? src.accentColor
+                                      : Colors.white12,
+                                ),
+                                label: Text(
+                                  '${src.badge} • ${src.label}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isOn
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        SliverToBoxAdapter(
-                          child: SizedBox(
-                            height: 196,
-                            child: ListView.separated(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              scrollDirection: Axis.horizontal,
-                              itemCount: latestRoll.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(width: 12),
-                              itemBuilder: (context, idx) => SizedBox(
-                                width: 124,
-                                child: MangaGridCard(
-                                  manga: latestRoll[idx],
-                                  heroPrefix: 'roll',
-                                ),
+                                onSelected: (val) {
+                                  setState(() {
+                                    if (val) {
+                                      _enabledSources.add(src);
+                                    } else if (_enabledSources.length > 1) {
+                                      _enabledSources.remove(src);
+                                    }
+                                  });
+                                  _loadMangas(reset: true);
+                                },
                               ),
-                            ),
+                            );
+                          })
+                          .toList(),
+                    ),
+                  ),
+                ),
+
+                if (latestRoll.isNotEmpty &&
+                    _searchController.text.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(16, 14, 16, 10),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.new_releases_rounded,
+                            size: 18,
+                            color: YomiPalette.ensoRed,
                           ),
-                        ),
-                        const SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(16, 18, 16, 4),
+                          SizedBox(width: 6),
+                          Expanded(
                             child: Text(
-                              'Catálogo Unificado (Mangás, Manhwas & HQs)',
+                              _catalogSort == CatalogSort.latest
+                                  ? 'Atualizações dos catálogos'
+                                  : _catalogSort == CatalogSort.popular
+                                  ? 'Populares nos catálogos'
+                                  : 'Títulos A–Z',
                               style: TextStyle(
                                 fontSize: 15.5,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                      SliverPadding(
-                        padding: const EdgeInsets.all(16),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            childAspectRatio: 0.62,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 16,
-                          ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => MangaGridCard(
-                              manga: displayed[index],
-                              heroPrefix: 'explore',
-                            ),
-                            childCount: displayed.length,
+                        ],
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 196,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: latestRoll.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 12),
+                        itemBuilder: (context, idx) => SizedBox(
+                          width: 124,
+                          child: MangaGridCard(
+                            manga: latestRoll[idx],
+                            heroPrefix: 'roll',
                           ),
                         ),
                       ),
-                      if (_isLoadingMore)
-                        const SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                  color: YomiPalette.ensoRed),
-                            ),
-                          ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(16, 18, 16, 4),
+                      child: Text(
+                        'Catálogo Unificado (Mangás, Manhwas & HQs)',
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
                         ),
-                    ],
+                      ),
+                    ),
+                  ),
+                ],
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          childAspectRatio: 0.62,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 16,
+                        ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => MangaGridCard(
+                        manga: displayed[index],
+                        heroPrefix: 'explore',
+                      ),
+                      childCount: displayed.length,
+                    ),
                   ),
                 ),
+                if (_isLoadingMore)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: YomiPalette.ensoRed,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -2291,13 +2482,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
     if (!mounted) return;
     setState(() => _checkingUpdates = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-        failures > 0
-            ? 'Verificação parcial: $newChapters capítulos novos; $failures obras indisponíveis.'
-            : '$newChapters capítulos novos. Na primeira verificação, o histórico é inicializado.',
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          failures > 0
+              ? 'Verificação parcial: $newChapters capítulos novos; $failures obras indisponíveis.'
+              : '$newChapters capítulos novos. Na primeira verificação, o histórico é inicializado.',
+        ),
       ),
-    ));
+    );
   }
 
   @override
@@ -2317,9 +2510,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const FavoriteUpdatesScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const FavoriteUpdatesScreen()),
             ),
           ),
           IconButton(
@@ -2358,14 +2549,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         const Text(
                           'Sua biblioteca está vazia',
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Toque no coração em qualquer Mangá, Manhwa ou HQ para salvá-la aqui.',
                           textAlign: TextAlign.center,
-                          style:
-                              TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                          ),
                         ),
                       ],
                     ),
@@ -2390,16 +2584,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           padding: const EdgeInsets.all(16),
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            childAspectRatio: 0.62,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 16,
-                          ),
+                                crossAxisCount: 3,
+                                childAspectRatio: 0.62,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 16,
+                              ),
                           itemCount: favorites.length,
                           itemBuilder: (context, index) {
                             final manga = favorites[index];
-                            final count =
-                                FavoriteUpdatesService.pendingFor(manga).length;
+                            final count = FavoriteUpdatesService.pendingFor(
+                              manga,
+                            ).length;
                             return Stack(
                               children: [
                                 MangaGridCard(manga: manga, heroPrefix: 'lib'),
@@ -2409,7 +2604,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                     right: 4,
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 7, vertical: 3),
+                                        horizontal: 7,
+                                        vertical: 3,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: YomiPalette.ensoRed,
                                         borderRadius: BorderRadius.circular(12),
@@ -2447,14 +2644,67 @@ class _LibraryScreenState extends State<LibraryScreen> {
 class DownloadsScreen extends StatelessWidget {
   const DownloadsScreen({super.key});
 
+  Future<void> _delete(BuildContext context, {Chapter? chapter}) async {
+    final all = chapter == null;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          all ? 'Apagar todos os downloads?' : 'Apagar este capítulo?',
+        ),
+        content: Text(
+          all
+              ? 'Os arquivos serão removidos do aparelho, incluindo downloads ocultos pelo filtro de conteúdo. Favoritos e progresso serão preservados.'
+              : 'O capítulo ${chapter.chapterNumber} poderá ser baixado novamente. O progresso de leitura será preservado.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Apagar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      if (all) {
+        await DownloadManager.deleteAllDownloads();
+      } else {
+        await DownloadManager.deleteChapter(chapter.id);
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            all ? 'Armazenamento offline limpo.' : 'Download removido.',
+          ),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Não foi possível apagar. Aguarde os downloads e tente novamente.',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Row(
           children: [
-            Icon(Icons.download_for_offline_rounded,
-                color: YomiPalette.ensoRed),
+            Icon(
+              Icons.download_for_offline_rounded,
+              color: YomiPalette.ensoRed,
+            ),
             SizedBox(width: 10),
             Text('Capítulos Offline'),
           ],
@@ -2462,15 +2712,11 @@ class DownloadsScreen extends StatelessWidget {
         actions: [
           IconButton(
             tooltip: 'Apagar todos os downloads',
-            icon: const Icon(Icons.delete_sweep_outlined,
-                color: YomiPalette.sakuraPink),
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              await DownloadManager.deleteAllDownloads();
-              messenger.showSnackBar(
-                const SnackBar(content: Text('Armazenamento offline limpo!')),
-              );
-            },
+            icon: const Icon(
+              Icons.delete_sweep_outlined,
+              color: YomiPalette.sakuraPink,
+            ),
+            onPressed: () => _delete(context),
           ),
         ],
       ),
@@ -2495,9 +2741,11 @@ class DownloadsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          'Nenhum capítulo salvo no aparelho',
+                          'Nenhum capítulo disponível com os filtros atuais',
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -2513,14 +2761,20 @@ class DownloadsScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final entry = items[index];
                   final manga = Manga.fromMap(
-                      Map<String, dynamic>.from(entry['manga'] ?? {}));
+                    Map<String, dynamic>.from(entry['manga'] ?? {}),
+                  );
                   final chapter = Chapter.fromMap(
-                      Map<String, dynamic>.from(entry['chapter'] ?? {}));
-                  final paths = List<String>.from(entry['paths'] ?? []);
+                    Map<String, dynamic>.from(entry['chapter'] ?? {}),
+                  );
+                  final paths = StorageService.getDownloadedChapterPaths(
+                    chapter.id,
+                  );
 
                   return ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     leading: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: YomiCoverImage(
@@ -2534,17 +2788,24 @@ class DownloadsScreen extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 15),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
                     subtitle: Text(
                       'Cap. ${chapter.chapterNumber} (${chapter.language}) • ${paths.length} págs',
                       style: const TextStyle(
-                          color: YomiPalette.sakuraPink, fontSize: 12.5),
+                        color: YomiPalette.sakuraPink,
+                        fontSize: 12.5,
+                      ),
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline,
-                          color: Colors.white54),
-                      onPressed: () => DownloadManager.deleteChapter(chapter.id),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.white54,
+                      ),
+                      tooltip: 'Apagar capítulo',
+                      onPressed: () => _delete(context, chapter: chapter),
                     ),
                     onTap: () {
                       Navigator.push(
@@ -2650,15 +2911,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   );
                   if (confirmed != true || !ctx.mounted) return;
-                  final ok = await StorageService.importFullBackupJson(ctrl.text);
+                  final ok = await StorageService.importFullBackupJson(
+                    ctrl.text,
+                  );
                   if (!ctx.mounted) return;
                   final messenger = ScaffoldMessenger.of(ctx);
                   if (ok) Navigator.pop(ctx);
                   messenger.showSnackBar(
                     SnackBar(
-                      content: Text(ok
-                          ? 'Perfil, favoritos e histórico mesclados com sucesso.'
-                          : 'Backup inválido ou erro ao restaurar. Confira seus dados locais.'),
+                      content: Text(
+                        ok
+                            ? 'Perfil, favoritos e histórico mesclados com sucesso.'
+                            : 'Backup inválido ou erro ao restaurar. Confira seus dados locais.',
+                      ),
                     ),
                   );
                 },
@@ -2697,6 +2962,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  const AppearanceSettings(),
+                  const SizedBox(height: 22),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Abrir o Perfil ao iniciar'),
@@ -2705,18 +2972,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(fontSize: 12, color: Colors.white60),
                     ),
                     activeThumbColor: YomiPalette.ensoRed,
-                    value: StorageService.profileNotifier.value
+                    value: StorageService
+                        .profileNotifier
+                        .value
                         .openOnProfileByDefault,
                     onChanged: (enabled) async {
                       final current = StorageService.profileNotifier.value;
-                      await StorageService.updateUserProfile(UserProfile(
-                        name: current.name,
-                        bio: current.bio,
-                        avatarIndex: current.avatarIndex,
-                        favoriteGenre: current.favoriteGenre,
-                        openOnProfileByDefault: enabled,
-                        isConfigured: current.isConfigured,
-                      ));
+                      await StorageService.updateUserProfile(
+                        UserProfile(
+                          name: current.name,
+                          bio: current.bio,
+                          avatarIndex: current.avatarIndex,
+                          favoriteGenre: current.favoriteGenre,
+                          openOnProfileByDefault: enabled,
+                          isConfigured: current.isConfigured,
+                        ),
+                      );
                     },
                   ),
                   const Divider(color: Colors.white10),
@@ -2759,7 +3030,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             subtitle: Text(
                               mode.subtitle,
                               style: const TextStyle(
-                                  fontSize: 12, color: Colors.white60),
+                                fontSize: 12,
+                                color: Colors.white60,
+                              ),
                             ),
                             onTap: () => StorageService.setNsfwMode(mode),
                           ),
@@ -2769,12 +3042,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           title: const Text(
                             'Sempre iniciar com Conteúdo Adulto Desligado',
                             style: TextStyle(
-                                fontSize: 13.5, fontWeight: FontWeight.w600),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           subtitle: const Text(
                             'Garante que toda vez que o app for aberto, o modo 18+ volte automaticamente para Seguro (Oculto).',
-                            style:
-                                TextStyle(fontSize: 11.5, color: Colors.white54),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.white54,
+                            ),
                           ),
                           value: lockNsfwStartup,
                           onChanged: (val) =>
@@ -2807,12 +3084,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           title: const Text(
                             'Ocultar totalmente obras "Só Capa" (0 capítulos)',
                             style: TextStyle(
-                                fontSize: 13.5, fontWeight: FontWeight.w600),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           subtitle: const Text(
-                            'Por padrão elas aparecem em cinza no fim da pesquisa. Ative para escondê-las completamente.',
-                            style:
-                                TextStyle(fontSize: 11.5, color: Colors.white54),
+                            'Ative para ocultar títulos sem capítulos confirmados nesta fonte.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.white54,
+                            ),
                           ),
                           value: hideZero,
                           onChanged: (val) =>
@@ -2824,12 +3105,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           title: const Text(
                             'Economia de Dados (Data Saver)',
                             style: TextStyle(
-                                fontSize: 13.5, fontWeight: FontWeight.w600),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           subtitle: const Text(
-                            'Carrega páginas otimizadas em WebP para leitura mais rápida em redes móveis.',
-                            style:
-                                TextStyle(fontSize: 11.5, color: Colors.white54),
+                            'Prefere as páginas de menor tamanho oferecidas pela fonte, quando disponíveis.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.white54,
+                            ),
                           ),
                           value: dataSaver,
                           onChanged: (val) =>
@@ -2860,8 +3145,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.cloud_done_rounded,
-                                color: Colors.greenAccent, size: 18),
+                            Icon(
+                              Icons.cloud_done_rounded,
+                              color: Colors.greenAccent,
+                              size: 18,
+                            ),
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -2885,12 +3173,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () async {
-                                  final messenger =
-                                      ScaffoldMessenger.of(context);
+                                  final messenger = ScaffoldMessenger.of(
+                                    context,
+                                  );
                                   final code =
                                       StorageService.exportFullBackupJson();
                                   await Clipboard.setData(
-                                      ClipboardData(text: code));
+                                    ClipboardData(text: code),
+                                  );
                                   messenger.showSnackBar(
                                     const SnackBar(
                                       content: Text(
@@ -2899,8 +3189,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   );
                                 },
-                                icon: const Icon(Icons.copy_all_rounded,
-                                    size: 18),
+                                icon: const Icon(
+                                  Icons.copy_all_rounded,
+                                  size: 18,
+                                ),
                                 label: const Text('Copiar Backup'),
                               ),
                             ),
@@ -2912,8 +3204,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   foregroundColor: Colors.white,
                                 ),
                                 onPressed: _showRestoreBackupModal,
-                                icon:
-                                    const Icon(Icons.restore_rounded, size: 18),
+                                icon: const Icon(
+                                  Icons.restore_rounded,
+                                  size: 18,
+                                ),
                                 label: const Text('Restaurar'),
                               ),
                             ),
@@ -2960,7 +3254,8 @@ class _MangaGridCardState extends State<MangaGridCard> {
     return ValueListenableBuilder<NsfwDisplayMode>(
       valueListenable: StorageService.nsfwModeNotifier,
       builder: (context, nsfwMode, _) {
-        final shouldBlur = widget.manga.isNsfw &&
+        final shouldBlur =
+            widget.manga.isNsfw &&
             nsfwMode == NsfwDisplayMode.blurred &&
             !_peekUnblurred;
 
@@ -2968,10 +3263,8 @@ class _MangaGridCardState extends State<MangaGridCard> {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => MangaDetailScreen(
-                manga: widget.manga,
-                heroTag: heroTag,
-              ),
+              builder: (_) =>
+                  MangaDetailScreen(manga: widget.manga, heroTag: heroTag),
             ),
           ),
           onLongPress: widget.manga.isNsfw
@@ -3049,8 +3342,15 @@ class _MangaGridCardState extends State<MangaGridCard> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: widget.manga.source.accentColor
-                                    .withValues(alpha: 0.92),
+                                color: Color.alphaBlend(
+                                  widget.manga.source.accentColor.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  YomiPalette.pitchBlack,
+                                ),
+                                border: Border.all(
+                                  color: widget.manga.source.accentColor,
+                                ),
                                 borderRadius: BorderRadius.circular(5),
                               ),
                               child: Text(
@@ -3071,8 +3371,9 @@ class _MangaGridCardState extends State<MangaGridCard> {
                               right: 0,
                               child: Container(
                                 color: Colors.black87,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 3,
+                                ),
                                 alignment: Alignment.center,
                                 child: const Text(
                                   'SÓ CAPA (0 CAPS)',
@@ -3113,8 +3414,9 @@ class _MangaGridCardState extends State<MangaGridCard> {
                             ),
                           // Coração se estiver nos favoritos
                           ValueListenableBuilder(
-                            valueListenable: StorageService.favBox
-                                .listenable(keys: [widget.manga.id]),
+                            valueListenable: StorageService.favBox.listenable(
+                              keys: [widget.manga.id],
+                            ),
                             builder: (context, Box box, _) {
                               if (!StorageService.isFavorite(widget.manga.id)) {
                                 return const SizedBox.shrink();

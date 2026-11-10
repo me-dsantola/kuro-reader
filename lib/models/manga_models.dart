@@ -9,7 +9,9 @@ import 'package:flutter/material.dart';
 List<String> yomiCandidateImageUrls(String rawUrl) {
   String clean = rawUrl.trim();
   if (clean.startsWith('https://wsrv.nl/?url=')) {
-    clean = Uri.decodeComponent(clean.replaceFirst('https://wsrv.nl/?url=', ''));
+    clean = Uri.decodeComponent(
+      clean.replaceFirst('https://wsrv.nl/?url=', ''),
+    );
   }
   if (clean.isEmpty || clean.contains('via.placeholder.com')) {
     return const [];
@@ -61,8 +63,14 @@ enum MangaSourceType {
 }
 
 enum NsfwDisplayMode {
-  hidden('Seguro (Ocultar 18+)', 'Oculta conteúdo adulto e obras sem classificação confirmada'),
-  blurred('Sakura Blur (Borrar Capas)', 'Exibe resultados 18+ com capa desfocada até segurar'),
+  hidden(
+    'Seguro (Ocultar 18+)',
+    'Oculta conteúdo adulto e obras sem classificação confirmada',
+  ),
+  blurred(
+    'Sakura Blur (Borrar Capas)',
+    'Exibe resultados 18+ com capa desfocada até segurar',
+  ),
   visible('Liberado (Exibir Tudo)', 'Exibe capas e obras 18+ sem restrições');
 
   final String label;
@@ -406,6 +414,10 @@ class YomiSearchFilter {
   }) : sort = sort ?? (sortByLatest ? CatalogSort.latest : CatalogSort.popular);
 }
 
+/// Exact title identity across scripts, without conflating unrelated CJK works.
+String normalizeMangaTitle(String title) =>
+    title.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]', unicode: true), '');
+
 class Manga {
   final String id;
   final MangaSourceType source;
@@ -441,23 +453,21 @@ class Manga {
     this.preloadedChapters,
     this.availableChaptersCount = -1,
     this.alternativeSources = const [],
-  })  : updatedAt = updatedAt ?? DateTime.now(),
-        customHeaders = kIsWeb
-            ? const {}
-            : (customHeaders ??
-                const {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) YomiReader/8.0',
-                });
+  }) : updatedAt = updatedAt ?? DateTime.now(),
+       customHeaders = kIsWeb
+           ? const {}
+           : (customHeaders ??
+                 const {
+                   'User-Agent':
+                       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) YomiReader/8.0',
+                 });
 
   String get compositeId => '${source.name}_$id';
 
   bool get isCoverOnly => availableChaptersCount == 0;
 
   String get normalizedTitleKey {
-    return title
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]'), '')
-        .trim();
+    return normalizeMangaTitle(title);
   }
 
   Manga copyWith({
@@ -480,13 +490,16 @@ class Manga {
       updatedAt: updatedAt,
       customHeaders: customHeaders,
       preloadedChapters: preloadedChapters ?? this.preloadedChapters,
-      availableChaptersCount: availableChaptersCount ?? this.availableChaptersCount,
+      availableChaptersCount:
+          availableChaptersCount ?? this.availableChaptersCount,
       alternativeSources: alternativeSources ?? this.alternativeSources,
     );
   }
 
   String getRawCoverUrl({bool highRes = false}) {
-    if (highRes && directHighResCoverUrl != null && directHighResCoverUrl!.isNotEmpty) {
+    if (highRes &&
+        directHighResCoverUrl != null &&
+        directHighResCoverUrl!.isNotEmpty) {
       return directHighResCoverUrl!;
     }
     if (directCoverUrl != null && directCoverUrl!.isNotEmpty) {
@@ -528,7 +541,9 @@ class Manga {
 
   String getCoverUrl({bool highRes = false}) {
     String raw;
-    if (highRes && directHighResCoverUrl != null && directHighResCoverUrl!.isNotEmpty) {
+    if (highRes &&
+        directHighResCoverUrl != null &&
+        directHighResCoverUrl!.isNotEmpty) {
       raw = directHighResCoverUrl!;
     } else if (directCoverUrl != null && directCoverUrl!.isNotEmpty) {
       raw = directCoverUrl!;
@@ -539,7 +554,8 @@ class Manga {
           .replaceFirst('ani_mdx_', '')
           .replaceFirst('mal_mdx_', '');
       final suffix = highRes ? '.512.jpg' : '.256.jpg';
-      raw = 'https://uploads.mangadex.org/covers/$cleanId/$coverFileName$suffix';
+      raw =
+          'https://uploads.mangadex.org/covers/$cleanId/$coverFileName$suffix';
     } else {
       raw = '';
     }
@@ -547,34 +563,36 @@ class Manga {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'source': source.name,
-        'title': title,
-        'description': description,
-        'status': status,
-        'coverFileName': coverFileName,
-        'directCoverUrl': directCoverUrl,
-        'directHighResCoverUrl': directHighResCoverUrl,
-        'tags': tags,
-        'isNsfw': isNsfw,
-        'contentRatingKnown': contentRatingKnown,
-        'updatedAt': updatedAt.toIso8601String(),
-        'customHeaders': customHeaders,
-        'availableChaptersCount': availableChaptersCount,
-        'preloadedChapters': preloadedChapters?.map((c) => c.toMap()).toList(),
-      };
+    'id': id,
+    'source': source.name,
+    'title': title,
+    'description': description,
+    'status': status,
+    'coverFileName': coverFileName,
+    'directCoverUrl': directCoverUrl,
+    'directHighResCoverUrl': directHighResCoverUrl,
+    'tags': tags,
+    'isNsfw': isNsfw,
+    'contentRatingKnown': contentRatingKnown,
+    'updatedAt': updatedAt.toIso8601String(),
+    'customHeaders': customHeaders,
+    'availableChaptersCount': availableChaptersCount,
+    'preloadedChapters': preloadedChapters?.map((c) => c.toMap()).toList(),
+  };
 
   factory Manga.fromMap(Map<String, dynamic> map) {
-    final rawPreloaded = map['preloadedChapters'] as List?;
+    final rawPreloaded = map['preloadedChapters'];
     final source = MangaSourceType.fromName(map['source']?.toString());
     final id = (map['id'] ?? '').toString();
-    final legacyMangaDex = id.startsWith('cmk_mdx_') || id.startsWith('mal_mdx_');
+    final legacyMangaDex =
+        id.startsWith('cmk_mdx_') || id.startsWith('mal_mdx_');
     // Older Jikan/Kitsu records hard-coded isNsfw=false. Preserve their data
     // and IDs, but require sensitive mode until a fresh classified lookup.
     final known = map['contentRatingKnown'] is bool
         ? map['contentRatingKnown'] == true
         : legacyMangaDex ||
-            (source != MangaSourceType.jikanMal && source != MangaSourceType.comick);
+              (source != MangaSourceType.jikanMal &&
+                  source != MangaSourceType.comick);
     return Manga(
       id: id,
       source: source,
@@ -584,19 +602,41 @@ class Manga {
       coverFileName: map['coverFileName']?.toString(),
       directCoverUrl: map['directCoverUrl']?.toString(),
       directHighResCoverUrl: map['directHighResCoverUrl']?.toString(),
-      tags: List<String>.from(map['tags'] ?? []),
+      tags: map['tags'] is List
+          ? (map['tags'] as List).whereType<String>().toList()
+          : const [],
       isNsfw: map['isNsfw'] == true || !known,
       contentRatingKnown: known,
-      updatedAt: DateTime.tryParse(map['updatedAt']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(map['updatedAt']?.toString() ?? '') ??
+          DateTime.now(),
       customHeaders: kIsWeb
           ? const {}
-          : (map['customHeaders'] != null
-              ? Map<String, String>.from(map['customHeaders'] as Map)
-              : const {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) YomiReader/8.0'}),
-      availableChaptersCount: (map['availableChaptersCount'] as int?) ?? -1,
-      preloadedChapters: rawPreloaded
-          ?.map((e) => Chapter.fromMap(Map<String, dynamic>.from(e as Map)))
-          .toList(),
+          : (map['customHeaders'] is Map
+                ? {
+                    for (final entry in (map['customHeaders'] as Map).entries)
+                      if (entry.key is String && entry.value is String)
+                        entry.key as String: entry.value as String,
+                  }
+                : const {
+                    'User-Agent':
+                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) YomiReader/8.0',
+                  }),
+      availableChaptersCount:
+          map['availableChaptersCount'] is int &&
+              map['availableChaptersCount'] >= -1
+          ? map['availableChaptersCount'] as int
+          : -1,
+      preloadedChapters: rawPreloaded is List
+          ? rawPreloaded
+                .whereType<Map>()
+                .where((entry) => entry.keys.every((key) => key is String))
+                .map(
+                  (entry) => Chapter.fromMap(Map<String, dynamic>.from(entry)),
+                )
+                .where((chapter) => chapter.id.isNotEmpty)
+                .toList()
+          : null,
     );
   }
 
@@ -607,7 +647,8 @@ class Manga {
   }) {
     final attributes = json['attributes'] ?? {};
     final titleMap = Map<String, dynamic>.from(attributes['title'] ?? {});
-    String resolvedTitle = titleMap['pt-br'] ??
+    String resolvedTitle =
+        titleMap['pt-br'] ??
         titleMap['en'] ??
         titleMap['ja-ro'] ??
         (titleMap.values.isNotEmpty ? titleMap.values.first.toString() : '');
@@ -617,7 +658,8 @@ class Manga {
       final altList = (attributes['altTitles'] as List?) ?? [];
       for (final alt in altList) {
         if (alt is Map && alt.values.isNotEmpty) {
-          resolvedTitle = (alt['pt-br'] ?? alt['en'] ?? alt.values.first).toString();
+          resolvedTitle = (alt['pt-br'] ?? alt['en'] ?? alt.values.first)
+              .toString();
           if (resolvedTitle.trim().isNotEmpty) break;
         }
       }
@@ -625,7 +667,8 @@ class Manga {
     if (resolvedTitle.trim().isEmpty) resolvedTitle = 'Obra Sem Título';
 
     final descMap = Map<String, dynamic>.from(attributes['description'] ?? {});
-    String resolvedDesc = descMap['pt-br'] ??
+    String resolvedDesc =
+        descMap['pt-br'] ??
         descMap['en'] ??
         (descMap.values.isNotEmpty
             ? descMap.values.first.toString()
@@ -650,23 +693,33 @@ class Manga {
       }
     }
 
-    final String rating = (attributes['contentRating'] ?? 'safe').toString();
+    final String rating = attributes['contentRating']?.toString() ?? '';
+    final bool ratingKnown =
+        forceNsfwFlag ||
+        const {
+          'safe',
+          'suggestive',
+          'erotica',
+          'pornographic',
+        }.contains(rating);
     final bool isNsfw =
-        forceNsfwFlag || rating == 'erotica' || rating == 'pornographic';
+        forceNsfwFlag ||
+        !ratingKnown ||
+        rating == 'erotica' ||
+        rating == 'pornographic';
 
     final DateTime updated =
         DateTime.tryParse(attributes['updatedAt']?.toString() ?? '') ??
-            DateTime.now();
+        DateTime.now();
 
-    final String? lastChStr = attributes['lastChapter']?.toString();
-    final String? latestUploaded = attributes['latestUploadedChapter']?.toString();
-    int estimatedChapters = 25;
-    if (latestUploaded == null || latestUploaded.isEmpty) {
-      estimatedChapters = 0;
-    } else if (lastChStr != null && double.tryParse(lastChStr) != null) {
-      estimatedChapters = double.parse(lastChStr).round();
-      if (estimatedChapters <= 0) estimatedChapters = 25;
-    }
+    // Publication totals and an uploaded chapter ID do not prove how many
+    // readable chapters this app can fetch. Only a cached feed knows a count.
+    final int knownAvailability =
+        attributes.containsKey('latestUploadedChapter') &&
+            (attributes['latestUploadedChapter'] == null ||
+                attributes['latestUploadedChapter'].toString().isEmpty)
+        ? 0
+        : -1;
 
     return Manga(
       id: json['id'].toString(),
@@ -677,8 +730,9 @@ class Manga {
       coverFileName: coverFile,
       tags: parsedTags,
       isNsfw: isNsfw,
+      contentRatingKnown: ratingKnown,
       updatedAt: updated,
-      availableChaptersCount: estimatedChapters,
+      availableChaptersCount: knownAvailability,
     );
   }
 }
@@ -712,30 +766,32 @@ class Chapter {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'source': source.name,
-        'chapterNumber': chapterNumber,
-        'title': title,
-        'language': language,
-        'pages': pages,
-        'scanlator': scanlator,
-        'directPageUrls': directPageUrls,
-        'externalArchiveId': externalArchiveId,
-      };
+    'id': id,
+    'source': source.name,
+    'chapterNumber': chapterNumber,
+    'title': title,
+    'language': language,
+    'pages': pages,
+    'scanlator': scanlator,
+    'directPageUrls': directPageUrls,
+    'externalArchiveId': externalArchiveId,
+  };
 
   factory Chapter.fromMap(Map<String, dynamic> map) => Chapter(
-        id: (map['id'] ?? '').toString(),
-        source: MangaSourceType.fromName(map['source']?.toString()),
-        chapterNumber: (map['chapterNumber'] ?? '1').toString(),
-        title: (map['title'] ?? 'Capítulo').toString(),
-        language: (map['language'] ?? 'PT-BR').toString(),
-        pages: (map['pages'] as int?) ?? 0,
-        scanlator: (map['scanlator'] ?? 'Comunidade').toString(),
-        directPageUrls: map['directPageUrls'] != null
-            ? List<String>.from(map['directPageUrls'] as List)
-            : null,
-        externalArchiveId: map['externalArchiveId']?.toString(),
-      );
+    id: (map['id'] ?? '').toString(),
+    source: MangaSourceType.fromName(map['source']?.toString()),
+    chapterNumber: (map['chapterNumber'] ?? '1').toString(),
+    title: (map['title'] ?? 'Capítulo').toString(),
+    language: (map['language'] ?? 'PT-BR').toString(),
+    pages: map['pages'] is int && map['pages'] >= 0 ? map['pages'] as int : 0,
+    scanlator: (map['scanlator'] ?? 'Comunidade').toString(),
+    directPageUrls:
+        map['directPageUrls'] is List &&
+            (map['directPageUrls'] as List).every((value) => value is String)
+        ? List<String>.from(map['directPageUrls'] as List)
+        : null,
+    externalArchiveId: map['externalArchiveId']?.toString(),
+  );
 
   factory Chapter.fromJson(
     Map<String, dynamic> json, {
@@ -756,7 +812,8 @@ class Chapter {
       id: json['id'].toString(),
       source: source,
       chapterNumber: chNum,
-      title: (attr['title'] != null && attr['title'].toString().trim().isNotEmpty)
+      title:
+          (attr['title'] != null && attr['title'].toString().trim().isNotEmpty)
           ? attr['title'].toString()
           : 'Capítulo $chNum',
       language: (attr['translatedLanguage'] ?? 'en').toString().toUpperCase(),
@@ -783,13 +840,32 @@ class ChapterPagesData {
 
   List<String> getUrls({required bool useDataSaver}) {
     if (directUrls != null && directUrls!.isNotEmpty) {
-      return directUrls!.map((u) => yomiSafeImageUrl(u)).toList();
+      if (directUrls!.any((url) => !_validPageUrl(url))) {
+        throw const FormatException('Endereço de página inválido');
+      }
+      return directUrls!.map(yomiSafeImageUrl).toList();
     }
-    final folder = useDataSaver ? 'data-saver' : 'data';
-    final files = useDataSaver ? dataSaverFiles : hdFiles;
+    // Some chapters expose only one quality. Preserve the page sequence while
+    // falling back to the available set instead of returning an empty chapter.
+    final useSaver = useDataSaver ? dataSaverFiles.isNotEmpty : hdFiles.isEmpty;
+    final folder = useSaver ? 'data-saver' : 'data';
+    final files = useSaver ? dataSaverFiles : hdFiles;
+    if (files.isEmpty) return const [];
+    if (!_validPageUrl(baseUrl) ||
+        hash.trim().isEmpty ||
+        files.any((file) => file.trim().isEmpty)) {
+      throw const FormatException('Dados de páginas inválidos');
+    }
     return files
-        .map((f) => yomiSafeImageUrl('$baseUrl/$folder/$hash/$f'))
+        .map((file) => yomiSafeImageUrl('$baseUrl/$folder/$hash/$file'))
         .toList();
+  }
+
+  static bool _validPageUrl(String raw) {
+    final uri = Uri.tryParse(raw.trim());
+    return uri != null &&
+        (uri.scheme == 'https' || uri.scheme == 'http') &&
+        uri.host.isNotEmpty;
   }
 }
 
@@ -811,24 +887,28 @@ class UserProfile {
   });
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'bio': bio,
-        'avatarIndex': avatarIndex,
-        'favoriteGenre': favoriteGenre,
-        'openOnProfileByDefault': openOnProfileByDefault,
-        'isConfigured': isConfigured,
-      };
+    'name': name,
+    'bio': bio,
+    'avatarIndex': avatarIndex,
+    'favoriteGenre': favoriteGenre,
+    'openOnProfileByDefault': openOnProfileByDefault,
+    'isConfigured': isConfigured,
+  };
 
   factory UserProfile.fromMap(Map<String, dynamic> map) => UserProfile(
-        name: (map['name'] ?? 'Leitor YOMI').toString(),
-        bio: (map['bio'] ?? 'Explorando universos de mangás, manhwas e HQs.').toString(),
-        avatarIndex: (map['avatarIndex'] as int?) ?? 0,
-        favoriteGenre: (map['favoriteGenre'] ?? 'Ação, Fantasia & Seinen').toString(),
-        // Keep the saved preference when present; new installations start
-        // in the reading-focused Home screen.
-        openOnProfileByDefault: map['openOnProfileByDefault'] == true,
-        isConfigured: map['isConfigured'] != false,
-      );
+    name: (map['name'] ?? 'Leitor YOMI').toString(),
+    bio: (map['bio'] ?? 'Explorando universos de mangás, manhwas e HQs.')
+        .toString(),
+    avatarIndex: map['avatarIndex'] is int && map['avatarIndex'] >= 0
+        ? map['avatarIndex'] as int
+        : 0,
+    favoriteGenre: (map['favoriteGenre'] ?? 'Ação, Fantasia & Seinen')
+        .toString(),
+    // Keep the saved preference when present; new installations start
+    // in the reading-focused Home screen.
+    openOnProfileByDefault: map['openOnProfileByDefault'] == true,
+    isConfigured: map['isConfigured'] != false,
+  );
 }
 
 class ReadingMetricsSummary {

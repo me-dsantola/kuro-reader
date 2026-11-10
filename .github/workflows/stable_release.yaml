@@ -10,25 +10,89 @@ permissions:
 
 concurrency:
   group: yomi-stable-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  signing-preflight:
-    name: Validate production signing prerequisites
+  quality:
+    name: Analyze and test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/yomi-stable-validation'
     runs-on: ubuntu-latest
     steps:
-      - name: Verify required signing settings
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.9'
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Validate release tooling
+        run: python3 -m unittest discover -s scripts/tests -v
+
+  signed-apks:
+    name: Build and verify production APKs
+    needs: quality
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.package.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: android/**/*.gradle*
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.9'
+          cache: true
+      - run: flutter pub get
+      - name: Prepare permanent production signing key
         env:
           YOMI_KEYSTORE_BASE64: ${{ secrets.YOMI_KEYSTORE_BASE64 }}
           YOMI_STORE_PASSWORD: ${{ secrets.YOMI_STORE_PASSWORD }}
           YOMI_KEY_ALIAS: ${{ secrets.YOMI_KEY_ALIAS }}
           YOMI_KEY_PASSWORD: ${{ secrets.YOMI_KEY_PASSWORD }}
-        shell: python
-        run: |
-          import os, sys
-          names = ('YOMI_KEYSTORE_BASE64', 'YOMI_STORE_PASSWORD', 'YOMI_KEY_ALIAS', 'YOMI_KEY_PASSWORD')
-          missing = [name for name in names if not os.environ.get(name)]
-          if missing:
-              print('::error::Production signing settings unavailable: ' + ', '.join(missing))
-              sys.exit(1)
-          print('All four production signing settings are available. No values were logged.')
+        run: python3 scripts/prepare-stable-signing.py
+      - name: Build signed stable variants
+        env:
+          ORG_GRADLE_PROJECT_betaBuild: 'false'
+          YOMI_STORE_PASSWORD: ${{ secrets.YOMI_STORE_PASSWORD }}
+          YOMI_KEY_ALIAS: ${{ secrets.YOMI_KEY_ALIAS }}
+          YOMI_KEY_PASSWORD: ${{ secrets.YOMI_KEY_PASSWORD }}
+        run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64
+      - name: Verify identity, version and production certificate
+        id: package
+        run: python3 scripts/verify-stable-apks.py
+      - name: Keep verified candidate APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: YOMI-${{ steps.package.outputs.version }}-validated-apks
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: rm -rf -- "$RUNNER_TEMP/yomi-signing"
+
+  publish:
+    name: Publish stable GitHub Release
+    if: github.ref == 'refs/heads/main'
+    needs: signed-apks
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: YOMI-${{ needs.signed-apks.outputs.version }}-validated-apks
+          path: release-assets
+      - name: Publish verified versioned assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/publish-stable-release.py

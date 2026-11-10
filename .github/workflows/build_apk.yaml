@@ -1,102 +1,55 @@
-name: Build KuroReader APK
+name: Build YOMI Beta APK
 
 on:
   push:
-    branches: [ "main", "master", "refactor/kuro-reader-v2" ]
+    branches: [refactor/kuro-reader-v2]
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'Tipo de APK (Beta: Debug rápido ou Release)'
+        description: Tipo de APK Beta
         required: true
         type: choice
         default: release
-        options:
-          - debug
-          - release
+        options: [debug, release]
+
+permissions:
+  contents: read
 
 concurrency:
-  group: android-apk-${{ github.workflow }}-${{ github.ref }}
+  group: android-beta-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-android:
-    name: Compilar APK Android (arm64)
+    name: Validate and build Beta ARM64
+    if: github.ref == 'refs/heads/refactor/kuro-reader-v2'
     runs-on: ubuntu-latest
-
+    env:
+      ORG_GRADLE_PROJECT_betaBuild: 'true'
     steps:
-      - name: 1. Baixar código do repositório
-        uses: actions/checkout@v4
-
-      - name: 2. Configurar Java 17 (Exigido pelo Gradle do projeto)
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
           cache: gradle
-          cache-dependency-path: |
-            android/*.gradle*
-            android/gradle/wrapper/gradle-wrapper.properties
-            android/settings.gradle.kts
-            android/app/build.gradle.kts
-
-      - name: 3. Instalar Flutter SDK (Canal Stable)
-        uses: subosito/flutter-action@v2
+          cache-dependency-path: android/**/*.gradle*
+      - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
           flutter-version: '3.47.9'
           cache: true
-
-      - name: 4. Instalar dependências do pubspec.yaml
-        run: flutter pub get
-
-      - name: 4a. Análise estática (erros e avisos)
-        run: flutter analyze --no-fatal-infos
-
-      - name: 4b. Testes automatizados
-        run: flutter test
-
-      - name: 4c. Preparar assinatura privada do aplicativo estável
-        if: github.ref_name != 'refactor/kuro-reader-v2'
-        env:
-          KEYSTORE_BASE64: ${{ secrets.YOMI_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.YOMI_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.YOMI_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.YOMI_KEY_PASSWORD }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "::error::Configure os quatro secrets de assinatura YOMI antes de compilar a versão estável."
-            exit 1
-          fi
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$PWD/android/app/yomi-release.jks"
-          echo "YOMI_KEYSTORE_PATH=$PWD/android/app/yomi-release.jks" >> "$GITHUB_ENV"
-
-      - name: 5. Compilar APK Debug Beta (arm64)
-        if: github.ref_name == 'refactor/kuro-reader-v2' && github.event_name == 'workflow_dispatch' && inputs.build_type == 'debug'
-        env:
-          ORG_GRADLE_PROJECT_betaBuild: 'true'
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Build Beta Debug
+        if: github.event_name == 'workflow_dispatch' && inputs.build_type == 'debug'
         run: flutter build apk --debug --target-platform android-arm64 --split-per-abi
-
-      - name: 6. Compilar APK Release (arm64)
-        if: github.ref_name != 'refactor/kuro-reader-v2' || github.event_name == 'push' || inputs.build_type == 'release'
-        env:
-          ORG_GRADLE_PROJECT_betaBuild: ${{ github.ref_name == 'refactor/kuro-reader-v2' && 'true' || 'false' }}
-          YOMI_STORE_PASSWORD: ${{ secrets.YOMI_STORE_PASSWORD }}
-          YOMI_KEY_ALIAS: ${{ secrets.YOMI_KEY_ALIAS }}
-          YOMI_KEY_PASSWORD: ${{ secrets.YOMI_KEY_PASSWORD }}
+      - name: Build Beta Release
+        if: github.event_name == 'push' || inputs.build_type == 'release'
         run: flutter build apk --release --target-platform android-arm64 --split-per-abi
-
-      - name: 7. Disponibilizar APK Debug Beta
-        if: github.ref_name == 'refactor/kuro-reader-v2' && github.event_name == 'workflow_dispatch' && inputs.build_type == 'debug'
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: KuroReader-Beta-Debug-Android-APK
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
-          if-no-files-found: error
-
-      - name: 8. Disponibilizar APK Release
-        if: github.ref_name != 'refactor/kuro-reader-v2' || github.event_name == 'push' || inputs.build_type == 'release'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.ref_name == 'refactor/kuro-reader-v2' && 'KuroReader-Beta-Release-Android-APK' || 'KuroReader-Stable-Android-APK' }}
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          name: KuroReader-Beta-Android-APK
+          path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error

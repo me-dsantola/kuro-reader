@@ -11,6 +11,58 @@ class StorageService {
   static const String settingsBoxName = 'settings_box';
   static const String restoreJournalKey = 'backup_restore_journal_v1';
   static Future<void> _restoreTail = Future<void>.value();
+  static Future<void> _readingTail = Future<void>.value();
+
+  static Future<void> _serializeReading(Future<void> Function() write) {
+    final result = _readingTail.then((_) => write());
+    // A disk failure is still returned to its caller, but must not prevent a
+    // later independent write from being attempted.
+    _readingTail = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
+
+  static Manga? _storedManga(Object? raw) {
+    if (raw is! Map) return null;
+    if (raw['tags'] != null && raw['tags'] is! List) return null;
+    if (raw['customHeaders'] != null && raw['customHeaders'] is! Map) {
+      return null;
+    }
+    try {
+      final manga = Manga.fromMap(Map<String, dynamic>.from(raw));
+      return manga.id.isEmpty ? null : manga;
+    } catch (_) {
+      // Preserve damaged legacy entries in Hive for export/recovery. A single
+      // entry must not make the rest of a library inaccessible.
+      return null;
+    }
+  }
+
+  static Chapter? _storedChapter(Object? raw) {
+    if (raw is! Map) return null;
+    if (raw['pages'] != null && raw['pages'] is! num) return null;
+    if (raw['directPageUrls'] != null && raw['directPageUrls'] is! List) {
+      return null;
+    }
+    try {
+      final chapter = Chapter.fromMap(Map<String, dynamic>.from(raw));
+      return chapter.id.isEmpty ? null : chapter;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String? _eventChapterId(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['chapterId'];
+    if (id is String && id.isNotEmpty) return id;
+    final chapter = raw['chapterMap'];
+    return chapter is Map && chapter['id'] is String
+        ? chapter['id'] as String
+        : null;
+  }
 
   /// Por exigência estrita, o modo NSFW SEMPRE inicia como `hidden` (Desligado)
   static final ValueNotifier<NsfwDisplayMode> nsfwModeNotifier = ValueNotifier(
@@ -110,12 +162,15 @@ class StorageService {
   }
 
   static List<Manga> getFavorites() {
-    final all = favBox.values
-        .whereType<Map>()
-        .map((e) => Manga.fromMap(Map<String, dynamic>.from(e)))
-        .toList();
-    if (!nsfwMode.allowNsfwFetch) {
-      return all.where((m) => !m.isNsfw).toList();
+    final all = <Manga>[];
+    final seen = <String>{};
+    for (final raw in favBox.values) {
+      final manga = _storedManga(raw);
+      if (manga != null &&
+          (nsfwMode.allowNsfwFetch || !manga.isNsfw) &&
+          seen.add(manga.id)) {
+        all.add(manga);
+      }
     }
     return all;
   }
@@ -141,11 +196,11 @@ class StorageService {
 
   static List<Chapter> getCachedMangaChapters(String mangaId) {
     final raw = historyBox.get('chapters_$mangaId');
-    if (raw == null || raw is! List) return [];
-    return raw
-        .whereType<Map>()
-        .map((e) => Chapter.fromMap(Map<String, dynamic>.from(e)))
-        .toList();
+    if (raw is! List) return [];
+    return [
+      for (final value in raw)
+        if (_storedChapter(value) case final Chapter chapter) chapter,
+    ];
   }
 
   // --- HISTÓRICO DE LEITURA, "CONTINUAR LENDO" E MÉTRICAS DO PERFIL ---
@@ -155,13 +210,15 @@ class StorageService {
 
   /// Opening a chapter resumes it, but never marks it completed.
   /// Existing read flags remain untouched for backwards compatibility.
-  static Future<void> recordChapterOpened(Manga manga, Chapter chapter) async {
+  static Future<void> recordChapterOpened(Manga manga, Chapter chapter) =>
+      _serializeReading(() => _recordChapterOpened(manga, chapter));
+
+  static Future<void> _recordChapterOpened(Manga manga, Chapter chapter) async {
     await historyBox.put('last_${manga.id}', chapter.toMap());
     await historyBox.put('manga_meta_${manga.id}', manga.toMap());
 
-    final List rawRecent = List.from(
-      historyBox.get('recent_reading_list', defaultValue: []),
-    );
+    final stored = historyBox.get('recent_reading_list');
+    final List rawRecent = stored is List ? List.from(stored) : [];
     rawRecent.removeWhere(
       (item) =>
           item is Map &&
@@ -181,82 +238,75 @@ class StorageService {
     Manga manga,
     Chapter chapter, {
     bool read = true,
+  }) => _serializeReading(() => _markChapterAsRead(manga, chapter, read: read));
+
+  static Future<void> _markChapterAsRead(
+    Manga manga,
+    Chapter chapter, {
+    required bool read,
   }) async {
     final wasRead = isChapterRead(chapter.id);
-    await historyBox.put('read_${chapter.id}', read);
-
+    final storedEvents = historyBox.get('reading_events_log');
+    final List rawEvents = storedEvents is List ? List.from(storedEvents) : [];
     if (read) {
-      await recordChapterOpened(manga, chapter);
-
-      // Only completed chapters count in reading statistics.
-      if (!wasRead) {
-        final List rawEvents = List.from(
-          historyBox.get('reading_events_log', defaultValue: []),
-        );
+      await _recordChapterOpened(manga, chapter);
+      if (!wasRead &&
+          !rawEvents.any((event) => _eventChapterId(event) == chapter.id)) {
         rawEvents.add({
           'chapterId': chapter.id,
           'mangaId': manga.id,
           'mangaTitle': manga.title,
-          'pages': chapter.pages > 0 ? chapter.pages : 22,
+          'pages': chapter.pages > 0 ? chapter.pages : 0,
           'chapterMap': chapter.toMap(),
           'mangaMap': manga.toMap(),
           'readAt': DateTime.now().toIso8601String(),
         });
         await historyBox.put('reading_events_log', rawEvents);
       }
-    } else if (wasRead) {
-      // Manually reverting a completion must also update metrics.
-      final List rawEvents = List.from(
-        historyBox.get('reading_events_log', defaultValue: []),
-      );
-      rawEvents.removeWhere(
-        (event) => event is Map && event['chapterId'] == chapter.id,
-      );
+    } else {
+      rawEvents.removeWhere((event) => _eventChapterId(event) == chapter.id);
       await historyBox.put('reading_events_log', rawEvents);
     }
+    // Commit the flag last. Retrying after a failed write cannot duplicate
+    // the event already saved above.
+    await historyBox.put('read_${chapter.id}', read);
   }
 
   static List<Map<String, dynamic>> getContinueReadingList() {
-    final raw = historyBox.get('recent_reading_list', defaultValue: []);
+    final raw = historyBox.get('recent_reading_list');
     if (raw is! List) return [];
-    final allowNsfw = nsfwMode.allowNsfwFetch;
     final result = <Map<String, dynamic>>[];
-
     for (final item in raw) {
-      if (item is Map) {
-        final map = Map<String, dynamic>.from(item);
-        final manga = Manga.fromMap(
-          Map<String, dynamic>.from(map['manga'] ?? {}),
-        );
-        final chapter = Chapter.fromMap(
-          Map<String, dynamic>.from(map['chapter'] ?? {}),
-        );
-        if (!allowNsfw && manga.isNsfw) continue;
-        result.add({
-          'manga': manga,
-          'chapter': chapter,
-          'timestamp':
-              DateTime.tryParse(map['timestamp']?.toString() ?? '') ??
-              DateTime.now(),
-        });
+      if (item is! Map) continue;
+      final manga = _storedManga(item['manga']);
+      final chapter = _storedChapter(item['chapter']);
+      if (manga == null ||
+          chapter == null ||
+          (!nsfwMode.allowNsfwFetch && manga.isNsfw)) {
+        continue;
       }
+      result.add({
+        'manga': manga,
+        'chapter': chapter,
+        'timestamp':
+            DateTime.tryParse(item['timestamp']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      });
     }
     return result;
   }
 
-  static Chapter? getLastReadChapter(String mangaId) {
-    final raw = historyBox.get('last_$mangaId');
-    if (raw == null || raw is! Map) return null;
-    return Chapter.fromMap(Map<String, dynamic>.from(raw));
-  }
+  static Chapter? getLastReadChapter(String mangaId) =>
+      _storedChapter(historyBox.get('last_$mangaId'));
 
   static Future<void> saveLastPageIndex(String chapterId, int pageIndex) async {
-    if (getSavedPageIndex(chapterId) == pageIndex) return;
+    if (pageIndex < 0 || getSavedPageIndex(chapterId) == pageIndex) return;
     await historyBox.put('page_$chapterId', pageIndex);
   }
 
   static int getSavedPageIndex(String chapterId) {
-    return (historyBox.get('page_$chapterId', defaultValue: 0) as int?) ?? 0;
+    final stored = historyBox.get('page_$chapterId');
+    return stored is int && stored >= 0 ? stored : 0;
   }
 
   /// Pixel offset is kept separately so old page-index saves still work.
@@ -308,37 +358,48 @@ class StorageService {
     final Map<String, Manga> mangaObjects = {};
     Chapter? longestCh;
     Chapter? shortestCh;
+    final seenChapters = <String>{};
 
     for (final raw in rawEvents) {
       if (raw is! Map) continue;
-      final map = Map<String, dynamic>.from(raw);
-      final mangaMap = Map<String, dynamic>.from(map['mangaMap'] ?? {});
-      final manga = Manga.fromMap(mangaMap);
-      if (!allowNsfw && manga.isNsfw) continue;
-
-      final chapterMap = Map<String, dynamic>.from(map['chapterMap'] ?? {});
-      final chapter = Chapter.fromMap(chapterMap);
-      final readAt =
-          DateTime.tryParse(map['readAt']?.toString() ?? '') ?? DateTime.now();
-      final int pages = (map['pages'] as int?) ?? chapter.pages;
-
+      final manga = _storedManga(raw['mangaMap']);
+      final savedChapter = _storedChapter(raw['chapterMap']);
+      if (manga == null ||
+          savedChapter == null ||
+          (!allowNsfw && manga.isNsfw)) {
+        continue;
+      }
+      if (!seenChapters.add(savedChapter.id)) continue;
+      final readAt = DateTime.tryParse(raw['readAt']?.toString() ?? '');
+      final storedPages = raw['pages'];
+      final pages = storedPages is int && storedPages >= 0
+          ? storedPages
+          : (savedChapter.pages > 0 ? savedChapter.pages : 0);
+      final chapter = Chapter(
+        id: savedChapter.id,
+        source: savedChapter.source,
+        chapterNumber: savedChapter.chapterNumber,
+        title: savedChapter.title,
+        language: savedChapter.language,
+        pages: pages,
+        scanlator: savedChapter.scanlator,
+        directPageUrls: savedChapter.directPageUrls,
+        externalArchiveId: savedChapter.externalArchiveId,
+      );
       totalCount++;
       totalPages += pages;
-
-      if (readAt.isAfter(startOfToday)) {
-        todayCount++;
-      }
-      if (readAt.isAfter(startOfWeek)) {
-        weekCount++;
+      if (readAt != null && !readAt.isAfter(now)) {
+        if (!readAt.isBefore(startOfToday)) todayCount++;
+        if (!readAt.isBefore(startOfWeek)) weekCount++;
       }
 
       mangaCounts[manga.id] = (mangaCounts[manga.id] ?? 0) + 1;
       mangaObjects[manga.id] = manga;
 
-      if (longestCh == null || pages > longestCh.pages) {
+      if (pages > 0 && (longestCh == null || pages > longestCh.pages)) {
         longestCh = chapter;
       }
-      if (shortestCh == null || (pages > 0 && pages < shortestCh.pages)) {
+      if (pages > 0 && (shortestCh == null || pages < shortestCh.pages)) {
         shortestCh = chapter;
       }
     }
@@ -394,6 +455,14 @@ class StorageService {
         'lock_nsfw_on_startup': lockNsfwOnStartup,
         'hide_zero_chapters': hideZeroChapterTitles,
         'data_saver_mode': dataSaverEnabled,
+        'interface_style': settingsBox.get(
+          'interface_style',
+          defaultValue: 'enso',
+        ),
+        'auto_hide_menus': settingsBox.get(
+          'auto_hide_menus',
+          defaultValue: true,
+        ),
       },
     };
     // Offline image files are not embedded. Never report an unbundled
@@ -433,10 +502,13 @@ class StorageService {
         'lock_nsfw_on_startup',
         'hide_zero_chapters',
         'data_saver_mode',
+        'auto_hide_menus',
       ]) {
         final value = settings[key];
         if (value is bool) settingChanges[key] = value;
       }
+      final style = settings['interface_style'];
+      if (style is String) settingChanges['interface_style'] = style;
       if (profile != null) settingChanges['user_profile'] = profile.toMap();
 
       // Persist original values first. A failed write or an interrupted app
@@ -476,11 +548,12 @@ class StorageService {
     if (journal is! Map) {
       throw const FormatException('Registro de recuperação inválido');
     }
-    for (final section in [
+    final sections = [
       ('favorites', favBox),
       ('history', historyBox),
       ('settings', settingsBox),
-    ]) {
+    ];
+    for (final section in sections) {
       final entries = journal[section.$1];
       if (entries is! Map) {
         throw const FormatException('Registro de recuperação incompleto');
@@ -492,6 +565,11 @@ class StorageService {
             record['exists'] is! bool) {
           throw const FormatException('Registro de recuperação inválido');
         }
+      }
+    }
+    for (final section in sections) {
+      for (final entry in (journal[section.$1] as Map).entries) {
+        final record = entry.value as Map;
         if (record['exists'] == true) {
           await section.$2.put(entry.key, record['value']);
         } else {
@@ -509,22 +587,27 @@ class StorageService {
 
   static List<String> getDownloadedChapterPaths(String chapterId) {
     final raw = downloadsBox.get(chapterId);
-    if (raw == null || raw is! Map) return [];
-    final map = Map<String, dynamic>.from(raw);
-    return List<String>.from(map['paths'] ?? []);
+    if (raw is! Map) return [];
+    final paths = raw['paths'];
+    if (paths is! List ||
+        paths.any((path) => path is! String || path.isEmpty)) {
+      return [];
+    }
+    return List<String>.from(paths);
   }
 
   static List<Map<String, dynamic>> getAllDownloadedChapters() {
-    final all = downloadsBox.values
-        .whereType<Map>()
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
-    if (!nsfwMode.allowNsfwFetch) {
-      return all.where((entry) {
-        final mangaMap = Map<String, dynamic>.from(entry['manga'] ?? {});
-        return !Manga.fromMap(mangaMap).isNsfw;
-      }).toList();
+    final result = <Map<String, dynamic>>[];
+    for (final raw in downloadsBox.values) {
+      if (raw is! Map || raw.keys.any((key) => key is! String)) continue;
+      final manga = _storedManga(raw['manga']);
+      if (manga == null ||
+          _storedChapter(raw['chapter']) == null ||
+          (!nsfwMode.allowNsfwFetch && manga.isNsfw)) {
+        continue;
+      }
+      result.add(Map<String, dynamic>.from(raw));
     }
-    return all;
+    return result;
   }
 }

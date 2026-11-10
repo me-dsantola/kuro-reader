@@ -14,6 +14,8 @@ import 'package:kuro_reader/screens/home_overview_screen.dart';
 import 'package:kuro_reader/screens/home_tabs.dart';
 import 'package:kuro_reader/services/storage_service.dart';
 import 'package:kuro_reader/widgets/reader_toolbar.dart';
+import 'package:kuro_reader/services/appearance_controller.dart';
+import 'package:kuro_reader/widgets/frosted_surface.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +69,7 @@ void main() {
     ]) {
       await Hive.openBox(name);
     }
+    AppearanceController.instance.refresh();
     StorageService.nsfwModeNotifier.value = NsfwDisplayMode.hidden;
     await StorageService.recordChapterOpened(manga, chapter);
     await StorageService.saveLastPageIndex(chapter.id, 8);
@@ -81,6 +84,7 @@ void main() {
     scaffoldBackgroundColor: YomiPalette.pitchBlack,
     colorScheme: const ColorScheme.dark(
       primary: YomiPalette.ensoRed,
+      onPrimary: YomiPalette.pureWhite,
       secondary: YomiPalette.sakuraPink,
       surface: YomiPalette.surface,
     ),
@@ -122,6 +126,7 @@ void main() {
     var library = 0;
     await tester.pumpWidget(
       MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme: theme(),
         home: RepaintBoundary(
           key: const ValueKey('preview'),
@@ -151,6 +156,7 @@ void main() {
     screen(tester, width: 320);
     await tester.pumpWidget(
       MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme: theme(),
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
@@ -174,6 +180,7 @@ void main() {
       var modes = 0;
       await tester.pumpWidget(
         MaterialApp(
+          debugShowCheckedModeBanner: false,
           theme: theme(),
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
@@ -222,6 +229,46 @@ void main() {
     },
   );
 
+  testWidgets('glass uses opaque controls with high contrast and large text', (
+    tester,
+  ) async {
+    screen(tester, width: 320);
+    await tester.runAsync(
+      () => AppearanceController.instance.setStyle(InterfaceStyle.glass),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: theme(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            highContrast: true,
+            disableAnimations: true,
+            textScaler: const TextScaler.linear(1.6),
+          ),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: FrostedSurface(
+            child: ReaderToolbar(
+              title: 'Uma jornada entre universos',
+              chapter: '164',
+              page: 8,
+              total: 24,
+              offline: false,
+              webtoon: true,
+              onBack: () {},
+              onMode: () {},
+              onComplete: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(BackdropFilter), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('catalog applies all ordering choices and retains title search', (
     tester,
   ) async {
@@ -232,18 +279,26 @@ void main() {
         await tester.pumpWidget(
           RepaintBoundary(
             key: const ValueKey('preview'),
-            child: MaterialApp(theme: theme(), home: const ExploreScreen()),
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: theme(),
+              home: const ExploreScreen(),
+            ),
           ),
         );
         await tester.pumpAndSettle();
         final scroll = tester
             .widget<CustomScrollView>(find.byType(CustomScrollView))
             .controller!;
-        scroll.jumpTo(400);
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
         await tester.pumpAndSettle();
-        expect(find.text('Ordenar'), findsNothing);
+        expect(scroll.offset, greaterThan(200));
+        expect(find.text('Ordenar por').hitTestable(), findsNothing);
+        await preview(tester, 'catalogo-menus-recolhidos');
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, 120));
+        await tester.pumpAndSettle();
+        expect(find.text('Ordenar por').hitTestable(), findsOneWidget);
         expect(find.byTooltip('Ordenar catálogo'), findsOneWidget);
-        expect(scroll.offset, 400);
         var before = catalogCalls;
         await tester.tap(find.byTooltip('Ordenar catálogo'));
         await tester.pumpAndSettle();
@@ -263,12 +318,36 @@ void main() {
         expect(catalogCalls, greaterThan(before));
         expect(find.text('Título A–Z'), findsOneWidget);
         await preview(tester, 'catalogo-ordenacao');
+        await tester.runAsync(
+          () => AppearanceController.instance.setStyle(InterfaceStyle.glass),
+        );
+        await tester.pumpAndSettle();
+        await preview(tester, 'catalogo-vidro-suave');
+        before = catalogCalls;
+        await tester.tap(find.byTooltip('Filtros de catálogo'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Ação'));
+        await tester.tap(find.text('Ação'));
+        await tester.pump();
+        await tester.tapAt(const Offset(4, 4));
+        await tester.pumpAndSettle();
+        expect(
+          catalogCalls,
+          before,
+          reason: 'Dismissing the draft must not apply filters.',
+        );
+
         tester.view.physicalSize = const Size(320, 800);
         await tester.pumpAndSettle();
         await preview(tester, 'catalogo-320');
         await tester.tap(find.byIcon(Icons.tune_rounded));
         await tester.pumpAndSettle();
         await preview(tester, 'filtros-320');
+        expect(
+          find.byIcon(Icons.add_circle_outline),
+          findsNothing,
+          reason: 'A dismissed draft must not become an active filter.',
+        );
         expect(tester.takeException(), isNull);
         await tester.tapAt(const Offset(4, 4));
         await tester.pumpAndSettle();
@@ -304,6 +383,7 @@ void main() {
                       'title': {'en': 'Obra ${24 - i}'},
                       'description': {'en': ''},
                       'latestUploadedChapter': 'chapter',
+                      'contentRating': 'safe',
                       'updatedAt': '2026-11-10T00:00:00Z',
                     },
                     'relationships': [],

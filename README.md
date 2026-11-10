@@ -1,98 +1,106 @@
 # YOMI — Kuro Reader
 
-Leitor pessoal de mangás, manhwas e quadrinhos feito em Flutter. A versão
-**1.1.5 (build 7)** é a candidata Beta para validação antes do merge na `main`.
+Leitor pessoal de mangás, manhwas e quadrinhos feito em Flutter.
+A linha **1.2.0 (build de origem 8)** prepara a distribuição estável Android.
+A versão efetivamente publicada aparece em [Releases](../../releases).
 
 ## Experiência
 
-- Início com leituras recentes e retomada do capítulo/página;
-- Pesquisa de obras em provedores de catálogo e leitura;
-- Biblioteca de favoritos com central local de atualizações;
-- Leitor webtoon e paginado, com posição persistida;
-- Download de capítulos para acesso offline;
-- Perfil, estatísticas e backup manual local.
+- Início com leituras recentes, posição salva e atalhos;
+- Logo centralizada em Explorar, com busca, filtros e ordenação no mesmo bloco;
+- Ordenação por recentes, populares ou título, preservando a busca;
+- Filtros por categoria, com inclusão/exclusão e aplicação explícita;
+- Biblioteca, central local de atualizações, perfil e estatísticas;
+- Leitor webtoon e paginado com recuperação de páginas e cache temporário limitado;
+- Downloads verificados para leitura offline, com retomada e confirmação de exclusão;
+- Feedback de bateria, ausência de internet e respostas lentas no Android;
+- Aparência AMOLED clássica ou vidro suave, com recolhimento de menus configurável.
 
-**Fontes:** MangaDex é a principal fonte efetiva de páginas. AniList, Jikan/MAL
-e Kitsu são usados para metadados e descoberta. O adaptador chamado ComicK
-ainda usa Kitsu/MangaDex e **não representa uma integração direta com o ComicK**.
-As seções HQ e 18+ usam filtros/consultas do MangaDex; não são bibliotecas
-independentes. A disponibilidade de títulos/capítulos depende das APIs,
-idiomas e permissões dos provedores.
+Em **Perfil → Configurações → Aparência e movimento**, personalize o vidro
+suave e o recolhimento de menus. Ao descer, os controles liberam espaço; ao
+subir, voltam. No leitor paginado, toque para mostrar ou ocultar a barra.
+O alto contraste e a economia de bateria removem o desfoque. A preferência
+de redução de movimento do aparelho desativa as transições animadas.
 
-## Testar a Beta
+MangaDex é a fonte efetiva de páginas. AniList, Jikan/MAL e Kitsu fornecem
+metadados e descoberta. O adaptador legado chamado ComicK usa Kitsu/MangaDex;
+não há integração direta com ComicK. HQ e 18+ são consultas do MangaDex.
+A disponibilidade depende das fontes e dos idiomas oferecidos por elas.
 
-1. Abra [GitHub Actions](../../actions/workflows/build_apk.yaml) na branch
-   `refactor/kuro-reader-v2`.
-2. Abra a execução mais recente concluída com sucesso.
-3. Baixe o artefato `KuroReader-Beta-Release-Android-APK`, extraia o ZIP e
-   instale o APK ARM64 no Android.
-4. O aplicativo usa o identificador `com.kuroreader.kuro_reader.beta`,
-   separado da versão estável. **O APK Beta Release é assinado com uma chave
-   de depuração exclusivamente para testes internos**.
-5. Confira busca PT-BR, filtros, favoritos, downloads, modo avião,
-   retomada webtoon/paginada, central de atualizações e backup/restauração.
+## Instalar a versão estável
 
-Antes de instalar novas builds, faça backup manual dos dados importantes.
-As versões estável e Beta têm armazenamento Android separado.
+Baixe o APK da [Release publicada](../../releases), de acordo com o aparelho:
+
+| Arquivo | Uso |
+| --- | --- |
+| `YOMI-1.2.0-arm64-v8a.apk` | Android ARM64, comum em celulares atuais |
+| `YOMI-1.2.0-armeabi-v7a.apk` | Android ARM de 32 bits compatível |
+| `YOMI-1.2.0-x86_64.apk` | Emuladores e aparelhos Android x86 de 64 bits |
+
+O pacote estável é `com.kuroreader.kuro_reader`. A Beta usa
+`com.kuroreader.kuro_reader.beta`, com armazenamento separado. Exporte o
+backup na Beta e importe na estável para migrar perfil, biblioteca e histórico.
+As imagens offline precisam ser baixadas novamente.
+
+Se uma instalação estável antiga usava certificado de depuração, o Android
+não permitirá atualizá-la com a nova chave de produção. Nesse caso, exporte
+e guarde o backup **antes de desinstalar** a instalação antiga. Preserve a
+mesma chave de produção em todas as atualizações futuras.
 
 ## Desenvolvimento e validação
 
-Requer Flutter com Dart compatível com `pubspec.yaml` e Android SDK.
+Flutter **3.47.9**, Java 17 e Android SDK para compilar Android:
 
 ```bash
 flutter pub get
-flutter analyze --no-fatal-infos
+flutter analyze
 flutter test
+python3 -m unittest discover -s scripts/tests -v
 flutter run
 ```
 
-Para medir a fluidez de verdade use um aparelho físico em **Profile**,
-não Debug:
+Os testes cobrem navegação/ordenação/filtros, leitura e geometria, troca de
+modo, recuperação de páginas, caches, downloads, backup, privacidade e
+estados de bateria/rede. A revisão detalhada está em
+[docs/stable_review.md](docs/stable_review.md).
 
-```bash
-flutter run --profile
-```
+A fluidez, os provedores externos e os sensores reais precisam ser conferidos
+em aparelho físico; testes com fontes simuladas não substituem essa verificação.
+Para medir desempenho use `flutter run --profile`.
 
-O workflow `.github/workflows/build_apk.yaml` exige análise e testes antes
-de gerar um APK. A branch `main` só deve receber a versão após testes
-manuais de regressão.
+## Publicação
 
-## Backups e privacidade
+O workflow `stable_release.yaml` analisa e testa o projeto, compila três APKs
+assinados e verifica identidade, versão, arquitetura e certificado antes de
+gerar checksums e `release.json`. Na branch de validação ele guarda artefatos;
+na `main`, publica uma Release versionada sem marcação de pré-lançamento.
+O workflow `build_apk.yaml` atende exclusivamente à branch Beta.
 
-O backup manual inclui perfil, favoritos, preferências e histórico, mas **não
-inclui os arquivos de imagem baixados**. O conteúdo é JSON codificado em
-Base64; **não há criptografia**. Não compartilhe o código publicamente,
-principalmente se sua biblioteca inclui títulos sensíveis.
+A assinatura estável exige quatro secrets do repositório:
+`YOMI_KEYSTORE_BASE64`, `YOMI_STORE_PASSWORD`, `YOMI_KEY_ALIAS` e
+`YOMI_KEY_PASSWORD`. O proprietário pode configurar sua chave local pelo
+[assistente PowerShell](scripts/setup-stable-signing.ps1), após revisar o script.
+Java e GitHub CLI autenticado são necessários. O assistente não substitui uma
+chave existente. Guarde uma cópia privada do keystore e da senha.
 
-O backup automático do Android e tráfego HTTP sem criptografia estão
-desabilitados. Utilize o backup manual antes de desinstalar ou limpar dados.
-A importação verifica a estrutura antes de gravar e mescla chaves existentes,
-mas não é uma transação atômica caso falte espaço ou ocorra erro de disco.
-
-## Assinatura da versão estável
-
-**Nunca distribua publicamente um APK assinado com chave de debug.** A
-compilação estável utiliza uma chave de produção própria, configurada fora
-do repositório. Os quatro secrets abaixo são necessários para o GitHub
-Actions publicar a variante estável após o merge:
-
-- `YOMI_KEYSTORE_BASE64`: arquivo JKS codificado em Base64;
-- `YOMI_STORE_PASSWORD`: senha do keystore;
-- `YOMI_KEY_ALIAS`: identificador da chave;
-- `YOMI_KEY_PASSWORD`: senha da chave.
-
-Nenhum segredo nem arquivo JKS deve ser commitado. Para builds locais de
-Release estável, as variáveis de ambiente correspondentes são:
+Nunca inclua chaves ou senhas em commits. Builds locais usam
 `YOMI_KEYSTORE_PATH`, `YOMI_STORE_PASSWORD`, `YOMI_KEY_ALIAS` e
-`YOMI_KEY_PASSWORD`.
+`YOMI_KEY_PASSWORD`. Certificados Android Debug são rejeitados pela validação
+estável. Os códigos Android dos APKs separados por ABI usam o prefixo padrão
+do Flutter: 1008, 2008 e 4008 para o build de origem 8.
 
-## Limitações conhecidas
+## Backups e limites
 
-- A posição webtoon é restaurada por deslocamento vertical em pixels: pode
-  variar se as imagens forem substituídas ou mudarem de dimensões.
-- Alguns provedores são apenas de metadados, não de capítulos legíveis.
-- Não há notificações Android automáticas nem sincronização em segundo plano.
-- Download retoma arquivos parciais, mas a fila avançada e política de Wi-Fi
-  precisam de uma implementação posterior.
-- Este projeto ainda requer validação de licenças, atribuição e limites de
-  cada provedor antes de qualquer distribuição pública.
+O backup manual contém perfil, favoritos, preferências e histórico, sem as
+imagens baixadas. É JSON codificado em Base64, **sem criptografia**. A
+importação valida todas as seções antes de gravar e mantém um diário de
+recuperação para reverter gravações interrompidas. Não compartilhe seu backup.
+
+O backup automático Android e o tráfego HTTP sem criptografia estão
+desabilitados. Conteúdo sem classificação confirmada fica oculto no modo
+seguro. Não há sincronização em nuvem, notificações automáticas de capítulos
+ou fila avançada de downloads com política de Wi-Fi.
+
+O cache temporário de leitura é limitado por sessão e pode ser descartado pelo
+sistema. Use downloads para garantir acesso offline. Imagens ou capítulos
+substituídos pela fonte podem alterar a correspondência da posição salva.

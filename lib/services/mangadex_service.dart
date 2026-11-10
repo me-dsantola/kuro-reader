@@ -70,13 +70,20 @@ class MangaDexAdapter implements IMangaSourceAdapter {
     required YomiSearchFilter filter,
     required int cursor,
   }) async {
-    final onlyWesternComics = filter.includedTags.isNotEmpty &&
-        filter.includedTags.every((t) =>
-            t == CanonicalTag.marvelComics ||
-            t == CanonicalTag.dcComics ||
-            t == CanonicalTag.westernIndieHq);
+    final onlyWesternComics =
+        filter.includedTags.isNotEmpty &&
+        filter.includedTags.every(
+          (t) =>
+              t == CanonicalTag.marvelComics ||
+              t == CanonicalTag.dcComics ||
+              t == CanonicalTag.westernIndieHq,
+        );
     if (onlyWesternComics) {
-      return const PaginatedSourceResponse(items: [], nextCursor: 0, hasMore: false);
+      return const PaginatedSourceResponse(
+        items: [],
+        nextCursor: 0,
+        hasMore: false,
+      );
     }
 
     const int limit = 24;
@@ -149,8 +156,10 @@ class MangaDexAdapter implements IMangaSourceAdapter {
         Map<String, dynamic>.from(json),
         overrideSource: MangaSourceType.mangadex,
       );
-      final knownCount =
-          StorageService.getKnownChaptersCount(m.id, m.availableChaptersCount);
+      final knownCount = StorageService.getKnownChaptersCount(
+        m.id,
+        m.availableChaptersCount,
+      );
       items.add(m.copyWith(availableChaptersCount: knownCount));
     }
 
@@ -174,18 +183,24 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
     required YomiSearchFilter filter,
     required int cursor,
   }) async {
-    final onlyWesternComics = filter.includedTags.isNotEmpty &&
-        filter.includedTags.every((t) =>
-            t == CanonicalTag.marvelComics ||
-            t == CanonicalTag.dcComics ||
-            t == CanonicalTag.westernIndieHq);
+    final onlyWesternComics =
+        filter.includedTags.isNotEmpty &&
+        filter.includedTags.every(
+          (t) =>
+              t == CanonicalTag.marvelComics ||
+              t == CanonicalTag.dcComics ||
+              t == CanonicalTag.westernIndieHq,
+        );
     if (onlyWesternComics) {
-      return const PaginatedSourceResponse(items: [], nextCursor: 0, hasMore: false);
+      return const PaginatedSourceResponse(
+        items: [],
+        nextCursor: 0,
+        hasMore: false,
+      );
     }
 
     final int page = (cursor ~/ 20) + 1;
-    final String sortMode =
-        filter.sort.aniListOrder;
+    final String sortMode = filter.sort.aniListOrder;
 
     String countryFilter = '';
     if (filter.includedTags.contains(CanonicalTag.manhwaKr)) {
@@ -204,8 +219,9 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
         genres.add('"${t.comicTopic}"');
       }
     }
-    final String genreFilter =
-        genres.isNotEmpty ? ', genre_in: [${genres.join(",")}]' : '';
+    final String genreFilter = genres.isNotEmpty
+        ? ', genre_in: [${genres.join(",")}]'
+        : '';
 
     // AniList supports explicit genre exclusions in its GraphQL search.
     final excludedGenres = <String>[];
@@ -224,18 +240,17 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
         ? ', search: ${jsonEncode(filter.query.trim())}'
         : '';
 
-    final String gqlQuery = 'query { Page(page: $page, perPage: 20) { pageInfo { hasNextPage } media(type: MANGA, isAdult: ${filter.allowNsfw ? "null" : "false"}, sort: [$sortMode]$searchArg$countryFilter$genreFilter$excludedGenreFilter) { id updatedAt title { english romaji } description(asHtml: false) status chapters genres isAdult countryOfOrigin coverImage { large extraLarge } } } }';
+    final String gqlQuery =
+        'query { Page(page: $page, perPage: 20) { pageInfo { hasNextPage } media(type: MANGA, isAdult: ${filter.allowNsfw ? "null" : "false"}, sort: [$sortMode]$searchArg$countryFilter$genreFilter$excludedGenreFilter) { id updatedAt title { english romaji } description(asHtml: false) status chapters genres isAdult countryOfOrigin coverImage { large extraLarge } } } }';
 
-    final response = await ObservedHttp
-        .post(
-          Uri.parse('https://graphql.anilist.co'),
-          headers: const {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: jsonEncode({'query': gqlQuery}),
-        )
-        .timeout(const Duration(seconds: 8));
+    final response = await ObservedHttp.post(
+      Uri.parse('https://graphql.anilist.co'),
+      headers: const {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({'query': gqlQuery}),
+    ).timeout(const Duration(seconds: 8));
 
     if (response.statusCode != 200) {
       throw Exception('AniList HTTP ${response.statusCode}');
@@ -263,18 +278,20 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
       final String title =
           (titleObj['english'] ?? titleObj['romaji'] ?? 'Sem Título')
               .toString();
-      final String rawDesc =
-          (m['description'] ?? 'Sinopse via AniList Global.').toString();
-      final String cleanDesc =
-          rawDesc.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+      final String rawDesc = (m['description'] ?? 'Sinopse via AniList Global.')
+          .toString();
+      final String cleanDesc = rawDesc
+          .replaceAll(RegExp(r'<[^>]*>'), '')
+          .trim();
       final coverObj = m['coverImage'] ?? {};
       final String coverLarge = (coverObj['large'] ?? '').toString();
       final String coverXL = (coverObj['extraLarge'] ?? coverLarge).toString();
 
       // AniList may omit chapter totals; unknown is not a fabricated count.
       final int chCount = (m['chapters'] as num?)?.toInt() ?? -1;
-      final List<String> parsedGenres =
-          List<String>.from(m['genres'] ?? []).take(6).toList();
+      final List<String> parsedGenres = List<String>.from(
+        m['genres'] ?? [],
+      ).take(6).toList();
 
       items.add(
         Manga(
@@ -287,7 +304,9 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
           directHighResCoverUrl: coverXL,
           tags: ['AniList Oficial', ...parsedGenres],
           isNsfw: isAdult,
-          updatedAt: DateTime.fromMillisecondsSinceEpoch(((m['updatedAt'] as num?)?.toInt() ?? 0) * 1000),
+          updatedAt: DateTime.fromMillisecondsSinceEpoch(
+            ((m['updatedAt'] as num?)?.toInt() ?? 0) * 1000,
+          ),
           availableChaptersCount: chCount,
         ),
       );
@@ -313,13 +332,20 @@ class JikanMalAdapter implements IMangaSourceAdapter {
     required YomiSearchFilter filter,
     required int cursor,
   }) async {
-    final onlyWesternComics = filter.includedTags.isNotEmpty &&
-        filter.includedTags.every((t) =>
-            t == CanonicalTag.marvelComics ||
-            t == CanonicalTag.dcComics ||
-            t == CanonicalTag.westernIndieHq);
+    final onlyWesternComics =
+        filter.includedTags.isNotEmpty &&
+        filter.includedTags.every(
+          (t) =>
+              t == CanonicalTag.marvelComics ||
+              t == CanonicalTag.dcComics ||
+              t == CanonicalTag.westernIndieHq,
+        );
     if (onlyWesternComics) {
-      return const PaginatedSourceResponse(items: [], nextCursor: 0, hasMore: false);
+      return const PaginatedSourceResponse(
+        items: [],
+        nextCursor: 0,
+        hasMore: false,
+      );
     }
 
     final int page = (cursor ~/ 20) + 1;
@@ -336,9 +362,9 @@ class JikanMalAdapter implements IMangaSourceAdapter {
     }
     buf.write(filter.sort.jikanOrder);
 
-    final response = await ObservedHttp
-        .get(Uri.parse(buf.toString()))
-        .timeout(const Duration(seconds: 8));
+    final response = await ObservedHttp.get(
+      Uri.parse(buf.toString()),
+    ).timeout(const Duration(seconds: 8));
 
     if (response.statusCode != 200) {
       throw Exception('Jikan MAL HTTP ${response.statusCode}');
@@ -359,8 +385,8 @@ class JikanMalAdapter implements IMangaSourceAdapter {
           (entry['synopsis'] ?? 'Acervo MyAnimeList / Jikan.').toString();
       final jpgMap = entry['images']?['jpg'] ?? {};
       final String imgUrl = (jpgMap['image_url'] ?? '').toString();
-      final String largeImgUrl =
-          (jpgMap['large_image_url'] ?? imgUrl).toString();
+      final String largeImgUrl = (jpgMap['large_image_url'] ?? imgUrl)
+          .toString();
       // Jikan returns null when the chapter total is unknown.
       final int chCount = (entry['chapters'] as num?)?.toInt() ?? -1;
 
@@ -384,7 +410,11 @@ class JikanMalAdapter implements IMangaSourceAdapter {
           tags: ['MyAnimeList', ...tags],
           isNsfw: rating.needsSensitiveMode,
           contentRatingKnown: rating != ContentRating.unknown,
-          updatedAt: DateTime.tryParse(entry['published']?['from']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+          updatedAt:
+              DateTime.tryParse(
+                entry['published']?['from']?.toString() ?? '',
+              ) ??
+              DateTime.fromMillisecondsSinceEpoch(0),
           availableChaptersCount: chCount,
         ),
       );
@@ -410,13 +440,20 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
     required YomiSearchFilter filter,
     required int cursor,
   }) async {
-    final onlyWesternComics = filter.includedTags.isNotEmpty &&
-        filter.includedTags.every((t) =>
-            t == CanonicalTag.marvelComics ||
-            t == CanonicalTag.dcComics ||
-            t == CanonicalTag.westernIndieHq);
+    final onlyWesternComics =
+        filter.includedTags.isNotEmpty &&
+        filter.includedTags.every(
+          (t) =>
+              t == CanonicalTag.marvelComics ||
+              t == CanonicalTag.dcComics ||
+              t == CanonicalTag.westernIndieHq,
+        );
     if (onlyWesternComics) {
-      return const PaginatedSourceResponse(items: [], nextCursor: 0, hasMore: false);
+      return const PaginatedSourceResponse(
+        items: [],
+        nextCursor: 0,
+        hasMore: false,
+      );
     }
 
     // 1. Consulta Kitsu Edge API (100% CORS nativo no Chrome e Android, ultra rápida!)
@@ -427,16 +464,15 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
       );
       if (filter.query.trim().isNotEmpty) {
         buf.write(
-            '&filter[text]=${Uri.encodeQueryComponent(filter.query.trim())}');
+          '&filter[text]=${Uri.encodeQueryComponent(filter.query.trim())}',
+        );
       }
       buf.write('&sort=${filter.sort.kitsuOrder}');
 
-      final res = await ObservedHttp
-          .get(
-            Uri.parse(buf.toString()),
-            headers: const {'Accept': 'application/vnd.api+json'},
-          )
-          .timeout(const Duration(seconds: 7));
+      final res = await ObservedHttp.get(
+        Uri.parse(buf.toString()),
+        headers: const {'Accept': 'application/vnd.api+json'},
+      ).timeout(const Duration(seconds: 7));
 
       if (res.statusCode == 200) {
         final decoded = jsonDecode(res.body);
@@ -449,21 +485,24 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
             final rating = ContentRating.fromKitsu(attr);
             if (!filter.allowNsfw && rating.needsSensitiveMode) continue;
             final titles = attr['titles'] ?? {};
-            final String title = (attr['canonicalTitle'] ??
-                    titles['en'] ??
-                    titles['en_jp'] ??
-                    'Sem Título')
-                .toString();
+            final String title =
+                (attr['canonicalTitle'] ??
+                        titles['en'] ??
+                        titles['en_jp'] ??
+                        'Sem Título')
+                    .toString();
             final String desc =
                 (attr['synopsis'] ?? 'Acervo Scans Plus / Kitsu.').toString();
             final poster = attr['posterImage'] ?? {};
             final String coverSmall =
                 (poster['medium'] ?? poster['large'] ?? '').toString();
             final String coverLarge =
-                (poster['large'] ?? poster['original'] ?? coverSmall).toString();
+                (poster['large'] ?? poster['original'] ?? coverSmall)
+                    .toString();
             final int chCount = (attr['chapterCount'] as num?)?.toInt() ?? -1;
-            final String subtype =
-                (attr['subtype'] ?? 'manga').toString().toUpperCase();
+            final String subtype = (attr['subtype'] ?? 'manga')
+                .toString()
+                .toUpperCase();
 
             items.add(
               Manga(
@@ -477,7 +516,9 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
                 tags: ['Catálogo Kitsu', subtype],
                 isNsfw: rating.needsSensitiveMode,
                 contentRatingKnown: rating != ContentRating.unknown,
-                updatedAt: DateTime.tryParse(attr['updatedAt']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+                updatedAt:
+                    DateTime.tryParse(attr['updatedAt']?.toString() ?? '') ??
+                    DateTime.fromMillisecondsSinceEpoch(0),
                 availableChaptersCount: chCount,
               ),
             );
@@ -494,7 +535,8 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
     // 2. Fallback para MangaDex Multi-Idioma
     const int limit = 20;
     final buf = StringBuffer(
-        'https://api.mangadex.org/manga?limit=$limit&offset=$cursor');
+      'https://api.mangadex.org/manga?limit=$limit&offset=$cursor',
+    );
     buf.write('&includes[]=cover_art&hasAvailableChapters=true');
     buf.write('&contentRating[]=safe&contentRating[]=suggestive');
     if (filter.query.trim().isNotEmpty) {
@@ -575,14 +617,15 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
     required int cursor,
   }) async {
     final q = filter.query.trim();
-    final bool wantMarvel =
-        filter.includedTags.contains(CanonicalTag.marvelComics);
+    final bool wantMarvel = filter.includedTags.contains(
+      CanonicalTag.marvelComics,
+    );
     final bool wantDc = filter.includedTags.contains(CanonicalTag.dcComics);
-    final bool wantIndie =
-        filter.includedTags.contains(CanonicalTag.westernIndieHq);
+    final bool wantIndie = filter.includedTags.contains(
+      CanonicalTag.westernIndieHq,
+    );
 
     List<String> keywords = _generalHqKeywords;
-
 
     if (wantMarvel && !wantDc) {
       keywords = _marvelKeywords;
@@ -595,7 +638,9 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
     final int kwIndex = cursor ~/ 16;
     if (q.isEmpty && kwIndex >= keywords.length) {
       return const PaginatedSourceResponse(
-        items: [], nextCursor: 0, hasMore: false,
+        items: [],
+        nextCursor: 0,
+        hasMore: false,
       );
     }
     final String activeSearch = q.isNotEmpty ? q : keywords[kwIndex];
@@ -623,18 +668,20 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
         Map<String, dynamic>.from(entry),
         overrideSource: MangaSourceType.comicsHq,
       );
-      items.add(Manga(
-        id: 'hq_mdx_${base.id}',
-        source: MangaSourceType.comicsHq,
-        title: base.title,
-        description: base.description,
-        status: base.status,
-        coverFileName: base.coverFileName,
-        tags: ['Resultado MangaDex', ...base.tags.take(5)],
-        isNsfw: base.isNsfw,
-        updatedAt: base.updatedAt,
-        availableChaptersCount: base.availableChaptersCount,
-      ));
+      items.add(
+        Manga(
+          id: 'hq_mdx_${base.id}',
+          source: MangaSourceType.comicsHq,
+          title: base.title,
+          description: base.description,
+          status: base.status,
+          coverFileName: base.coverFileName,
+          tags: ['Resultado MangaDex', ...base.tags.take(5)],
+          isNsfw: base.isNsfw,
+          updatedAt: base.updatedAt,
+          availableChaptersCount: base.availableChaptersCount,
+        ),
+      );
     }
 
     return PaginatedSourceResponse(
@@ -660,12 +707,17 @@ class AdultVaultAdapter implements IMangaSourceAdapter {
     required int cursor,
   }) async {
     if (!filter.allowNsfw) {
-      return const PaginatedSourceResponse(items: [], nextCursor: 0, hasMore: false);
+      return const PaginatedSourceResponse(
+        items: [],
+        nextCursor: 0,
+        hasMore: false,
+      );
     }
 
     const int limit = 16;
     final buf = StringBuffer(
-        'https://api.mangadex.org/manga?limit=$limit&offset=$cursor');
+      'https://api.mangadex.org/manga?limit=$limit&offset=$cursor',
+    );
     buf.write('&includes[]=cover_art&hasAvailableChapters=true');
     buf.write('&contentRating[]=pornographic&contentRating[]=erotica');
 
@@ -712,15 +764,19 @@ class AdultVaultAdapter implements IMangaSourceAdapter {
       final attributes = json['attributes'];
       if (attributes is Map) {
         if (excludedLanguages.contains(attributes['originalLanguage']) ||
-            excludedDemographics.contains(attributes['publicationDemographic'])) {
+            excludedDemographics.contains(
+              attributes['publicationDemographic'],
+            )) {
           continue;
         }
       }
-      items.add(Manga.fromJson(
-        json,
-        overrideSource: MangaSourceType.adultSource,
-        forceNsfwFlag: true,
-      ));
+      items.add(
+        Manga.fromJson(
+          json,
+          overrideSource: MangaSourceType.adultSource,
+          forceNsfwFlag: true,
+        ),
+      );
     }
 
     return PaginatedSourceResponse(
@@ -750,21 +806,19 @@ class MangaDexService {
     try {
       final gql =
           'query { Media(search: ${jsonEncode(title)}, type: MANGA) { coverImage { extraLarge large } } }';
-      final res = await ObservedHttp
-          .post(
-            Uri.parse('https://graphql.anilist.co'),
-            headers: const {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode({'query': gql}),
-          )
-          .timeout(const Duration(seconds: 6));
+      final res = await ObservedHttp.post(
+        Uri.parse('https://graphql.anilist.co'),
+        headers: const {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'query': gql}),
+      ).timeout(const Duration(seconds: 6));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         final cover = data['data']?['Media']?['coverImage'];
-        final String? url =
-            (cover?['large'] ?? cover?['extraLarge'])?.toString();
+        final String? url = (cover?['large'] ?? cover?['extraLarge'])
+            ?.toString();
         if (url != null && url.isNotEmpty) {
           _resolvedTitleCoverCache[cleanKey] = url;
           return url;
@@ -786,9 +840,10 @@ class MangaDexService {
   /// - No Chrome Web (kIsWeb): usa túnel JSON AllOrigins (/get) + CodeTabs + tentativa direta.
   static Future<http.Response> safeHttpGet(String rawUrl) async {
     if (!kIsWeb) {
-      final directRes = await ObservedHttp
-          .get(Uri.parse(rawUrl), headers: headers)
-          .timeout(const Duration(seconds: 8));
+      final directRes = await ObservedHttp.get(
+        Uri.parse(rawUrl),
+        headers: headers,
+      ).timeout(const Duration(seconds: 8));
       if (directRes.statusCode == 200) return directRes;
       throw Exception('HTTP ${directRes.statusCode}');
     }
@@ -798,7 +853,9 @@ class MangaDexService {
       final aoUri = Uri.parse(
         'https://api.allorigins.win/get?url=${Uri.encodeComponent(rawUrl)}',
       );
-      final aoRes = await ObservedHttp.get(aoUri).timeout(const Duration(seconds: 8));
+      final aoRes = await ObservedHttp.get(
+        aoUri,
+      ).timeout(const Duration(seconds: 8));
       if (aoRes.statusCode == 200) {
         final wrapper = jsonDecode(aoRes.body);
         final String? contents = wrapper['contents']?.toString();
@@ -820,9 +877,9 @@ class MangaDexService {
     ];
     for (final candidate in webFallbacks) {
       try {
-        final res = await ObservedHttp
-            .get(Uri.parse(candidate))
-            .timeout(const Duration(seconds: 7));
+        final res = await ObservedHttp.get(
+          Uri.parse(candidate),
+        ).timeout(const Duration(seconds: 7));
         if (res.statusCode == 200 && res.body.trim().startsWith('{')) {
           return res;
         }
@@ -900,7 +957,8 @@ class MangaDexService {
           // hostage on high-latency mobile networks. MangaDex remains the
           // primary readable source and keeps its normal request timeout.
           final request = adapter.fetchCatalog(filter: filter, cursor: cursor);
-          final res = type == MangaSourceType.mangadex ||
+          final res =
+              type == MangaSourceType.mangadex ||
                   type == MangaSourceType.adultSource
               ? await request
               : await request.timeout(const Duration(seconds: 5));
@@ -920,7 +978,10 @@ class MangaDexService {
       final results = await Future.wait(futures);
       if (generation != _catalogGeneration) return <Manga>[];
       // Interleave provider rankings; chapter count is not popularity.
-      final maxLength = results.fold<int>(0, (n, list) => list.length > n ? list.length : n);
+      final maxLength = results.fold<int>(
+        0,
+        (n, list) => list.length > n ? list.length : n,
+      );
       for (var rank = 0; rank < maxLength; rank++) {
         for (final list in results) {
           if (rank >= list.length) continue;
@@ -959,14 +1020,14 @@ class MangaDexService {
         // providers. A chapter count reported by AniList or MAL is not
         // evidence that pages can be read inside YOMI.
         group.sort((a, b) {
-          final aReadable = a.source == MangaSourceType.mangadex ||
+          final aReadable =
+              a.source == MangaSourceType.mangadex ||
               a.source == MangaSourceType.adultSource;
-          final bReadable = b.source == MangaSourceType.mangadex ||
+          final bReadable =
+              b.source == MangaSourceType.mangadex ||
               b.source == MangaSourceType.adultSource;
           if (aReadable != bReadable) return aReadable ? -1 : 1;
-          return b.availableChaptersCount.compareTo(
-            a.availableChaptersCount,
-          );
+          return b.availableChaptersCount.compareTo(a.availableChaptersCount);
         });
         final primary = group.first;
         final alternatives = group.sublist(1);
@@ -1024,9 +1085,7 @@ class MangaDexService {
       final List list = data['data'] ?? [];
       // A text search is fuzzy. Never attach chapters from an unrelated
       // title just because MangaDex returned it first.
-      String normalizeTitle(String value) => value
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^a-z0-9]'), '');
+      String normalizeTitle(String value) => normalizeMangaTitle(value);
       final requested = normalizeTitle(title);
       if (requested.isEmpty) return null;
       for (final entry in list) {
@@ -1046,8 +1105,9 @@ class MangaDexService {
             }
           }
         }
-        if (!candidates.any((candidate) =>
-            normalizeTitle(candidate) == requested)) {
+        if (!candidates.any(
+          (candidate) => normalizeTitle(candidate) == requested,
+        )) {
           continue;
         }
         final foundId = entry['id']?.toString();
@@ -1108,7 +1168,8 @@ class MangaDexService {
     // Older chapter pagination should be exposed as an explicit "load more"
     // action rather than blocking the initial view.
     const pageSize = 500;
-    final fullUrl = '$_baseUrl/manga/$targetUuid/feed?limit=$pageSize&offset=$offset'
+    final fullUrl =
+        '$_baseUrl/manga/$targetUuid/feed?limit=$pageSize&offset=$offset'
         '&translatedLanguage[]=pt-br&translatedLanguage[]=en&translatedLanguage[]=es&translatedLanguage[]=es-la'
         '&includes[]=scanlation_group'
         '&order[chapter]=desc'
@@ -1117,14 +1178,14 @@ class MangaDexService {
     final data = jsonDecode(response.body);
     final List entries = data['data'] ?? [];
     final total = data['total'];
-    _olderChapterPages[manga.id] =
-        total is int ? offset + entries.length < total : entries.length == pageSize;
+    _olderChapterPages[manga.id] = total is int
+        ? offset + entries.length < total
+        : entries.length == pageSize;
     final List<Chapter> rawAll = entries
         .whereType<Map<String, dynamic>>()
-        .map((entry) => Chapter.fromJson(
-              entry,
-              source: MangaSourceType.mangadex,
-            ))
+        .map(
+          (entry) => Chapter.fromJson(entry, source: MangaSourceType.mangadex),
+        )
         .where((ch) => ch.pages > 0)
         .toList();
 
@@ -1215,9 +1276,12 @@ class MangaDexService {
   }
 
   static Future<List<Chapter>> fetchChapters(Manga manga) async {
-    if (manga.preloadedChapters != null && manga.preloadedChapters!.isNotEmpty) {
+    if (manga.preloadedChapters != null &&
+        manga.preloadedChapters!.isNotEmpty) {
       await StorageService.cacheMangaChapters(
-          manga.id, manga.preloadedChapters!);
+        manga.id,
+        manga.preloadedChapters!,
+      );
       return manga.preloadedChapters!;
     }
 
