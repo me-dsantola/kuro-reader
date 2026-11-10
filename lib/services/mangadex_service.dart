@@ -859,7 +859,11 @@ class MangaDexService {
     ];
   }
 
+  // Invalidates in-flight catalog requests when search or filters change.
+  static int _catalogGeneration = 0;
+
   static void resetAggregator() {
+    _catalogGeneration++;
     _lookaheadBuffer.clear();
     _seenIds.clear();
     sourceStatusBanner.value = null;
@@ -875,6 +879,7 @@ class MangaDexService {
     int pageSize = 24,
   }) async {
     if (reset) resetAggregator();
+    final generation = _catalogGeneration;
 
     final eligible = _adapters.where((a) {
       if (a.sourceType == MangaSourceType.adultSource && !filter.allowNsfw) {
@@ -895,11 +900,13 @@ class MangaDexService {
         try {
           final res =
               await adapter.fetchCatalog(filter: filter, cursor: cursor);
+          if (generation != _catalogGeneration) return <Manga>[];
           breaker.recordSuccess();
           _cursors[type] = res.nextCursor;
           _hasMore[type] = res.hasMore;
           return res.items;
         } catch (e) {
+          if (generation != _catalogGeneration) return <Manga>[];
           final is429 = e.toString().contains('429');
           breaker.recordFailure(statusCode: is429 ? 429 : 500);
           return <Manga>[];
@@ -907,6 +914,7 @@ class MangaDexService {
       });
 
       final results = await Future.wait(futures);
+      if (generation != _catalogGeneration) return <Manga>[];
       for (final list in results) {
         for (final manga in list) {
           if (_seenIds.add(manga.compositeId)) {
