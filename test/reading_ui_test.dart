@@ -1,3 +1,4 @@
+import 'package:kuro_reader/models/catalog_sort.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -221,73 +222,103 @@ void main() {
     },
   );
 
-  testWidgets(
-    'catalog omits partial sorting and keeps title search functional',
-    (tester) async {
-      screen(tester);
-      var catalogCalls = 0;
-      await http.runWithClient(
-        () async {
-          await tester.pumpWidget(
-            MaterialApp(theme: theme(), home: const ExploreScreen()),
-          );
-          await tester.pumpAndSettle();
-          final scroll = tester
-              .widget<CustomScrollView>(find.byType(CustomScrollView))
-              .controller!;
-          scroll.jumpTo(400);
-          await tester.pumpAndSettle();
-          expect(find.text('Ordenar'), findsNothing);
-          expect(find.byTooltip('Ordenar catálogo'), findsNothing);
-          expect(scroll.offset, 400);
-          final before = catalogCalls;
-          await tester.enterText(find.byType(TextField), 'Obra');
-          await tester.pump(const Duration(milliseconds: 500));
-          await tester.pumpAndSettle();
-          expect(catalogCalls, greaterThan(before));
-          expect(tester.takeException(), isNull);
-        },
-        () => MockClient((request) async {
-          if (request.url.host == 'graphql.anilist.co') {
-            if (request.body.contains('Page(')) catalogCalls++;
-            return http.Response(
-              jsonEncode({
-                'data': {
-                  'Page': {
-                    'media': [],
-                    'pageInfo': {'hasNextPage': false},
-                  },
-                },
-              }),
-              200,
-            );
-          }
-          catalogCalls++;
-          final items = request.url.host == 'api.mangadex.org'
-              ? [
-                  for (var i = 0; i < 24; i++)
-                    {
-                      'id': 'work-$i',
-                      'attributes': {
-                        'title': {'en': 'Obra ${24 - i}'},
-                        'description': {'en': ''},
-                        'latestUploadedChapter': 'chapter',
-                        'updatedAt': '2026-11-10T00:00:00Z',
-                      },
-                      'relationships': [],
-                    },
-                ]
-              : [];
+  testWidgets('catalog applies all ordering choices and retains title search', (
+    tester,
+  ) async {
+    screen(tester);
+    var catalogCalls = 0;
+    await http.runWithClient(
+      () async {
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: const ValueKey('preview'),
+            child: MaterialApp(theme: theme(), home: const ExploreScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final scroll = tester
+            .widget<CustomScrollView>(find.byType(CustomScrollView))
+            .controller!;
+        scroll.jumpTo(400);
+        await tester.pumpAndSettle();
+        expect(find.text('Ordenar'), findsNothing);
+        expect(find.byTooltip('Ordenar catálogo'), findsOneWidget);
+        expect(scroll.offset, 400);
+        var before = catalogCalls;
+        await tester.tap(find.byTooltip('Ordenar catálogo'));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.widgetWithText(CheckedPopupMenuItem<CatalogSort>, 'Populares'),
+        );
+        await tester.pumpAndSettle();
+        expect(catalogCalls, greaterThan(before));
+        expect(find.text('Populares'), findsOneWidget);
+        before = catalogCalls;
+        await tester.tap(find.byTooltip('Ordenar catálogo'));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.widgetWithText(CheckedPopupMenuItem<CatalogSort>, 'Título A–Z'),
+        );
+        await tester.pumpAndSettle();
+        expect(catalogCalls, greaterThan(before));
+        expect(find.text('Título A–Z'), findsOneWidget);
+        await preview(tester, 'catalogo-ordenacao');
+        tester.view.physicalSize = const Size(320, 800);
+        await tester.pumpAndSettle();
+        await preview(tester, 'catalogo-320');
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+        await preview(tester, 'filtros-320');
+        expect(tester.takeException(), isNull);
+        await tester.tapAt(const Offset(4, 4));
+        await tester.pumpAndSettle();
+        before = catalogCalls;
+        await tester.enterText(find.byType(TextField), 'Obra');
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
+        expect(catalogCalls, greaterThan(before));
+        expect(tester.takeException(), isNull);
+      },
+      () => MockClient((request) async {
+        if (request.url.host == 'graphql.anilist.co') {
+          if (request.body.contains('Page(')) catalogCalls++;
           return http.Response(
             jsonEncode({
-              'data': items,
-              'total': items.length,
-              'pagination': {'has_next_page': false},
+              'data': {
+                'Page': {
+                  'media': [],
+                  'pageInfo': {'hasNextPage': false},
+                },
+              },
             }),
             200,
           );
-        }),
-      );
-    },
-  );
+        }
+        catalogCalls++;
+        final items = request.url.host == 'api.mangadex.org'
+            ? [
+                for (var i = 0; i < 24; i++)
+                  {
+                    'id': 'work-$i',
+                    'attributes': {
+                      'title': {'en': 'Obra ${24 - i}'},
+                      'description': {'en': ''},
+                      'latestUploadedChapter': 'chapter',
+                      'updatedAt': '2026-11-10T00:00:00Z',
+                    },
+                    'relationships': [],
+                  },
+              ]
+            : [];
+        return http.Response(
+          jsonEncode({
+            'data': items,
+            'total': items.length,
+            'pagination': {'has_next_page': false},
+          }),
+          200,
+        );
+      }),
+    );
+  });
 }

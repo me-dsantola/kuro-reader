@@ -8,7 +8,8 @@ class FrostedSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final contrast = MediaQuery.highContrastOf(context);
+    final contrast = MediaQuery.highContrastOf(context) ||
+        MediaQuery.disableAnimationsOf(context);
     final surface = DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(

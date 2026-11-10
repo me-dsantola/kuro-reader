@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'observed_http.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/manga_models.dart';
 import 'mangadex_service.dart';
@@ -75,9 +75,10 @@ class DownloadManager {
           if (await file.exists() && await file.length() > 0) {
             savedPaths[pageIndex] = file.path;
           } else {
-            final response = await http.get(
+            final response = await ObservedHttp.get(
               Uri.parse(url),
               headers: manga.customHeaders,
+              timeout: const Duration(seconds: 30),
             ).timeout(const Duration(seconds: 30));
             if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
               throw Exception('Falha ao baixar página ${pageIndex + 1}');

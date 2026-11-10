@@ -1,3 +1,5 @@
+import '../models/catalog_sort.dart';
+import '../widgets/catalog_sort_control.dart';
 import 'favorite_updates_screen.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
@@ -1539,6 +1541,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String? _error;
   int get _catalogRequestGeneration => _catalogRequests.generation;
 
+  CatalogSort _catalogSort = CatalogSort.latest;
   final Set<CanonicalTag> _includedTags = {};
   final Set<CanonicalTag> _excludedTags = {};
   final Set<MangaSourceType> _enabledSources = {
@@ -1591,7 +1594,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         excludedTags: Set.of(_excludedTags),
         enabledSources: Set.of(_enabledSources),
         allowNsfw: StorageService.nsfwMode.allowNsfwFetch,
-        sortByLatest: true,
+        sort: _catalogSort,
         hideZeroChapters: StorageService.hideZeroChapterTitles,
       );
 
@@ -1615,7 +1618,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               excludedTags: filter.excludedTags,
               enabledSources: {MangaSourceType.mangadex},
               allowNsfw: filter.allowNsfw,
-              sortByLatest: filter.sortByLatest,
+              sort: filter.sort,
               hideZeroChapters: filter.hideZeroChapters,
             )
           : filter;
@@ -1645,7 +1648,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 excludedTags: filter.excludedTags,
                 enabledSources: secondary,
                 allowNsfw: filter.allowNsfw,
-                sortByLatest: filter.sortByLatest,
+                sort: filter.sort,
                 hideZeroChapters: filter.hideZeroChapters,
               ),
             );
@@ -1741,13 +1744,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          const Expanded(child: Text(
                             'Catálogo de Categorias & Fontes',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
-                          ),
+                          )),
                           TextButton(
                             onPressed: () {
                               setModalState(() {
@@ -1792,6 +1795,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               }).map((src) {
                                 final isOn = _enabledSources.contains(src);
                                 return FilterChip(
+                                  labelStyle: const TextStyle(color: YomiPalette.pureWhite),
+                                  checkmarkColor: YomiPalette.pureWhite,
+                                  backgroundColor: YomiPalette.pitchBlack,
                                   selected: isOn,
                                   selectedColor:
                                       src.accentColor.withValues(alpha: 0.28),
@@ -1938,7 +1944,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final displayed = _mangas;
+    final displayed = List<Manga>.of(_mangas);
+    if (_catalogSort == CatalogSort.title) {
+      displayed.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    }
     final latestRoll = displayed.where((m) => !m.isCoverOnly).take(10).toList();
     final headerHeight = MediaQuery.paddingOf(context).top + kToolbarHeight + 64;
     final allowNsfw = StorageService.nsfwMode.allowNsfwFetch;
@@ -1946,7 +1955,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const YomiEnsoLogo(),
+        title: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: YomiEnsoLogo(fontSize: 24)),
+        centerTitle: false,
+        actions: [
+          CatalogSortControl(value: _catalogSort, onChanged: (sort) {
+            if (sort == _catalogSort) return;
+            _searchDebounce?.cancel();
+            setState(() => _catalogSort = sort);
+            _loadMangas(reset: true);
+          }),
+        ],
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
@@ -2032,7 +2050,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             size: 48, color: YomiPalette.ensoRed),
                         const SizedBox(height: 12),
                         const Text(
-                          'Sem conexão. Acesse sua Biblioteca ou a aba Offline.',
+                          'Não foi possível consultar os catálogos. Tente novamente ou leia pela aba Offline.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.white70),
                         ),
@@ -2073,6 +2091,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               return Padding(
                                 padding: const EdgeInsets.only(right: 8),
                                 child: FilterChip(
+                                  labelStyle: const TextStyle(color: YomiPalette.pureWhite),
+                                  checkmarkColor: YomiPalette.pureWhite,
                                   visualDensity: VisualDensity.compact,
                                   selected: isOn,
                                   selectedColor:
@@ -2111,7 +2131,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
                       if (latestRoll.isNotEmpty &&
                           _searchController.text.isEmpty) ...[
-                        const SliverToBoxAdapter(
+                        SliverToBoxAdapter(
                           child: Padding(
                             padding: EdgeInsets.fromLTRB(16, 14, 16, 10),
                             child: Row(
@@ -2121,7 +2141,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    'Destaques & Lançamentos Multi-Fonte',
+                                    _catalogSort == CatalogSort.latest ? 'Atualizações dos catálogos' : _catalogSort == CatalogSort.popular ? 'Populares nos catálogos' : 'Títulos A–Z',
                                     style: TextStyle(
                                       fontSize: 15.5,
                                       fontWeight: FontWeight.w800,

@@ -1,3 +1,4 @@
+import 'device_state_service.dart';
 import 'dart:collection';
 import 'dart:async';
 import 'dart:io';
@@ -99,9 +100,9 @@ class ReaderImageSession {
     for (final url in yomiCandidateImageUrls(_urls[index])) {
       if (_closed) throw StateError('Leitor encerrado');
       try {
-        final response = await _client
+        final response = await DeviceStateService.instance.observe(() => _client
             .get(Uri.parse(url), headers: headers)
-            .timeout(const Duration(seconds: 12));
+            .timeout(const Duration(seconds: 12)));
         final bytes = response.bodyBytes;
         if (response.statusCode == 200 && _isImage(bytes)) return bytes;
         // A rate limit applies to this source, not to one decode attempt.

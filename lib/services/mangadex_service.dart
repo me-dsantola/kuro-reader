@@ -1,3 +1,5 @@
+import 'observed_http.dart';
+import '../models/catalog_sort.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -111,11 +113,7 @@ class MangaDexAdapter implements IMangaSourceAdapter {
       buf.write('&title=${Uri.encodeQueryComponent(filter.query.trim())}');
     }
 
-    if (filter.sortByLatest && filter.query.trim().isEmpty) {
-      buf.write('&order[latestUploadedChapter]=desc');
-    } else {
-      buf.write('&order[followedCount]=desc');
-    }
+    buf.write(filter.sort.mangaDexOrder);
 
     final response = await MangaDexService.safeHttpGet(buf.toString());
 
@@ -187,7 +185,7 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
 
     final int page = (cursor ~/ 20) + 1;
     final String sortMode =
-        filter.sortByLatest ? 'TRENDING_DESC' : 'POPULARITY_DESC';
+        filter.sort.aniListOrder;
 
     String countryFilter = '';
     if (filter.includedTags.contains(CanonicalTag.manhwaKr)) {
@@ -226,9 +224,9 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
         ? ', search: ${jsonEncode(filter.query.trim())}'
         : '';
 
-    final String gqlQuery = 'query { Page(page: $page, perPage: 20) { pageInfo { hasNextPage } media(type: MANGA, isAdult: ${filter.allowNsfw ? "null" : "false"}, sort: [$sortMode]$searchArg$countryFilter$genreFilter$excludedGenreFilter) { id title { english romaji } description(asHtml: false) status chapters genres isAdult countryOfOrigin coverImage { large extraLarge } } } }';
+    final String gqlQuery = 'query { Page(page: $page, perPage: 20) { pageInfo { hasNextPage } media(type: MANGA, isAdult: ${filter.allowNsfw ? "null" : "false"}, sort: [$sortMode]$searchArg$countryFilter$genreFilter$excludedGenreFilter) { id updatedAt title { english romaji } description(asHtml: false) status chapters genres isAdult countryOfOrigin coverImage { large extraLarge } } } }';
 
-    final response = await http
+    final response = await ObservedHttp
         .post(
           Uri.parse('https://graphql.anilist.co'),
           headers: const {
@@ -289,7 +287,7 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
           directHighResCoverUrl: coverXL,
           tags: ['AniList Oficial', ...parsedGenres],
           isNsfw: isAdult,
-          updatedAt: DateTime.now().subtract(const Duration(minutes: 15)),
+          updatedAt: DateTime.fromMillisecondsSinceEpoch(((m['updatedAt'] as num?)?.toInt() ?? 0) * 1000),
           availableChaptersCount: chCount,
         ),
       );
@@ -332,14 +330,13 @@ class JikanMalAdapter implements IMangaSourceAdapter {
     if (filter.query.trim().isNotEmpty) {
       buf.write('&q=${Uri.encodeQueryComponent(filter.query.trim())}');
     } else if (filter.includedTags.contains(CanonicalTag.manhwaKr)) {
-      buf.write('&type=manhwa&order_by=popularity&sort=asc');
+      buf.write('&type=manhwa');
     } else if (filter.includedTags.contains(CanonicalTag.manhuaCn)) {
-      buf.write('&type=manhua&order_by=popularity&sort=asc');
-    } else {
-      buf.write('&order_by=popularity&sort=asc');
+      buf.write('&type=manhua');
     }
+    buf.write(filter.sort.jikanOrder);
 
-    final response = await http
+    final response = await ObservedHttp
         .get(Uri.parse(buf.toString()))
         .timeout(const Duration(seconds: 8));
 
@@ -387,7 +384,7 @@ class JikanMalAdapter implements IMangaSourceAdapter {
           tags: ['MyAnimeList', ...tags],
           isNsfw: rating.needsSensitiveMode,
           contentRatingKnown: rating != ContentRating.unknown,
-          updatedAt: DateTime.now().subtract(const Duration(minutes: 35)),
+          updatedAt: DateTime.tryParse(entry['published']?['from']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
           availableChaptersCount: chCount,
         ),
       );
@@ -431,13 +428,10 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
       if (filter.query.trim().isNotEmpty) {
         buf.write(
             '&filter[text]=${Uri.encodeQueryComponent(filter.query.trim())}');
-      } else {
-        buf.write(filter.sortByLatest
-            ? '&sort=-updatedAt,-userCount'
-            : '&sort=-userCount');
       }
+      buf.write('&sort=${filter.sort.kitsuOrder}');
 
-      final res = await http
+      final res = await ObservedHttp
           .get(
             Uri.parse(buf.toString()),
             headers: const {'Accept': 'application/vnd.api+json'},
@@ -483,7 +477,7 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
                 tags: ['Catálogo Kitsu', subtype],
                 isNsfw: rating.needsSensitiveMode,
                 contentRatingKnown: rating != ContentRating.unknown,
-                updatedAt: DateTime.now().subtract(const Duration(minutes: 25)),
+                updatedAt: DateTime.tryParse(attr['updatedAt']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
                 availableChaptersCount: chCount,
               ),
             );
@@ -506,7 +500,7 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
     if (filter.query.trim().isNotEmpty) {
       buf.write('&title=${Uri.encodeQueryComponent(filter.query.trim())}');
     }
-    buf.write('&order[followedCount]=desc');
+    buf.write(filter.sort.mangaDexOrder);
 
     final response = await MangaDexService.safeHttpGet(buf.toString());
     final data = jsonDecode(response.body);
@@ -612,7 +606,7 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
       '&includes[]=cover_art&hasAvailableChapters=true'
       '&contentRating[]=safe&contentRating[]=suggestive'
       '&title=${Uri.encodeQueryComponent(activeSearch)}'
-      '&order[followedCount]=desc',
+      '${filter.sort.mangaDexOrder}',
     );
 
     final response = await MangaDexService.safeHttpGet(buf.toString());
@@ -694,9 +688,7 @@ class AdultVaultAdapter implements IMangaSourceAdapter {
     if (filter.query.trim().isNotEmpty) {
       buf.write('&title=${Uri.encodeQueryComponent(filter.query.trim())}');
     }
-    buf.write(filter.sortByLatest
-        ? '&order[latestUploadedChapter]=desc'
-        : '&order[followedCount]=desc');
+    buf.write(filter.sort.mangaDexOrder);
 
     final response = await MangaDexService.safeHttpGet(buf.toString());
 
@@ -758,7 +750,7 @@ class MangaDexService {
     try {
       final gql =
           'query { Media(search: ${jsonEncode(title)}, type: MANGA) { coverImage { extraLarge large } } }';
-      final res = await http
+      final res = await ObservedHttp
           .post(
             Uri.parse('https://graphql.anilist.co'),
             headers: const {
@@ -794,7 +786,7 @@ class MangaDexService {
   /// - No Chrome Web (kIsWeb): usa túnel JSON AllOrigins (/get) + CodeTabs + tentativa direta.
   static Future<http.Response> safeHttpGet(String rawUrl) async {
     if (!kIsWeb) {
-      final directRes = await http
+      final directRes = await ObservedHttp
           .get(Uri.parse(rawUrl), headers: headers)
           .timeout(const Duration(seconds: 8));
       if (directRes.statusCode == 200) return directRes;
@@ -806,7 +798,7 @@ class MangaDexService {
       final aoUri = Uri.parse(
         'https://api.allorigins.win/get?url=${Uri.encodeComponent(rawUrl)}',
       );
-      final aoRes = await http.get(aoUri).timeout(const Duration(seconds: 8));
+      final aoRes = await ObservedHttp.get(aoUri).timeout(const Duration(seconds: 8));
       if (aoRes.statusCode == 200) {
         final wrapper = jsonDecode(aoRes.body);
         final String? contents = wrapper['contents']?.toString();
@@ -828,7 +820,7 @@ class MangaDexService {
     ];
     for (final candidate in webFallbacks) {
       try {
-        final res = await http
+        final res = await ObservedHttp
             .get(Uri.parse(candidate))
             .timeout(const Duration(seconds: 7));
         if (res.statusCode == 200 && res.body.trim().startsWith('{')) {
@@ -927,8 +919,12 @@ class MangaDexService {
 
       final results = await Future.wait(futures);
       if (generation != _catalogGeneration) return <Manga>[];
-      for (final list in results) {
-        for (final manga in list) {
+      // Interleave provider rankings; chapter count is not popularity.
+      final maxLength = results.fold<int>(0, (n, list) => list.length > n ? list.length : n);
+      for (var rank = 0; rank < maxLength; rank++) {
+        for (final list in results) {
+          if (rank >= list.length) continue;
+          final manga = list[rank];
           if (_seenIds.add(manga.compositeId)) {
             _lookaheadBuffer.add(manga);
           }
@@ -978,24 +974,18 @@ class MangaDexService {
       }
     }
 
-    // ORDENAÇÃO COM REBAIXAMENTO DE TÍTULOS "SÓ CAPA" (0 CAPÍTULOS) PARA O FINAL
-    consolidated.sort((a, b) {
-      if (a.isCoverOnly != b.isCoverOnly) {
-        return a.isCoverOnly ? 1 : -1;
-      }
-      if (filter.query.trim().isNotEmpty) {
-        final cmp = b.availableChaptersCount.compareTo(a.availableChaptersCount);
-        if (cmp != 0) return cmp;
-      }
-      // Respeita a ordenação selecionada. A popularidade entre fontes
-      // é aproximada pela quantidade de capítulos disponíveis.
-      if (!filter.sortByLatest) {
-        final chapterComparison =
-            b.availableChaptersCount.compareTo(a.availableChaptersCount);
-        if (chapterComparison != 0) return chapterComparison;
-      }
-      return b.updatedAt.compareTo(a.updatedAt);
-    });
+    // Popularity keeps the interleaved native rankings, without inventing
+    // a comparable popularity score between unrelated providers.
+    if (filter.sort != CatalogSort.popular) {
+      consolidated.sort((a, b) {
+        if (filter.sort == CatalogSort.latest) {
+          final date = b.updatedAt.compareTo(a.updatedAt);
+          if (date != 0) return date;
+        }
+        final title = a.title.toLowerCase().compareTo(b.title.toLowerCase());
+        return title != 0 ? title : a.compositeId.compareTo(b.compositeId);
+      });
+    }
 
     _lookaheadBuffer
       ..clear()

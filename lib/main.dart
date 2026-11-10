@@ -1,3 +1,5 @@
+import 'services/device_state_service.dart';
+import 'widgets/adaptive_app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/storage_service.dart';
@@ -8,6 +10,7 @@ import 'widgets/privacy_shield.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  DeviceStateService.instance.start();
   bool storageReady = false;
   try {
     await StorageService.init();
@@ -46,6 +49,11 @@ class YomiApp extends StatelessWidget {
           secondary: YomiPalette.sakuraPink,
           surface: YomiPalette.surface,
         ),
+        chipTheme: const ChipThemeData(
+          labelStyle: TextStyle(color: YomiPalette.pureWhite),
+          secondaryLabelStyle: TextStyle(color: YomiPalette.pureWhite),
+          checkmarkColor: YomiPalette.pureWhite,
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: YomiPalette.pitchBlack,
           elevation: 0,
@@ -60,8 +68,9 @@ class YomiApp extends StatelessWidget {
           ),
         ),
       ),
-      builder: (context, child) =>
-          PrivacyShield(child: child ?? const SizedBox()),
+      builder: (context, child) => PrivacyShield(
+        child: AdaptiveAppShell(child: child ?? const SizedBox()),
+      ),
       home: storageReady
           ? const MainNavigationShell()
           : Builder(

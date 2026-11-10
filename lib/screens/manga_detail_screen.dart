@@ -542,7 +542,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                                 (t) => Chip(
                                   label: Text(
                                     t,
-                                    style: const TextStyle(fontSize: 11),
+                                    style: const TextStyle(fontSize: 11, color: YomiPalette.pureWhite),
                                   ),
                                   backgroundColor: YomiPalette.surface,
                                   side: BorderSide.none,

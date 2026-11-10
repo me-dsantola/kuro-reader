@@ -1,3 +1,4 @@
+import 'catalog_sort.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -382,7 +383,8 @@ class YomiSearchFilter {
   final Set<CanonicalTag> excludedTags;
   final Set<MangaSourceType> enabledSources;
   final bool allowNsfw;
-  final bool sortByLatest;
+  final CatalogSort sort;
+  bool get sortByLatest => sort == CatalogSort.latest;
   final bool hideZeroChapters;
 
   const YomiSearchFilter({
@@ -398,9 +400,10 @@ class YomiSearchFilter {
       MangaSourceType.adultSource,
     },
     this.allowNsfw = false,
-    this.sortByLatest = true,
+    bool sortByLatest = true,
+    CatalogSort? sort,
     this.hideZeroChapters = false,
-  });
+  }) : sort = sort ?? (sortByLatest ? CatalogSort.latest : CatalogSort.popular);
 }
 
 class Manga {
