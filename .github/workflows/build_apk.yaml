@@ -75,7 +75,7 @@ jobs:
           if-no-files-found: error
 
       - name: 8. Disponibilizar APK Release
-        if: github.ref_name != 'refactor/kuro-reader-v2' || (github.event_name == 'workflow_dispatch' && inputs.build_type == 'release')
+        if: github.ref_name != 'refactor/kuro-reader-v2' || github.event_name == 'push' || inputs.build_type == 'release'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.ref_name == 'refactor/kuro-reader-v2' && 'KuroReader-Beta-Release-Android-APK' || 'KuroReader-Stable-Android-APK' }}
