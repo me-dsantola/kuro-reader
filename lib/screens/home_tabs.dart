@@ -1839,8 +1839,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         actions: [
           IconButton(
             tooltip: _sortByLatest
-                ? 'Ordenado por Lançamento'
-                : 'Ordenado por Popularidade',
+                ? 'Atualizações recentes'
+                : 'Mais capítulos disponíveis',
             icon: Icon(
               _sortByLatest
                   ? Icons.schedule_rounded
