@@ -964,6 +964,13 @@ class MangaDexService {
         final cmp = b.availableChaptersCount.compareTo(a.availableChaptersCount);
         if (cmp != 0) return cmp;
       }
+      // Respeita a ordenação selecionada. A popularidade entre fontes
+      // é aproximada pela quantidade de capítulos disponíveis.
+      if (!filter.sortByLatest) {
+        final chapterComparison =
+            b.availableChaptersCount.compareTo(a.availableChaptersCount);
+        if (chapterComparison != 0) return chapterComparison;
+      }
       return b.updatedAt.compareTo(a.updatedAt);
     });
 
