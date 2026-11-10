@@ -40,6 +40,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _currentPage = index;
     _lastSavedPage = index;
     StorageService.saveLastPageIndex(widget.chapter.id, index);
+    // Warm the next page as reading advances, not just at chapter open.
+    if (!_isOfflineMode && _onlinePagesData != null) {
+      final urls = _onlinePagesData!.getUrls(
+        useDataSaver: StorageService.dataSaverEnabled,
+      );
+      _warmNextPage(urls);
+    }
   }
 
   late PageController _pageController;
@@ -103,10 +110,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
     );
   }
 
+  int _lastPrefetchedPage = -1;
+
   void _warmNextPage(List<String> urls) {
     if (urls.isEmpty || !mounted) return;
     final next = _currentPage + 1;
-    if (next >= urls.length) return;
+    if (next >= urls.length || next == _lastPrefetchedPage) return;
+    _lastPrefetchedPage = next;
     // Only one upcoming page; do not eagerly decode the entire chapter.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
