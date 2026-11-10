@@ -134,6 +134,16 @@ class _ReaderScreenState extends State<ReaderScreen> {
         [];
     final totalPages =
         _isOfflineMode ? _localFilePaths.length : onlineUrls.length;
+    // Chapter files can change between sessions. Never restore a page
+    // beyond the number of pages actually available.
+    if (totalPages > 0 && _currentPage >= totalPages) {
+      _currentPage = totalPages - 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_pageController.hasClients) return;
+        _pageController.jumpToPage(_currentPage);
+        StorageService.saveLastPageIndex(widget.chapter.id, _currentPage);
+      });
+    }
     final nextCh = _nextChapter;
     final prevCh = _prevChapter;
 
@@ -271,7 +281,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'Cap. ${widget.chapter.chapterNumber} • $totalPages págs • Keep-Alive Ativo ${_isOfflineMode ? "(OFFLINE)" : ""}',
+                                      'Cap. ${widget.chapter.chapterNumber} • $totalPages págs ${_isOfflineMode ? "• OFFLINE" : ""}',
                                       style: const TextStyle(
                                         fontSize: 11.5,
                                         color: YomiPalette.sakuraPink,
