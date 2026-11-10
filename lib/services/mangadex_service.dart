@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/manga_models.dart';
+import '../models/content_rating.dart';
 import 'storage_service.dart';
 
 class PaginatedSourceResponse {
@@ -353,6 +354,8 @@ class JikanMalAdapter implements IMangaSourceAdapter {
     final items = <Manga>[];
     for (final entry in dataList) {
       if (entry is! Map) continue;
+      final rating = ContentRating.fromJikan(entry);
+      if (!filter.allowNsfw && rating.needsSensitiveMode) continue;
       final String title =
           (entry['title_english'] ?? entry['title'] ?? 'Sem Título').toString();
       final String synopsis =
@@ -382,7 +385,8 @@ class JikanMalAdapter implements IMangaSourceAdapter {
           directCoverUrl: imgUrl,
           directHighResCoverUrl: largeImgUrl,
           tags: ['MyAnimeList', ...tags],
-          isNsfw: false,
+          isNsfw: rating.needsSensitiveMode,
+          contentRatingKnown: rating != ContentRating.unknown,
           updatedAt: DateTime.now().subtract(const Duration(minutes: 35)),
           availableChaptersCount: chCount,
         ),
@@ -448,6 +452,8 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
           for (final item in dataList) {
             if (item is! Map) continue;
             final attr = item['attributes'] ?? {};
+            final rating = ContentRating.fromKitsu(attr);
+            if (!filter.allowNsfw && rating.needsSensitiveMode) continue;
             final titles = attr['titles'] ?? {};
             final String title = (attr['canonicalTitle'] ??
                     titles['en'] ??
@@ -475,7 +481,8 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
                 directCoverUrl: coverSmall,
                 directHighResCoverUrl: coverLarge,
                 tags: ['Catálogo Kitsu', subtype],
-                isNsfw: false,
+                isNsfw: rating.needsSensitiveMode,
+                contentRatingKnown: rating != ContentRating.unknown,
                 updatedAt: DateTime.now().subtract(const Duration(minutes: 25)),
                 availableChaptersCount: chCount,
               ),
@@ -484,7 +491,7 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
           return PaginatedSourceResponse(
             items: items,
             nextCursor: cursor + limit,
-            hasMore: items.length >= 10,
+            hasMore: decoded['links']?['next'] != null,
           );
         }
       }

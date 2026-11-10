@@ -10,6 +10,7 @@ import '../services/mangadex_service.dart';
 import '../services/storage_service.dart';
 import '../services/download_manager.dart';
 import '../services/favorite_updates_service.dart';
+import '../services/catalog_request_state.dart';
 import 'manga_detail_screen.dart';
 import 'reader_screen.dart';
 
@@ -121,16 +122,17 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
         color: YomiPalette.surface,
         padding: const EdgeInsets.all(8),
         alignment: Alignment.center,
-        child: Column(
+        child: LayoutBuilder(builder: (context, constraints) {
+          final icon = Icon(
+            _triedTitleRecovery && _exhausted
+                ? Icons.auto_stories_rounded : Icons.sync_rounded,
+            color: YomiPalette.ensoRed, size: 22,
+          );
+          if (constraints.maxHeight < 60) return icon;
+          return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-               _triedTitleRecovery && _exhausted
-                  ? Icons.auto_stories_rounded
-                  : Icons.sync_rounded,
-              color: YomiPalette.ensoRed,
-              size: 22,
-            ),
+            icon,
             const SizedBox(height: 4),
             Text(
               widget.manga.title,
@@ -140,7 +142,8 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
               style: const TextStyle(fontSize: 10, color: Colors.white70),
             ),
           ],
-        ),
+        );
+        }),
       );
     }
 
@@ -583,9 +586,13 @@ class ProfileDashboardScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ValueListenableBuilder<UserProfile>(
-        valueListenable: StorageService.profileNotifier,
-        builder: (context, profile, _) {
+      body: ListenableBuilder(
+        listenable: Listenable.merge([
+          StorageService.profileNotifier,
+          StorageService.nsfwModeNotifier,
+        ]),
+        builder: (context, _) {
+          final profile = StorageService.profileNotifier.value;
           return ValueListenableBuilder(
             // Recompute profile statistics only when reading events or
             // recents change, not on every saved reader page/scroll offset.
@@ -1524,10 +1531,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   List<Manga> _mangas = [];
   bool _isLoading = true;
-  bool _isLoadingMore = false;
+  final _catalogRequests = CatalogRequestState();
+  bool get _isLoadingMore => _catalogRequests.isLoadingMore;
   bool _isEnrichingCatalog = false;
   String? _error;
-  int _catalogRequestGeneration = 0;
+  int get _catalogRequestGeneration => _catalogRequests.generation;
 
   final Set<CanonicalTag> _includedTags = {};
   final Set<CanonicalTag> _excludedTags = {};
@@ -1587,7 +1595,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
 
   Future<void> _loadMangas({bool reset = true}) async {
-    final generation = ++_catalogRequestGeneration;
+    final generation = _catalogRequests.beginSearch();
     setState(() {
       _isLoading = true;
       _isEnrichingCatalog = false;
@@ -1675,8 +1683,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Future<void> _loadMoreMangas() async {
     if (_isLoading || _isLoadingMore || _isEnrichingCatalog) return;
-    final generation = _catalogRequestGeneration;
-    setState(() => _isLoadingMore = true);
+    final generation = _catalogRequests.beginNextPage();
+    if (generation == null) return;
+    setState(() {});
     try {
       final result = await MangaDexService.fetchMergedCatalog(
         filter: _currentFilter,
@@ -1694,7 +1703,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       // Keep the current catalog visible if a later page fails.
     } finally {
       if (mounted && generation == _catalogRequestGeneration) {
-        setState(() => _isLoadingMore = false);
+        setState(() => _catalogRequests.finishNextPage(generation));
       }
     }
   }
@@ -2484,8 +2493,6 @@ class DownloadsScreen extends StatelessWidget {
                       onPressed: () => DownloadManager.deleteChapter(chapter.id),
                     ),
                     onTap: () {
-                      StorageService.markChapterAsRead(manga, chapter,
-                          read: true);
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -2669,12 +2676,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: YomiPalette.surface,
+                  Material(
+                    color: YomiPalette.surface,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white10),
+                      side: const BorderSide(color: Colors.white10),
                     ),
+                    clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
                         for (final mode in NsfwDisplayMode.values)
@@ -2731,12 +2739,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: YomiPalette.surface,
+                  Material(
+                    color: YomiPalette.surface,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white10),
+                      side: const BorderSide(color: Colors.white10),
                     ),
+                    clipBehavior: Clip.antiAlias,
                     child: Column(
                       children: [
                         SwitchListTile(
@@ -2777,7 +2786,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 22),
                   const Text(
-                    'Persistência & Backup do Perfil (Anti-Desinstalação)',
+                    'Backup manual dos seus dados',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
@@ -2802,7 +2811,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Android Auto-Backup Ativo + Código de Restauração Instantânea',
+                                'Exporte um backup antes de desinstalar',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
@@ -2912,7 +2921,13 @@ class _MangaGridCardState extends State<MangaGridCard> {
             ),
           ),
           onLongPress: widget.manga.isNsfw
-              ? () => setState(() => _peekUnblurred = !_peekUnblurred)
+              ? () => setState(() => _peekUnblurred = true)
+              : null,
+          onLongPressEnd: widget.manga.isNsfw
+              ? (_) => setState(() => _peekUnblurred = false)
+              : null,
+          onLongPressCancel: widget.manga.isNsfw
+              ? () => setState(() => _peekUnblurred = false)
               : null,
           child: Opacity(
             opacity: isCoverOnly ? 0.55 : 1.0,

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:kuro_reader/models/manga_models.dart';
 import 'package:kuro_reader/services/storage_service.dart';
+import 'package:kuro_reader/services/backup_codec.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -101,4 +102,109 @@ void main() {
     );
     expect(StorageService.isFavorite(manga.id), isTrue);
   });
+
+  test('nested invalid history does not overwrite any section', () async {
+    await StorageService.favBox.put(manga.id, manga.toMap());
+    await StorageService.saveLastPageIndex(chapter.id, 4);
+    final invalid = BackupCodec.encode({
+      'favorites': {
+        'new': {...manga.toMap(), 'id': 'new'},
+      },
+      'history': {'page_${chapter.id}': 'broken'},
+      'profile': {'name': 'Changed'},
+    });
+    expect(await StorageService.importFullBackupJson(invalid), isFalse);
+    expect(StorageService.favBox.containsKey('new'), isFalse);
+    expect(StorageService.getSavedPageIndex(chapter.id), 4);
+    expect(
+      StorageService.settingsBox.containsKey(StorageService.restoreJournalKey),
+      isFalse,
+    );
+  });
+
+  test(
+    'an interrupted restore rolls back overwritten and newly inserted keys',
+    () async {
+      await StorageService.favBox.put(manga.id, {
+        ...manga.toMap(),
+        'title': 'Partial',
+      });
+      await StorageService.favBox.put('new', {...manga.toMap(), 'id': 'new'});
+      await StorageService.saveLastPageIndex(chapter.id, 9);
+      await StorageService.setDataSaverEnabled(true);
+      await StorageService.settingsBox.put(StorageService.restoreJournalKey, {
+        'favorites': {
+          manga.id: {'exists': true, 'value': manga.toMap()},
+          'new': {'exists': false, 'value': null},
+        },
+        'history': {
+          'page_${chapter.id}': {'exists': true, 'value': 4},
+        },
+        'settings': {
+          'data_saver_mode': {'exists': false, 'value': null},
+        },
+      });
+      await StorageService.recoverInterruptedRestore();
+      await StorageService.recoverInterruptedRestore();
+      expect(StorageService.getFavorites().single.title, manga.title);
+      expect(StorageService.getSavedPageIndex(chapter.id), 4);
+      expect(StorageService.dataSaverEnabled, isFalse);
+      expect(
+        StorageService.settingsBox.containsKey(
+          StorageService.restoreJournalKey,
+        ),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'concurrent restore requests are serialized without a leftover journal',
+    () async {
+      final results = await Future.wait([
+        StorageService.importFullBackupJson(
+          BackupCodec.encode({
+            'history': {'page_${chapter.id}': 3},
+          }),
+        ),
+        StorageService.importFullBackupJson(
+          BackupCodec.encode({
+            'history': {'page_${chapter.id}': 8},
+          }),
+        ),
+      ]);
+      expect(results, [true, true]);
+      expect(StorageService.getSavedPageIndex(chapter.id), 8);
+      expect(
+        StorageService.settingsBox.containsKey(
+          StorageService.restoreJournalKey,
+        ),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'unknown legacy metadata is hidden across all local reading surfaces',
+    () async {
+      final legacy = {...manga.toMap(), 'source': 'comick'}
+        ..remove('contentRatingKnown');
+      await StorageService.favBox.put(manga.id, legacy);
+      await StorageService.historyBox.put('recent_reading_list', [
+        {'manga': legacy, 'chapter': chapter.toMap()},
+      ]);
+      await StorageService.downloadsBox.put(chapter.id, {
+        'manga': legacy,
+        'chapter': chapter.toMap(),
+        'paths': <String>[],
+      });
+      expect(StorageService.getFavorites(), isEmpty);
+      expect(StorageService.getContinueReadingList(), isEmpty);
+      expect(StorageService.getAllDownloadedChapters(), isEmpty);
+      StorageService.nsfwModeNotifier.value = NsfwDisplayMode.visible;
+      expect(StorageService.getFavorites(), hasLength(1));
+      expect(StorageService.getContinueReadingList(), hasLength(1));
+      expect(StorageService.getAllDownloadedChapters(), hasLength(1));
+    },
+  );
 }

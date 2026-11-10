@@ -60,7 +60,7 @@ enum MangaSourceType {
 }
 
 enum NsfwDisplayMode {
-  hidden('Seguro (Ocultar 18+)', 'Desativa totalmente conteúdos e tags adultas'),
+  hidden('Seguro (Ocultar 18+)', 'Oculta conteúdo adulto e obras sem classificação confirmada'),
   blurred('Sakura Blur (Borrar Capas)', 'Exibe resultados 18+ com capa desfocada até segurar'),
   visible('Liberado (Exibir Tudo)', 'Exibe capas e obras 18+ sem restrições');
 
@@ -414,6 +414,7 @@ class Manga {
   final String? directHighResCoverUrl;
   final List<String> tags;
   final bool isNsfw;
+  final bool contentRatingKnown;
   final DateTime updatedAt;
   final Map<String, String> customHeaders;
   final List<Chapter>? preloadedChapters;
@@ -431,6 +432,7 @@ class Manga {
     this.directHighResCoverUrl,
     required this.tags,
     this.isNsfw = false,
+    this.contentRatingKnown = true,
     DateTime? updatedAt,
     Map<String, String>? customHeaders,
     this.preloadedChapters,
@@ -471,6 +473,7 @@ class Manga {
       directHighResCoverUrl: directHighResCoverUrl,
       tags: tags,
       isNsfw: isNsfw,
+      contentRatingKnown: contentRatingKnown,
       updatedAt: updatedAt,
       customHeaders: customHeaders,
       preloadedChapters: preloadedChapters ?? this.preloadedChapters,
@@ -551,6 +554,7 @@ class Manga {
         'directHighResCoverUrl': directHighResCoverUrl,
         'tags': tags,
         'isNsfw': isNsfw,
+        'contentRatingKnown': contentRatingKnown,
         'updatedAt': updatedAt.toIso8601String(),
         'customHeaders': customHeaders,
         'availableChaptersCount': availableChaptersCount,
@@ -559,9 +563,15 @@ class Manga {
 
   factory Manga.fromMap(Map<String, dynamic> map) {
     final rawPreloaded = map['preloadedChapters'] as List?;
+    final source = MangaSourceType.fromName(map['source']?.toString());
+    // Older Jikan/Kitsu records hard-coded isNsfw=false. Preserve their data
+    // and IDs, but require sensitive mode until a fresh classified lookup.
+    final known = map['contentRatingKnown'] is bool
+        ? map['contentRatingKnown'] == true
+        : source != MangaSourceType.jikanMal && source != MangaSourceType.comick;
     return Manga(
       id: (map['id'] ?? '').toString(),
-      source: MangaSourceType.fromName(map['source']?.toString()),
+      source: source,
       title: (map['title'] ?? 'Sem Título').toString(),
       description: (map['description'] ?? '').toString(),
       status: (map['status'] ?? 'PUBLICADO').toString(),
@@ -569,7 +579,8 @@ class Manga {
       directCoverUrl: map['directCoverUrl']?.toString(),
       directHighResCoverUrl: map['directHighResCoverUrl']?.toString(),
       tags: List<String>.from(map['tags'] ?? []),
-      isNsfw: map['isNsfw'] == true,
+      isNsfw: map['isNsfw'] == true || !known,
+      contentRatingKnown: known,
       updatedAt: DateTime.tryParse(map['updatedAt']?.toString() ?? '') ?? DateTime.now(),
       customHeaders: kIsWeb
           ? const {}

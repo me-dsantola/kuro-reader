@@ -17,9 +17,12 @@ class FavoriteUpdatesScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Novos capítulos'),
       ),
-      body: ValueListenableBuilder(
-        valueListenable: StorageService.settingsBox.listenable(),
-        builder: (context, Box settings, _) {
+      body: ListenableBuilder(
+        listenable: Listenable.merge([
+          StorageService.settingsBox.listenable(),
+          StorageService.nsfwModeNotifier,
+        ]),
+        builder: (context, _) {
           return ValueListenableBuilder(
             valueListenable: StorageService.favBox.listenable(),
             builder: (context, Box favoritesBox, _) {

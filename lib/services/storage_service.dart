@@ -8,13 +8,17 @@ class StorageService {
   static const String historyBoxName = 'history_box';
   static const String downloadsBoxName = 'downloads_box';
   static const String settingsBoxName = 'settings_box';
+  static const String restoreJournalKey = 'backup_restore_journal_v1';
+  static Future<void> _restoreTail = Future<void>.value();
 
   /// Por exigência estrita, o modo NSFW SEMPRE inicia como `hidden` (Desligado)
-  static final ValueNotifier<NsfwDisplayMode> nsfwModeNotifier =
-      ValueNotifier(NsfwDisplayMode.hidden);
+  static final ValueNotifier<NsfwDisplayMode> nsfwModeNotifier = ValueNotifier(
+    NsfwDisplayMode.hidden,
+  );
 
-  static final ValueNotifier<UserProfile> profileNotifier =
-      ValueNotifier(const UserProfile());
+  static final ValueNotifier<UserProfile> profileNotifier = ValueNotifier(
+    const UserProfile(),
+  );
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -22,6 +26,7 @@ class StorageService {
     await Hive.openBox(historyBoxName);
     await Hive.openBox(downloadsBoxName);
     final settings = await Hive.openBox(settingsBoxName);
+    await recoverInterruptedRestore();
 
     // 1. Conteúdo Adulto: Oculto de cara na primeira abertura e sempre desligado por padrão.
     // Só carrega outro modo se o usuário tiver ativado explicitamente "persist_nsfw" nas configurações,
@@ -40,8 +45,9 @@ class StorageService {
     // 2. Carrega Perfil Personalizado
     final rawProfile = settings.get('user_profile');
     if (rawProfile != null && rawProfile is Map) {
-      profileNotifier.value =
-          UserProfile.fromMap(Map<String, dynamic>.from(rawProfile));
+      profileNotifier.value = UserProfile.fromMap(
+        Map<String, dynamic>.from(rawProfile),
+      );
     } else {
       const defaultProfile = UserProfile(isConfigured: true);
       await settings.put('user_profile', defaultProfile.toMap());
@@ -152,10 +158,15 @@ class StorageService {
     await historyBox.put('last_${manga.id}', chapter.toMap());
     await historyBox.put('manga_meta_${manga.id}', manga.toMap());
 
-    final List rawRecent =
-        List.from(historyBox.get('recent_reading_list', defaultValue: []));
-    rawRecent.removeWhere((item) =>
-        item is Map && item['manga'] is Map && item['manga']['id'] == manga.id);
+    final List rawRecent = List.from(
+      historyBox.get('recent_reading_list', defaultValue: []),
+    );
+    rawRecent.removeWhere(
+      (item) =>
+          item is Map &&
+          item['manga'] is Map &&
+          item['manga']['id'] == manga.id,
+    );
     rawRecent.insert(0, {
       'manga': manga.toMap(),
       'chapter': chapter.toMap(),
@@ -178,8 +189,9 @@ class StorageService {
 
       // Only completed chapters count in reading statistics.
       if (!wasRead) {
-        final List rawEvents =
-            List.from(historyBox.get('reading_events_log', defaultValue: []));
+        final List rawEvents = List.from(
+          historyBox.get('reading_events_log', defaultValue: []),
+        );
         rawEvents.add({
           'chapterId': chapter.id,
           'mangaId': manga.id,
@@ -193,8 +205,9 @@ class StorageService {
       }
     } else if (wasRead) {
       // Manually reverting a completion must also update metrics.
-      final List rawEvents =
-          List.from(historyBox.get('reading_events_log', defaultValue: []));
+      final List rawEvents = List.from(
+        historyBox.get('reading_events_log', defaultValue: []),
+      );
       rawEvents.removeWhere(
         (event) => event is Map && event['chapterId'] == chapter.id,
       );
@@ -211,14 +224,18 @@ class StorageService {
     for (final item in raw) {
       if (item is Map) {
         final map = Map<String, dynamic>.from(item);
-        final manga = Manga.fromMap(Map<String, dynamic>.from(map['manga'] ?? {}));
-        final chapter =
-            Chapter.fromMap(Map<String, dynamic>.from(map['chapter'] ?? {}));
+        final manga = Manga.fromMap(
+          Map<String, dynamic>.from(map['manga'] ?? {}),
+        );
+        final chapter = Chapter.fromMap(
+          Map<String, dynamic>.from(map['chapter'] ?? {}),
+        );
         if (!allowNsfw && manga.isNsfw) continue;
         result.add({
           'manga': manga,
           'chapter': chapter,
-          'timestamp': DateTime.tryParse(map['timestamp']?.toString() ?? '') ??
+          'timestamp':
+              DateTime.tryParse(map['timestamp']?.toString() ?? '') ??
               DateTime.now(),
         });
       }
@@ -372,7 +389,14 @@ class StorageService {
     return BackupCodec.encode(payload);
   }
 
-  static Future<bool> importFullBackupJson(String rawInput) async {
+  static Future<bool> importFullBackupJson(String rawInput) {
+    // A second restore must not replace the first restore's recovery journal.
+    final result = _restoreTail.then((_) => _importBackup(rawInput));
+    _restoreTail = result.then<void>((_) {});
+    return result;
+  }
+
+  static Future<bool> _importBackup(String rawInput) async {
     try {
       // Parse and validate every section before mutating any Hive box.
       // Older backups without a version number remain supported.
@@ -392,28 +416,78 @@ class StorageService {
             )
           : null;
 
-      // Verify serializable map values before writing; otherwise malformed
-      // imports can leave a partially restored user profile.
-      for (final entry in hist.entries) {
-        if (entry.key.isEmpty) throw const FormatException('Histórico inválido');
-      }
-
-      if (favs.isNotEmpty) await favBox.putAll(favs);
-      if (hist.isNotEmpty) await historyBox.putAll(hist);
+      final settingChanges = <String, dynamic>{};
       for (final key in [
         'lock_nsfw_on_startup',
         'hide_zero_chapters',
         'data_saver_mode',
       ]) {
         final value = settings[key];
-        if (value is bool) await settingsBox.put(key, value);
+        if (value is bool) settingChanges[key] = value;
       }
-      if (profile != null) await updateUserProfile(profile);
+      if (profile != null) settingChanges['user_profile'] = profile.toMap();
+
+      // Persist original values first. A failed write or an interrupted app
+      // can roll back only the keys touched by this restore on the next launch.
+      await recoverInterruptedRestore();
+      await settingsBox.put(restoreJournalKey, {
+        'favorites': _snapshot(favBox, favs.keys),
+        'history': _snapshot(historyBox, hist.keys),
+        'settings': _snapshot(settingsBox, settingChanges.keys),
+      });
+      if (favs.isNotEmpty) await favBox.putAll(favs);
+      if (hist.isNotEmpty) await historyBox.putAll(hist);
+      if (settingChanges.isNotEmpty) await settingsBox.putAll(settingChanges);
+      await settingsBox.delete(restoreJournalKey);
+      if (profile != null) profileNotifier.value = profile;
       return true;
-    } catch (e) {
-      debugPrint('Erro ao restaurar backup: $e');
+    } catch (_) {
+      try {
+        await recoverInterruptedRestore();
+      } catch (_) {
+        // Keep the journal for startup recovery; do not log library contents.
+        debugPrint('Restauração interrompida; recuperação local pendente.');
+      }
       return false;
     }
+  }
+
+  static Map<String, dynamic> _snapshot(Box box, Iterable<String> keys) => {
+    for (final key in keys)
+      key: {'exists': box.containsKey(key), 'value': box.get(key)},
+  };
+
+  /// Called before exposing storage to the app, and before a new restore.
+  static Future<void> recoverInterruptedRestore() async {
+    final journal = settingsBox.get(restoreJournalKey);
+    if (journal == null) return;
+    if (journal is! Map) {
+      throw const FormatException('Registro de recuperação inválido');
+    }
+    for (final section in [
+      ('favorites', favBox),
+      ('history', historyBox),
+      ('settings', settingsBox),
+    ]) {
+      final entries = journal[section.$1];
+      if (entries is! Map) {
+        throw const FormatException('Registro de recuperação incompleto');
+      }
+      for (final entry in entries.entries) {
+        final record = entry.value;
+        if (entry.key is! String ||
+            record is! Map ||
+            record['exists'] is! bool) {
+          throw const FormatException('Registro de recuperação inválido');
+        }
+        if (record['exists'] == true) {
+          await section.$2.put(entry.key, record['value']);
+        } else {
+          await section.$2.delete(entry.key);
+        }
+      }
+    }
+    await settingsBox.delete(restoreJournalKey);
   }
 
   // --- DOWNLOADS OFFLINE ---
@@ -436,7 +510,7 @@ class StorageService {
     if (!nsfwMode.allowNsfwFetch) {
       return all.where((entry) {
         final mangaMap = Map<String, dynamic>.from(entry['manga'] ?? {});
-        return mangaMap['isNsfw'] != true;
+        return !Manga.fromMap(mangaMap).isNsfw;
       }).toList();
     }
     return all;

@@ -49,4 +49,75 @@ void main() {
     expect(() => BackupCodec.decode('{}'), throwsFormatException);
     expect(() => BackupCodec.decode(''), throwsFormatException);
   });
+
+  for (final bad in <String, Object>{
+    'tags': 'Aventura',
+    'availableChaptersCount': '30',
+    'customHeaders': {'Accept': 42},
+    'preloadedChapters': [false],
+    'isNsfw': 'false',
+  }.entries) {
+    test('rejects malformed favorite ${bad.key}', () {
+      expect(
+        () => BackupCodec.decode(
+          BackupCodec.encode({
+            'favorites': {
+              'manga-id': {
+                'id': 'manga-id',
+                'title': 'Obra',
+                bad.key: bad.value,
+              },
+            },
+          }),
+        ),
+        throwsFormatException,
+      );
+    });
+  }
+
+  for (final bad in <String, Object>{
+    'page_chapter': '3',
+    'read_chapter': 'true',
+    'webtoon_offset_chapter': -1,
+    'chapters_count_manga': 2.5,
+    'last_manga': {'id': 'chapter', 'pages': '15'},
+    'chapters_manga': [42],
+    'recent_reading_list': [
+      {'manga': {}, 'chapter': {}},
+    ],
+    'reading_events_log': [
+      {'pages': '22'},
+    ],
+  }.entries) {
+    test('rejects malformed history ${bad.key}', () {
+      expect(
+        () => BackupCodec.decode(
+          BackupCodec.encode({
+            'history': {bad.key: bad.value},
+          }),
+        ),
+        throwsFormatException,
+      );
+    });
+  }
+
+  test('rejects invalid profile and settings types', () {
+    expect(
+      () => BackupCodec.decode('{"profile":{"avatarIndex":"2"}}'),
+      throwsFormatException,
+    );
+    expect(
+      () => BackupCodec.decode(
+        '{"profile":{},"settings":{"data_saver_mode":"false"}}',
+      ),
+      throwsFormatException,
+    );
+  });
+
+  test('preserves unknown legacy keys with valid JSON values', () {
+    final decoded = BackupCodec.decode(
+      '{"history":{"legacy_preference":{"enabled":true}}}',
+    );
+    expect(decoded['history']['legacy_preference']['enabled'], isTrue);
+  });
 }

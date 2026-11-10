@@ -3,13 +3,17 @@ import 'package:flutter/services.dart';
 import 'services/storage_service.dart';
 import 'screens/home_tabs.dart';
 import 'screens/home_overview_screen.dart';
+import 'screens/storage_recovery_screen.dart';
+import 'widgets/privacy_shield.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  bool storageReady = false;
   try {
     await StorageService.init();
-  } catch (e) {
-    debugPrint('Aviso na inicializacao do Hive: $e');
+    storageReady = true;
+  } catch (_) {
+    debugPrint('Armazenamento local indisponível; aguardando recuperação.');
   }
 
   SystemChrome.setSystemUIOverlayStyle(
@@ -20,11 +24,12 @@ void main() async {
     ),
   );
 
-  runApp(const YomiApp());
+  runApp(YomiApp(storageReady: storageReady));
 }
 
 class YomiApp extends StatelessWidget {
-  const YomiApp({super.key});
+  final bool storageReady;
+  const YomiApp({super.key, this.storageReady = true});
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +58,19 @@ class YomiApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const MainNavigationShell(),
+      builder: (context, child) =>
+          PrivacyShield(child: child ?? const SizedBox()),
+      home: storageReady
+          ? const MainNavigationShell()
+          : Builder(
+              builder: (context) => StorageRecoveryScreen(
+                onRecovered: () => Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => const MainNavigationShell(),
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -65,35 +82,18 @@ class MainNavigationShell extends StatefulWidget {
   State<MainNavigationShell> createState() => _MainNavigationShellState();
 }
 
-class _MainNavigationShellState extends State<MainNavigationShell>
-    with WidgetsBindingObserver {
+class _MainNavigationShellState extends State<MainNavigationShell> {
   // Start with lightweight reading shortcuts; keep profile one tap away.
   int _selectedIndex = 0;
-  bool _isPrivacyShieldActive = false;
 
   @override
   void initState() {
     super.initState();
     // Preserve the user's existing startup preference after moving Profile
     // to its own tab. Older installations defaulted to opening Profile.
-    _selectedIndex =
-        StorageService.profileNotifier.value.openOnProfileByDefault ? 4 : 0;
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final shouldShield = state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused;
-    if (_isPrivacyShieldActive != shouldShield) {
-      setState(() => _isPrivacyShieldActive = shouldShield);
-    }
+    _selectedIndex = StorageService.profileNotifier.value.openOnProfileByDefault
+        ? 4
+        : 0;
   }
 
   @override
@@ -115,75 +115,59 @@ class _MainNavigationShellState extends State<MainNavigationShell>
       ),
     ];
 
-    return Stack(
-      children: [
-        Scaffold(
-          body: IndexedStack(index: _selectedIndex, children: pages),
-          bottomNavigationBar: NavigationBar(
-            backgroundColor: YomiPalette.surface,
-            indicatorColor: YomiPalette.ensoRed.withValues(alpha: 0.25),
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (idx) =>
-                setState(() => _selectedIndex = idx),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon:
-                    Icon(Icons.home_rounded, color: YomiPalette.ensoRed),
-                label: 'Início',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.explore_outlined),
-                selectedIcon:
-                    Icon(Icons.explore_rounded, color: YomiPalette.ensoRed),
-                label: 'Explorar',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.bookmarks_outlined),
-                selectedIcon:
-                    Icon(Icons.bookmarks_rounded, color: YomiPalette.ensoRed),
-                label: 'Biblioteca',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.download_done_rounded),
-                selectedIcon: Icon(
-                  Icons.download_for_offline_rounded,
-                  color: YomiPalette.sakuraPink,
-                ),
-                label: 'Offline',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline_rounded),
-                selectedIcon: Icon(
-                  Icons.person_rounded,
-                  color: YomiPalette.sakuraPink,
-                ),
-                label: 'Perfil',
-              ),
-            ],
+    return Scaffold(
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          for (var i = 0; i < pages.length; i++)
+            TickerMode(enabled: i == _selectedIndex, child: pages[i]),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        backgroundColor: YomiPalette.surface,
+        indicatorColor: YomiPalette.ensoRed.withValues(alpha: 0.25),
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (idx) => setState(() => _selectedIndex = idx),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded, color: YomiPalette.ensoRed),
+            label: 'Início',
           ),
-        ),
-        if (_isPrivacyShieldActive)
-          const Material(
-            color: YomiPalette.pitchBlack,
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  YomiEnsoLogo(fontSize: 36),
-                  SizedBox(height: 12),
-                  Text(
-                    'Proteção de Privacidade Ativa',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: YomiPalette.sakuraPink,
-                    ),
-                  ),
-                ],
-              ),
+          NavigationDestination(
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(
+              Icons.explore_rounded,
+              color: YomiPalette.ensoRed,
             ),
+            label: 'Explorar',
           ),
-      ],
+          NavigationDestination(
+            icon: Icon(Icons.bookmarks_outlined),
+            selectedIcon: Icon(
+              Icons.bookmarks_rounded,
+              color: YomiPalette.ensoRed,
+            ),
+            label: 'Biblioteca',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.download_done_rounded),
+            selectedIcon: Icon(
+              Icons.download_for_offline_rounded,
+              color: YomiPalette.sakuraPink,
+            ),
+            label: 'Offline',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(
+              Icons.person_rounded,
+              color: YomiPalette.sakuraPink,
+            ),
+            label: 'Perfil',
+          ),
+        ],
+      ),
     );
   }
 }
