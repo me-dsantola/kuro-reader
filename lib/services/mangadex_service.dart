@@ -1099,39 +1099,28 @@ class MangaDexService {
       return {manga.source: []};
     }
 
-    // 3. Faz UMA ÚNICA chamada ao feed multi-idioma (PT-BR, EN, ES, ES-LA) e distribui para as fontes!
-    // MangaDex feed is paginated. A single 500-item request silently drops
-    // older chapters for long-running series; fetch additional pages with a
-    // bounded request budget to protect mobile data and API rate limits.
-    final List<Chapter> rawAll = [];
+    // Load the latest chapter window in one request for a responsive mobile
+    // experience. Fetching up to four 500-item pages before showing the
+    // chapter list was especially slow on cellular networks.
+    // Older chapter pagination should be exposed as an explicit "load more"
+    // action rather than blocking the initial view.
     const pageSize = 500;
-    const maxPages = 4;
-    for (var page = 0; page < maxPages; page++) {
-      final fullUrl = '$_baseUrl/manga/$targetUuid/feed?limit=$pageSize'
-          '&offset=${page * pageSize}'
-          '&translatedLanguage[]=pt-br&translatedLanguage[]=en&translatedLanguage[]=es&translatedLanguage[]=es-la'
-          '&includes[]=scanlation_group'
-          '&order[chapter]=desc'
-          '&includeExternalUrl=0';
-      try {
-        final response = await safeHttpGet(fullUrl);
-        final data = jsonDecode(response.body);
-        final List entries = data['data'] ?? [];
-        rawAll.addAll(entries
-            .whereType<Map<String, dynamic>>()
-            .map((entry) => Chapter.fromJson(
-                  entry,
-                  source: MangaSourceType.mangadex,
-                ))
-            .where((ch) => ch.pages > 0));
-        if (entries.length < pageSize) break;
-      } catch (_) {
-        // Preserve successfully fetched chapters if a later page fails.
-        // Only propagate an error when no chapter page could be loaded.
-        if (page == 0) rethrow;
-        break;
-      }
-    }
+    final fullUrl = '$_baseUrl/manga/$targetUuid/feed?limit=$pageSize'
+        '&translatedLanguage[]=pt-br&translatedLanguage[]=en&translatedLanguage[]=es&translatedLanguage[]=es-la'
+        '&includes[]=scanlation_group'
+        '&order[chapter]=desc'
+        '&includeExternalUrl=0';
+    final response = await safeHttpGet(fullUrl);
+    final data = jsonDecode(response.body);
+    final List entries = data['data'] ?? [];
+    final List<Chapter> rawAll = entries
+        .whereType<Map<String, dynamic>>()
+        .map((entry) => Chapter.fromJson(
+              entry,
+              source: MangaSourceType.mangadex,
+            ))
+        .where((ch) => ch.pages > 0)
+        .toList();
 
     // Both chapter views below come from MangaDex. Do not present either
     // as a separate ComicK provider until a real ComicK adapter exists.
