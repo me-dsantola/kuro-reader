@@ -73,6 +73,11 @@ class StorageService {
     const UserProfile(),
   );
 
+  static final ValueNotifier<bool> privacyProtectionNotifier =
+      ValueNotifier<bool>(true);
+
+  static const String readingListsKey = 'user_reading_lists';
+
   static Future<void> init() async {
     await Hive.initFlutter();
     await Hive.openBox(favBoxName);
@@ -82,8 +87,6 @@ class StorageService {
     await recoverInterruptedRestore();
 
     // 1. Conteúdo Adulto: Oculto de cara na primeira abertura e sempre desligado por padrão.
-    // Só carrega outro modo se o usuário tiver ativado explicitamente "persist_nsfw" nas configurações,
-    // ou se o usuário quiser manter sempre desligado ao abrir o app.
     final bool keepNsfwLockedOnStartup =
         settings.get('lock_nsfw_on_startup', defaultValue: true) == true;
 
@@ -95,16 +98,20 @@ class StorageService {
       nsfwModeNotifier.value = NsfwDisplayMode.fromName(savedMode?.toString());
     }
 
-    // 2. Carrega Perfil Personalizado
+    // 2. Proteção de Privacidade (ativada por padrão, configurável pelo usuário)
+    privacyProtectionNotifier.value =
+        settings.get('privacy_protection_enabled', defaultValue: true) != false;
+
+    // 3. Carrega Perfil Personalizado (no primeiro uso, isConfigured = false para exibir o Onboarding)
     final rawProfile = settings.get('user_profile');
     if (rawProfile != null && rawProfile is Map) {
       profileNotifier.value = UserProfile.fromMap(
         Map<String, dynamic>.from(rawProfile),
       );
     } else {
-      const defaultProfile = UserProfile(isConfigured: true);
-      await settings.put('user_profile', defaultProfile.toMap());
-      profileNotifier.value = defaultProfile;
+      const firstRunProfile = UserProfile(isConfigured: false);
+      await settings.put('user_profile', firstRunProfile.toMap());
+      profileNotifier.value = firstRunProfile;
     }
   }
 
@@ -142,12 +149,140 @@ class StorageService {
     await settingsBox.put('data_saver_mode', value);
   }
 
+  static bool get privacyProtectionEnabled =>
+      Hive.isBoxOpen(settingsBoxName)
+          ? settingsBox.get('privacy_protection_enabled', defaultValue: true) !=
+                false
+          : privacyProtectionNotifier.value;
+
+  static Future<void> setPrivacyProtectionEnabled(bool value) async {
+    privacyProtectionNotifier.value = value;
+    if (Hive.isBoxOpen(settingsBoxName)) {
+      await settingsBox.put('privacy_protection_enabled', value);
+    }
+  }
+
   // --- PERFIL PERSONALIZADO ---
   static UserProfile get userProfile => profileNotifier.value;
 
   static Future<void> updateUserProfile(UserProfile profile) async {
     profileNotifier.value = profile;
     await settingsBox.put('user_profile', profile.toMap());
+  }
+
+  // --- LISTAS DE LEITURA PERSONALIZADAS PELO USUÁRIO ---
+  static List<UserReadingList> _rawReadingLists() {
+    if (!Hive.isBoxOpen(settingsBoxName)) return const [];
+    final raw = settingsBox.get(readingListsKey);
+    if (raw is! List) return const [];
+    final lists = <UserReadingList>[];
+    for (final item in raw) {
+      if (item is Map) {
+        try {
+          final parsed = UserReadingList.fromMap(
+            Map<String, dynamic>.from(item),
+          );
+          if (parsed.id.isNotEmpty) {
+            lists.add(parsed);
+          }
+        } catch (_) {}
+      }
+    }
+    return lists;
+  }
+
+  static List<UserReadingList> getReadingLists() {
+    final allowNsfw = nsfwMode.allowNsfwFetch;
+    return _rawReadingLists()
+        .map(
+          (list) => list.copyWith(
+            mangas: list.mangas
+                .where((m) => allowNsfw || !m.isNsfw)
+                .toList(),
+          ),
+        )
+        .toList();
+  }
+
+  static Future<UserReadingList> createReadingList(
+    String name, {
+    String description = '',
+    List<Manga> initialMangas = const [],
+  }) async {
+    final cleanName = name.trim().isEmpty
+        ? 'Minha Lista'
+        : name.trim();
+    final newList = UserReadingList(
+      id: 'list_${DateTime.now().microsecondsSinceEpoch}',
+      name: cleanName,
+      description: description.trim(),
+      mangas: List<Manga>.from(initialMangas),
+    );
+    final current = List<UserReadingList>.from(_rawReadingLists())
+      ..insert(0, newList);
+    await settingsBox.put(
+      readingListsKey,
+      current.map((l) => l.toMap()).toList(),
+    );
+    return newList;
+  }
+
+  static Future<void> saveReadingList(UserReadingList updated) async {
+    final current = List<UserReadingList>.from(_rawReadingLists());
+    final idx = current.indexWhere((l) => l.id == updated.id);
+    if (idx >= 0) {
+      current[idx] = updated;
+    } else {
+      current.insert(0, updated);
+    }
+    await settingsBox.put(
+      readingListsKey,
+      current.map((l) => l.toMap()).toList(),
+    );
+  }
+
+  static Future<void> deleteReadingList(String listId) async {
+    final current = List<UserReadingList>.from(_rawReadingLists())
+      ..removeWhere((l) => l.id == listId);
+    await settingsBox.put(
+      readingListsKey,
+      current.map((l) => l.toMap()).toList(),
+    );
+  }
+
+  static bool isMangaInReadingList(String listId, String mangaId) {
+    for (final list in _rawReadingLists()) {
+      if (list.id == listId) {
+        return list.mangas.any((m) => m.id == mangaId);
+      }
+    }
+    return false;
+  }
+
+  static Future<bool> toggleMangaInReadingList(
+    String listId,
+    Manga manga,
+  ) async {
+    final current = List<UserReadingList>.from(_rawReadingLists());
+    final idx = current.indexWhere((l) => l.id == listId);
+    if (idx < 0) return false;
+    final list = current[idx];
+    final mangas = List<Manga>.from(list.mangas);
+    final existingIdx = mangas.indexWhere((m) => m.id == manga.id);
+    final bool added;
+    if (existingIdx >= 0) {
+      mangas.removeAt(existingIdx);
+      added = false;
+    } else {
+      mangas.insert(0, manga);
+      added = true;
+    }
+    current[idx] = list.copyWith(mangas: mangas);
+    await settingsBox.put(
+      readingListsKey,
+      current.map((l) => l.toMap()).toList(),
+    );
+    return added;
   }
 
   // --- FAVORITOS (COM COFRE INCÓGNITO QUANDO NSFW = HIDDEN) ---
@@ -455,14 +590,17 @@ class StorageService {
         'lock_nsfw_on_startup': lockNsfwOnStartup,
         'hide_zero_chapters': hideZeroChapterTitles,
         'data_saver_mode': dataSaverEnabled,
+        'privacy_protection_enabled': privacyProtectionEnabled,
         'interface_style': settingsBox.get(
           'interface_style',
-          defaultValue: 'enso',
+          defaultValue: 'glass',
         ),
         'auto_hide_menus': settingsBox.get(
           'auto_hide_menus',
           defaultValue: true,
         ),
+        if (settingsBox.get(readingListsKey) is List)
+          readingListsKey: settingsBox.get(readingListsKey),
       },
     };
     // Offline image files are not embedded. Never report an unbundled
@@ -503,12 +641,15 @@ class StorageService {
         'hide_zero_chapters',
         'data_saver_mode',
         'auto_hide_menus',
+        'privacy_protection_enabled',
       ]) {
         final value = settings[key];
         if (value is bool) settingChanges[key] = value;
       }
       final style = settings['interface_style'];
       if (style is String) settingChanges['interface_style'] = style;
+      final lists = settings[readingListsKey];
+      if (lists is List) settingChanges[readingListsKey] = lists;
       if (profile != null) settingChanges['user_profile'] = profile.toMap();
 
       // Persist original values first. A failed write or an interrupted app
@@ -524,6 +665,10 @@ class StorageService {
       if (settingChanges.isNotEmpty) await settingsBox.putAll(settingChanges);
       await settingsBox.delete(restoreJournalKey);
       if (profile != null) profileNotifier.value = profile;
+      if (settingChanges['privacy_protection_enabled'] is bool) {
+        privacyProtectionNotifier.value =
+            settingChanges['privacy_protection_enabled'] as bool;
+      }
       return true;
     } catch (_) {
       try {

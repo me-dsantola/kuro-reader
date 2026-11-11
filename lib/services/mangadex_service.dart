@@ -928,6 +928,20 @@ class MangaDexService {
     }
   }
 
+  static Future<List<Manga>> fetchPopularMangas({
+    int limit = 12,
+    bool includeNsfw = false,
+  }) async {
+    final res = await MangaDexAdapter().fetchCatalog(
+      filter: YomiSearchFilter(
+        sort: CatalogSort.popular,
+        allowNsfw: includeNsfw,
+      ),
+      cursor: 0,
+    );
+    return res.items.take(limit).toList();
+  }
+
   static Future<List<Manga>> fetchMergedCatalog({
     required YomiSearchFilter filter,
     bool reset = false,

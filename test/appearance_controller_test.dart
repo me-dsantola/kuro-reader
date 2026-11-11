@@ -25,19 +25,19 @@ void main() {
     await directory.delete(recursive: true);
   });
   test(
-    'appearance persists and restores with local backup without losing legacy defaults',
+    'appearance defaults to glass and persists/restores with local backup',
     () async {
       final appearance = AppearanceController()..start();
-      expect(appearance.value.style, InterfaceStyle.enso);
+      expect(appearance.value.style, InterfaceStyle.glass);
       expect(appearance.value.autoHideMenus, isTrue);
-      await appearance.setStyle(InterfaceStyle.glass);
+      await appearance.setStyle(InterfaceStyle.enso);
       await appearance.setAutoHide(false);
       final backup = StorageService.exportFullBackupJson();
-      await appearance.setStyle(InterfaceStyle.enso);
+      await appearance.setStyle(InterfaceStyle.glass);
       await appearance.setAutoHide(true);
       expect(await StorageService.importFullBackupJson(backup), isTrue);
       appearance.refresh();
-      expect(appearance.value.style, InterfaceStyle.glass);
+      expect(appearance.value.style, InterfaceStyle.enso);
       expect(appearance.value.autoHideMenus, isFalse);
       expect(
         () => BackupCodec.decode(

@@ -876,6 +876,17 @@ class UserProfile {
   final String favoriteGenre;
   final bool openOnProfileByDefault;
   final bool isConfigured;
+  final String? avatarImagePath;
+  final String? bannerImagePath;
+  final bool useBlobatarAsAvatar;
+  final String blobatarName;
+  final String blobatarSeed;
+  final String blobatarShape;
+  final String blobatarExpression;
+  final double? blobatarHue;
+  final String blobatarBackground;
+  final bool blobatarAnimated;
+  final int? customAccentColor;
 
   const UserProfile({
     this.name = 'Leitor YOMI',
@@ -884,7 +895,85 @@ class UserProfile {
     this.favoriteGenre = 'Ação, Fantasia & Seinen',
     this.openOnProfileByDefault = false,
     this.isConfigured = true,
+    this.avatarImagePath,
+    this.bannerImagePath,
+    this.useBlobatarAsAvatar = true,
+    this.blobatarName = 'Kuro',
+    this.blobatarSeed = '',
+    this.blobatarShape = 'auto',
+    this.blobatarExpression = 'happy',
+    this.blobatarHue,
+    this.blobatarBackground = 'circle',
+    this.blobatarAnimated = true,
+    this.customAccentColor,
   });
+
+  String get effectiveBlobatarSeed =>
+      blobatarSeed.trim().isNotEmpty ? blobatarSeed.trim() : name;
+
+  String get effectiveBlobatarName =>
+      blobatarName.trim().isNotEmpty ? blobatarName.trim() : 'Kuro';
+
+  List<String> get genreTags {
+    final parts = favoriteGenre
+        .split(RegExp(r'[,•·&/]'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    return parts.isEmpty
+        ? const ['Ação', 'Fantasia', 'Romance', 'Seinen']
+        : parts;
+  }
+
+  UserProfile copyWith({
+    String? name,
+    String? bio,
+    int? avatarIndex,
+    String? favoriteGenre,
+    bool? openOnProfileByDefault,
+    bool? isConfigured,
+    String? avatarImagePath,
+    bool clearAvatarImage = false,
+    String? bannerImagePath,
+    bool clearBannerImage = false,
+    bool? useBlobatarAsAvatar,
+    String? blobatarName,
+    String? blobatarSeed,
+    String? blobatarShape,
+    String? blobatarExpression,
+    double? blobatarHue,
+    bool clearBlobatarHue = false,
+    String? blobatarBackground,
+    bool? blobatarAnimated,
+    int? customAccentColor,
+    bool clearCustomAccentColor = false,
+  }) {
+    return UserProfile(
+      name: name ?? this.name,
+      bio: bio ?? this.bio,
+      avatarIndex: avatarIndex ?? this.avatarIndex,
+      favoriteGenre: favoriteGenre ?? this.favoriteGenre,
+      openOnProfileByDefault:
+          openOnProfileByDefault ?? this.openOnProfileByDefault,
+      isConfigured: isConfigured ?? this.isConfigured,
+      avatarImagePath:
+          clearAvatarImage ? null : (avatarImagePath ?? this.avatarImagePath),
+      bannerImagePath:
+          clearBannerImage ? null : (bannerImagePath ?? this.bannerImagePath),
+      useBlobatarAsAvatar: useBlobatarAsAvatar ?? this.useBlobatarAsAvatar,
+      blobatarName: blobatarName ?? this.blobatarName,
+      blobatarSeed: blobatarSeed ?? this.blobatarSeed,
+      blobatarShape: blobatarShape ?? this.blobatarShape,
+      blobatarExpression: blobatarExpression ?? this.blobatarExpression,
+      blobatarHue:
+          clearBlobatarHue ? null : (blobatarHue ?? this.blobatarHue),
+      blobatarBackground: blobatarBackground ?? this.blobatarBackground,
+      blobatarAnimated: blobatarAnimated ?? this.blobatarAnimated,
+      customAccentColor: clearCustomAccentColor
+          ? null
+          : (customAccentColor ?? this.customAccentColor),
+    );
+  }
 
   Map<String, dynamic> toMap() => {
     'name': name,
@@ -893,6 +982,17 @@ class UserProfile {
     'favoriteGenre': favoriteGenre,
     'openOnProfileByDefault': openOnProfileByDefault,
     'isConfigured': isConfigured,
+    if (avatarImagePath != null) 'avatarImagePath': avatarImagePath,
+    if (bannerImagePath != null) 'bannerImagePath': bannerImagePath,
+    'useBlobatarAsAvatar': useBlobatarAsAvatar,
+    'blobatarName': blobatarName,
+    'blobatarSeed': blobatarSeed,
+    'blobatarShape': blobatarShape,
+    'blobatarExpression': blobatarExpression,
+    if (blobatarHue != null) 'blobatarHue': blobatarHue,
+    'blobatarBackground': blobatarBackground,
+    'blobatarAnimated': blobatarAnimated,
+    if (customAccentColor != null) 'customAccentColor': customAccentColor,
   };
 
   factory UserProfile.fromMap(Map<String, dynamic> map) => UserProfile(
@@ -908,7 +1008,100 @@ class UserProfile {
     // in the reading-focused Home screen.
     openOnProfileByDefault: map['openOnProfileByDefault'] == true,
     isConfigured: map['isConfigured'] != false,
+    avatarImagePath: map['avatarImagePath'] is String &&
+            (map['avatarImagePath'] as String).trim().isNotEmpty
+        ? (map['avatarImagePath'] as String).trim()
+        : null,
+    bannerImagePath: map['bannerImagePath'] is String &&
+            (map['bannerImagePath'] as String).trim().isNotEmpty
+        ? (map['bannerImagePath'] as String).trim()
+        : null,
+    useBlobatarAsAvatar: map['useBlobatarAsAvatar'] is bool
+        ? map['useBlobatarAsAvatar'] as bool
+        : true,
+    blobatarName: map['blobatarName'] is String &&
+            (map['blobatarName'] as String).trim().isNotEmpty
+        ? (map['blobatarName'] as String).trim()
+        : 'Kuro',
+    blobatarSeed: (map['blobatarSeed'] ?? '').toString(),
+    blobatarShape: (map['blobatarShape'] ?? 'auto').toString(),
+    blobatarExpression: (map['blobatarExpression'] ?? 'happy').toString(),
+    blobatarHue: map['blobatarHue'] is num &&
+            (map['blobatarHue'] as num).isFinite
+        ? (map['blobatarHue'] as num).toDouble()
+        : null,
+    blobatarBackground: (map['blobatarBackground'] ?? 'circle').toString(),
+    blobatarAnimated: map['blobatarAnimated'] != false,
+    customAccentColor: map['customAccentColor'] is int
+        ? map['customAccentColor'] as int
+        : null,
   );
+}
+
+class UserReadingList {
+  final String id;
+  final String name;
+  final String description;
+  final List<Manga> mangas;
+  final DateTime createdAt;
+
+  UserReadingList({
+    required this.id,
+    required this.name,
+    this.description = '',
+    this.mangas = const [],
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  UserReadingList copyWith({
+    String? id,
+    String? name,
+    String? description,
+    List<Manga>? mangas,
+    DateTime? createdAt,
+  }) {
+    return UserReadingList(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      mangas: mangas ?? this.mangas,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'name': name,
+    'description': description,
+    'createdAt': createdAt.toIso8601String(),
+    'mangas': mangas.map((m) => m.toMap()).toList(),
+  };
+
+  factory UserReadingList.fromMap(Map<String, dynamic> map) {
+    final rawMangas = map['mangas'];
+    final parsedMangas = <Manga>[];
+    if (rawMangas is List) {
+      for (final item in rawMangas) {
+        if (item is Map) {
+          try {
+            final m = Manga.fromMap(Map<String, dynamic>.from(item));
+            if (m.id.isNotEmpty) {
+              parsedMangas.add(m);
+            }
+          } catch (_) {}
+        }
+      }
+    }
+    return UserReadingList(
+      id: (map['id'] ?? '').toString(),
+      name: (map['name'] ?? 'Lista de Leitura').toString(),
+      description: (map['description'] ?? '').toString(),
+      createdAt:
+          DateTime.tryParse(map['createdAt']?.toString() ?? '') ??
+          DateTime.now(),
+      mangas: parsedMangas,
+    );
+  }
 }
 
 class ReadingMetricsSummary {

@@ -4,6 +4,8 @@ import '../models/manga_models.dart';
 import '../services/mangadex_service.dart';
 import '../services/storage_service.dart';
 import '../services/download_manager.dart';
+import '../services/profile_palette_service.dart';
+import '../widgets/yomi_blobatar_studio.dart';
 import 'home_tabs.dart';
 import 'reader_screen.dart';
 
@@ -220,12 +222,31 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 expandedHeight: 300,
                 pinned: true,
                 actions: [
+                  IconButton(
+                    tooltip: 'Adicionar à lista de leitura',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black.withValues(alpha: 0.45),
+                    ),
+                    icon: const Icon(
+                      Icons.playlist_add_rounded,
+                      color: Colors.white,
+                    ),
+                    onPressed: () =>
+                        showAddMangaToReadingListSheet(context, widget.manga),
+                  ),
+                  const SizedBox(width: 6),
                   ValueListenableBuilder(
-                    valueListenable: StorageService.favBox
-                        .listenable(keys: [widget.manga.id]),
+                    valueListenable: StorageService.favBox.listenable(
+                      keys: [widget.manga.id],
+                    ),
                     builder: (context, Box favBox, _) {
                       final isFav = StorageService.isFavorite(widget.manga.id);
+                      final accent =
+                          ProfilePaletteService.paletteNotifier.value.primary;
                       return IconButton(
+                        tooltip: isFav
+                            ? 'Remover dos favoritos'
+                            : 'Adicionar aos favoritos',
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.black.withValues(alpha: 0.45),
                         ),
@@ -233,7 +254,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                           isFav
                               ? Icons.favorite_rounded
                               : Icons.favorite_border_rounded,
-                          color: isFav ? YomiPalette.ensoRed : Colors.white,
+                          color: isFav ? accent : Colors.white,
                         ),
                         onPressed: () =>
                             StorageService.toggleFavorite(widget.manga),

@@ -46,11 +46,29 @@ class BackupCodec {
     }
     final profile = data['profile'];
     if (profile is Map) {
-      for (final key in ['name', 'bio', 'favoriteGenre']) {
+      for (final key in [
+        'name',
+        'bio',
+        'favoriteGenre',
+        'avatarImagePath',
+        'bannerImagePath',
+        'blobatarName',
+        'blobatarSeed',
+        'blobatarShape',
+        'blobatarExpression',
+        'blobatarBackground',
+      ]) {
         _optional(profile, key, (v) => v is String);
       }
       _optional(profile, 'avatarIndex', _nonNegativeInt);
-      for (final key in ['openOnProfileByDefault', 'isConfigured']) {
+      _optional(profile, 'customAccentColor', (v) => v is int);
+      _optional(profile, 'blobatarHue', (v) => v is num && v.isFinite);
+      for (final key in [
+        'openOnProfileByDefault',
+        'isConfigured',
+        'useBlobatarAsAvatar',
+        'blobatarAnimated',
+      ]) {
         _optional(profile, key, (v) => v is bool);
       }
     }
@@ -61,8 +79,30 @@ class BackupCodec {
         'hide_zero_chapters',
         'data_saver_mode',
         'auto_hide_menus',
+        'privacy_protection_enabled',
       ]) {
         _optional(settings, key, (v) => v is bool);
+      }
+      if (settings['user_reading_lists'] != null) {
+        final rawLists = settings['user_reading_lists'];
+        if (rawLists is! List) _invalid('user_reading_lists');
+        for (final rawItem in rawLists) {
+          final item = _map(rawItem, 'user_reading_lists');
+          if (item['id'] is! String ||
+              (item['id'] as String).isEmpty ||
+              item['name'] is! String) {
+            _invalid('user_reading_lists');
+          }
+          _optional(item, 'description', (v) => v is String);
+          _optional(item, 'createdAt', (v) => v is String);
+          final mangas = item['mangas'];
+          if (mangas != null) {
+            if (mangas is! List) _invalid('mangas');
+            for (final m in mangas) {
+              _manga(m, 'user_reading_lists.mangas');
+            }
+          }
+        }
       }
     }
     if (settings is Map) {

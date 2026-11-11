@@ -10,7 +10,7 @@ class AppearancePreferences {
   final InterfaceStyle style;
   final bool autoHideMenus;
   const AppearancePreferences({
-    this.style = InterfaceStyle.enso,
+    this.style = InterfaceStyle.glass,
     this.autoHideMenus = true,
   });
 }
@@ -32,9 +32,10 @@ class AppearanceController extends ValueNotifier<AppearancePreferences> {
   void refresh() {
     if (!Hive.isBoxOpen(StorageService.settingsBoxName)) return;
     final box = StorageService.settingsBox;
-    final style = box.get('interface_style') == 'glass'
-        ? InterfaceStyle.glass
-        : InterfaceStyle.enso;
+    final rawStyle = box.get('interface_style');
+    final style = rawStyle == 'enso'
+        ? InterfaceStyle.enso
+        : InterfaceStyle.glass;
     final autoHide = box.get('auto_hide_menus', defaultValue: true) != false;
     if (value.style != style || value.autoHideMenus != autoHide) {
       value = AppearancePreferences(style: style, autoHideMenus: autoHide);

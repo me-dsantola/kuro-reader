@@ -7,6 +7,14 @@ import 'storage_service.dart';
 class FavoriteUpdatesService {
   static const _prefix = 'favorite_updates_v1_';
 
+  static List<Chapter> allPending(List<Manga> favorites) {
+    final result = <Chapter>[];
+    for (final manga in favorites) {
+      result.addAll(pendingFor(manga));
+    }
+    return result;
+  }
+
   static List<Chapter> pendingFor(Manga manga) {
     if (manga.isNsfw && !StorageService.nsfwMode.allowNsfwFetch) {
       return const [];

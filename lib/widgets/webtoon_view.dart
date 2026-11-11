@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import '../models/reader_page_geometry.dart';
 import 'reader_scroll_controller.dart';
 
@@ -12,6 +11,7 @@ typedef WebtoonPageBuilder =
 
 /// Page geometry survives image disposal and cache eviction. New online
 /// dimensions are applied during layout with the visible page anchored.
+/// Supports pinch-to-zoom and double-tap-to-zoom without breaking vertical scroll.
 class WebtoonView extends StatefulWidget {
   final ReaderPageGeometry geometry;
   final ReaderScrollController controller;
@@ -19,6 +19,7 @@ class WebtoonView extends StatefulWidget {
   final Widget footer;
   final ValueChanged<double> onWidth;
   final bool localDimensionsKnown;
+  final VoidCallback? onTap;
 
   const WebtoonView({
     super.key,
@@ -28,6 +29,7 @@ class WebtoonView extends StatefulWidget {
     required this.footer,
     required this.onWidth,
     this.localDimensionsKnown = false,
+    this.onTap,
   });
 
   @override
@@ -36,8 +38,54 @@ class WebtoonView extends StatefulWidget {
 
 class _WebtoonViewState extends State<WebtoonView> {
   final Map<int, double> _pending = {};
+  final TransformationController _zoomController = TransformationController();
   double _width = 0;
   bool _scheduled = false;
+  int _activePointers = 0;
+  bool _isZoomed = false;
+  Offset _lastDoubleTapLocal = Offset.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _zoomController.addListener(_onZoomChanged);
+  }
+
+  @override
+  void dispose() {
+    _zoomController.removeListener(_onZoomChanged);
+    _zoomController.dispose();
+    super.dispose();
+  }
+
+  void _onZoomChanged() {
+    final scale = _zoomController.value.getMaxScaleOnAxis();
+    final zoomed = scale > 1.02;
+    if (zoomed != _isZoomed && mounted) {
+      setState(() => _isZoomed = zoomed);
+    }
+  }
+
+  void _resetZoom() {
+    _zoomController.value = Matrix4.identity();
+    if (_isZoomed && mounted) {
+      setState(() => _isZoomed = false);
+    }
+  }
+
+  void _handleDoubleTap() {
+    final currentScale = _zoomController.value.getMaxScaleOnAxis();
+    if (currentScale > 1.05) {
+      _resetZoom();
+      return;
+    }
+    const targetScale = 2.25;
+    final dx = -_lastDoubleTapLocal.dx * (targetScale - 1.0);
+    final dy = -_lastDoubleTapLocal.dy * (targetScale - 1.0);
+    _zoomController.value = Matrix4.identity()
+      ..translateByDouble(dx, dy, 0.0, 1.0)
+      ..scaleByDouble(targetScale, targetScale, 1.0, 1.0);
+  }
 
   void _ratio(int index, double ratio) {
     if (!ratio.isFinite || ratio <= 0) return;
@@ -83,10 +131,14 @@ class _WebtoonViewState extends State<WebtoonView> {
       }
       _width = constraints.maxWidth;
       widget.onWidth(_width);
-      return CustomScrollView(
+
+      final scrollView = CustomScrollView(
         key: const ValueKey('webtoon-scroll'),
         controller: widget.controller,
-        scrollCacheExtent: const ScrollCacheExtent.pixels(800),
+        physics: (_activePointers >= 2 || _isZoomed)
+            ? const NeverScrollableScrollPhysics()
+            : null,
+        cacheExtent: 800,
         slivers: [
           SliverVariedExtentList.builder(
             itemCount: widget.geometry.pageCount,
@@ -101,6 +153,58 @@ class _WebtoonViewState extends State<WebtoonView> {
           ),
           SliverToBoxAdapter(child: widget.footer),
         ],
+      );
+
+      return Listener(
+        onPointerDown: (_) {
+          _activePointers++;
+          if (_activePointers == 2 && mounted) setState(() {});
+        },
+        onPointerUp: (_) {
+          _activePointers = (_activePointers - 1).clamp(0, 10);
+          if (_activePointers < 2 && mounted) setState(() {});
+        },
+        onPointerCancel: (_) {
+          _activePointers = (_activePointers - 1).clamp(0, 10);
+          if (_activePointers < 2 && mounted) setState(() {});
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: widget.onTap,
+          onDoubleTapDown: (details) =>
+              _lastDoubleTapLocal = details.localPosition,
+          onDoubleTap: _handleDoubleTap,
+          child: Stack(
+            children: [
+              InteractiveViewer(
+                transformationController: _zoomController,
+                minScale: 1.0,
+                maxScale: 4.0,
+                panEnabled: _isZoomed,
+                scaleEnabled: true,
+                child: scrollView,
+              ),
+              if (_isZoomed)
+                Positioned(
+                  bottom: 24,
+                  right: 16,
+                  child: SafeArea(
+                    child: FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(
+                          0xFF121217,
+                        ).withValues(alpha: 0.88),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _resetZoom,
+                      icon: const Icon(Icons.zoom_out_map_rounded, size: 16),
+                      label: const Text('Resetar Zoom (1x)'),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       );
     },
   );

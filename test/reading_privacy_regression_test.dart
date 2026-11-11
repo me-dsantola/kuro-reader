@@ -106,6 +106,16 @@ void main() {
     await tester.pump();
     expect(find.text('Proteção de Privacidade Ativa'), findsNothing);
     expect(find.text('Conteúdo privado do leitor'), findsOneWidget);
+
+    await tester.runAsync(
+      () => StorageService.setPrivacyProtectionEnabled(false),
+    );
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+    expect(find.text('Proteção de Privacidade Ativa'), findsNothing);
+    await tester.runAsync(
+      () => StorageService.setPrivacyProtectionEnabled(true),
+    );
   });
 
   testWidgets(

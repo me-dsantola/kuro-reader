@@ -13,6 +13,7 @@ class ReaderToolbar extends StatelessWidget {
   final VoidCallback onComplete;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
+  final VoidCallback? onOpenManga;
 
   const ReaderToolbar({
     super.key,
@@ -27,6 +28,7 @@ class ReaderToolbar extends StatelessWidget {
     required this.onComplete,
     this.onPrevious,
     this.onNext,
+    this.onOpenManga,
   });
 
   @override
@@ -46,16 +48,35 @@ class ReaderToolbar extends StatelessWidget {
                   icon: const Icon(Icons.arrow_back),
                 ),
                 Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: onOpenManga,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 4,
+                      ),
+                      child: Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ),
+                if (onOpenManga != null)
+                  IconButton(
+                    tooltip: 'Ver página do mangá',
+                    onPressed: onOpenManga,
+                    icon: const Icon(
+                      Icons.menu_book_rounded,
+                      color: Color(0xFFFBCFE8),
+                    ),
+                  ),
                 IconButton(
                   tooltip: webtoon
                       ? 'Usar modo paginado'

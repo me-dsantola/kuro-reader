@@ -18,8 +18,11 @@ import '../widgets/reader_scroll_controller.dart';
 import '../services/reader_image_session.dart';
 import '../widgets/reader_page_provider.dart';
 import '../widgets/reader_paged_view.dart';
+import '../widgets/yomi_blobatar_studio.dart';
+import '../services/profile_palette_service.dart';
 import '../models/reader_anchor.dart';
 import 'home_tabs.dart';
+import 'manga_detail_screen.dart';
 
 class ReaderScreen extends StatefulWidget {
   final Manga manga;
@@ -40,6 +43,7 @@ class ReaderScreen extends StatefulWidget {
 class _ReaderScreenState extends State<ReaderScreen> {
   List<String> _localFilePaths = [];
   ChapterPagesData? _onlinePagesData;
+  late List<Chapter> _chapters;
   bool _isOfflineMode = false;
   bool _isLoading = true;
   bool _isWebtoonMode = true;
@@ -67,6 +71,75 @@ class _ReaderScreenState extends State<ReaderScreen> {
   ReaderImageSession? _images;
   final Map<int, int> _imageAttempts = {};
   final Set<int> _retryingImages = {};
+
+  List<Chapter> _mergeAndSortChapters(Iterable<Chapter> extra) {
+    final cached = StorageService.getCachedMangaChapters(widget.manga.id);
+    final byNumber = <String, Chapter>{};
+
+    void consider(Chapter c) {
+      final key = c.chapterNumber.trim();
+      final existing = byNumber[key];
+      if (existing == null) {
+        byNumber[key] = c;
+      } else if (c.id == widget.chapter.id) {
+        byNumber[key] = c;
+      } else if (existing.id != widget.chapter.id) {
+        if (c.language == widget.chapter.language &&
+            existing.language != widget.chapter.language) {
+          byNumber[key] = c;
+        } else if (c.language == 'PT-BR' && existing.language != 'PT-BR') {
+          byNumber[key] = c;
+        }
+      }
+    }
+
+    for (final c in cached) {
+      consider(c);
+    }
+    for (final c in widget.allChapters) {
+      consider(c);
+    }
+    for (final c in extra) {
+      consider(c);
+    }
+    consider(widget.chapter);
+
+    final sorted = byNumber.values.toList()
+      ..sort((a, b) => a.numericChapter.compareTo(b.numericChapter));
+    return sorted;
+  }
+
+  Future<void> _ensureChapterListLoaded() async {
+    if (_chapters.length > 1 && _nextChapter != null) return;
+    try {
+      final fetched = await MangaDexService.fetchChapters(widget.manga);
+      if (fetched.isNotEmpty) {
+        await StorageService.cacheMangaChapters(widget.manga.id, fetched);
+        if (mounted) {
+          setState(() {
+            _chapters = _mergeAndSortChapters(fetched);
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _openMangaPage() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MangaDetailScreen(
+          manga: widget.manga,
+          heroTag: 'reader_manga_${widget.manga.compositeId}',
+        ),
+      ),
+    ).then((_) {
+      if (mounted) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      }
+    });
+  }
 
   void _recordPage(int index) {
     if (index == _lastSavedPage) return;
@@ -179,6 +252,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void initState() {
     super.initState();
+    _chapters = _mergeAndSortChapters(const []);
     _chrome.addListener(_syncChrome);
     AppearanceController.instance.addListener(_onAppearanceChanged);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -199,6 +273,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     )..addListener(_onWebtoonScroll);
     StorageService.recordChapterOpened(widget.manga, widget.chapter);
     _initReaderSource();
+    _ensureChapterListLoaded();
   }
 
   @override
@@ -228,18 +303,26 @@ class _ReaderScreenState extends State<ReaderScreen> {
     super.dispose();
   }
 
+  int get _currentChapterIndex {
+    final byId = _chapters.indexWhere((c) => c.id == widget.chapter.id);
+    if (byId != -1) return byId;
+    return _chapters.indexWhere(
+      (c) => c.chapterNumber.trim() == widget.chapter.chapterNumber.trim(),
+    );
+  }
+
   Chapter? get _nextChapter {
-    final idx = widget.allChapters.indexWhere((c) => c.id == widget.chapter.id);
-    if (idx != -1 && idx + 1 < widget.allChapters.length) {
-      return widget.allChapters[idx + 1];
+    final idx = _currentChapterIndex;
+    if (idx != -1 && idx + 1 < _chapters.length) {
+      return _chapters[idx + 1];
     }
     return null;
   }
 
   Chapter? get _prevChapter {
-    final idx = widget.allChapters.indexWhere((c) => c.id == widget.chapter.id);
-    if (idx > 0 && idx < widget.allChapters.length) {
-      return widget.allChapters[idx - 1];
+    final idx = _currentChapterIndex;
+    if (idx > 0 && idx < _chapters.length) {
+      return _chapters[idx - 1];
     }
     return null;
   }
@@ -253,7 +336,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
         builder: (_) => ReaderScreen(
           manga: widget.manga,
           chapter: target,
-          allChapters: widget.allChapters,
+          allChapters: _chapters,
         ),
       ),
     );
@@ -382,93 +465,103 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       style: TextStyle(color: Colors.white70),
                     ),
                     const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back),
-                      label: const Text('Voltar para a Obra'),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _openMangaPage,
+                          icon: const Icon(Icons.menu_book_rounded),
+                          label: const Text('Página do Mangá'),
+                        ),
+                        FilledButton.icon(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('Voltar'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             )
-          : GestureDetector(
-              onTap: _toggleHud,
-              child: Stack(
-                children: [
-                  if (_isWebtoonMode)
-                    NotificationListener<ScrollNotification>(
-                      onNotification: (notification) =>
-                          AppearanceController.instance.value.autoHideMenus
-                          ? _chrome.onScroll(notification)
-                          : false,
-                      child: WebtoonView(
-                        geometry: _geometry!,
-                        controller: _webtoonScrollController,
-                        onWidth: (width) => _pageWidth = width,
-                        localDimensionsKnown: _isOfflineMode,
-                        footer: _buildEndOfChapterFooter(nextCh, prevCh),
-                        pageBuilder: (context, index, onRatio) =>
-                            ReaderPageImage(
-                              key: ValueKey(
-                                '$index-${_imageAttempts[index] ?? 0}',
-                              ),
-                              image: _providerFor(index),
-                              pageNumber: index + 1,
-                              onRatio: onRatio,
-                              onRetry: () => _retryImage(index),
-                            ),
+          : Stack(
+              children: [
+                if (_isWebtoonMode)
+                  NotificationListener<ScrollNotification>(
+                    onNotification: (notification) =>
+                        AppearanceController.instance.value.autoHideMenus
+                        ? _chrome.onScroll(notification)
+                        : false,
+                    child: WebtoonView(
+                      geometry: _geometry!,
+                      controller: _webtoonScrollController,
+                      onWidth: (width) => _pageWidth = width,
+                      localDimensionsKnown: _isOfflineMode,
+                      onTap: _toggleHud,
+                      footer: _buildEndOfChapterFooter(nextCh, prevCh),
+                      pageBuilder: (context, index, onRatio) => ReaderPageImage(
+                        key: ValueKey(
+                          '$index-${_imageAttempts[index] ?? 0}',
+                        ),
+                        image: _providerFor(index),
+                        pageNumber: index + 1,
+                        onRatio: onRatio,
+                        onRetry: () => _retryImage(index),
                       ),
-                    )
-                  else
-                    ReaderPagedView(
-                      controller: _pageController,
-                      pageCount: totalPages,
-                      imageForPage: _providerFor,
-                      onPageChanged: (index) => _recordPage(index),
-                      onRetry: _retryImage,
-                      onToggleHud: _toggleHud,
                     ),
+                  )
+                else
+                  ReaderPagedView(
+                    controller: _pageController,
+                    pageCount: totalPages,
+                    imageForPage: _providerFor,
+                    onPageChanged: (index) => _recordPage(index),
+                    onRetry: _retryImage,
+                    onToggleHud: _toggleHud,
+                  ),
 
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      ignoring: !_showHud,
-                      child: ExcludeSemantics(
-                        excluding: !_showHud,
-                        child: AnimatedSlide(
-                          duration: MediaQuery.disableAnimationsOf(context)
-                              ? Duration.zero
-                              : const Duration(milliseconds: 180),
-                          offset: Offset(0, _showHud ? 0 : -1),
-                          curve: Curves.easeOutCubic,
-                          child: ValueListenableBuilder<int>(
-                            valueListenable: _visiblePage,
-                            builder: (context, page, _) => ReaderToolbar(
-                              title: widget.manga.title,
-                              chapter: widget.chapter.chapterNumber,
-                              page: page,
-                              total: totalPages,
-                              offline: _isOfflineMode,
-                              webtoon: _isWebtoonMode,
-                              onBack: () => Navigator.pop(context),
-                              onMode: _toggleMode,
-                              onComplete: _markCurrentChapterFinished,
-                              onPrevious: prevCh == null
-                                  ? null
-                                  : () => _goToChapter(prevCh),
-                              onNext: nextCh == null
-                                  ? null
-                                  : () => _goToChapter(nextCh),
-                            ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: IgnorePointer(
+                    ignoring: !_showHud,
+                    child: ExcludeSemantics(
+                      excluding: !_showHud,
+                      child: AnimatedSlide(
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : const Duration(milliseconds: 180),
+                        offset: Offset(0, _showHud ? 0 : -1),
+                        curve: Curves.easeOutCubic,
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: _visiblePage,
+                          builder: (context, page, _) => ReaderToolbar(
+                            title: widget.manga.title,
+                            chapter: widget.chapter.chapterNumber,
+                            page: page,
+                            total: totalPages,
+                            offline: _isOfflineMode,
+                            webtoon: _isWebtoonMode,
+                            onBack: () => Navigator.pop(context),
+                            onMode: _toggleMode,
+                            onComplete: _markCurrentChapterFinished,
+                            onOpenManga: _openMangaPage,
+                            onPrevious: prevCh == null
+                                ? null
+                                : () => _goToChapter(prevCh),
+                            onNext: nextCh == null
+                                ? null
+                                : () => _goToChapter(nextCh),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
     );
   }
@@ -502,63 +595,100 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   Widget _buildEndOfChapterFooter(Chapter? nextCh, Chapter? prevCh) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-      color: YomiPalette.pitchBlack,
-      child: Column(
-        children: [
-          const Icon(
-            Icons.check_circle_outline_rounded,
-            size: 44,
-            color: YomiPalette.ensoRed,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Fim do Capítulo ${widget.chapter.chapterNumber}',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          OutlinedButton.icon(
-            onPressed: _markCurrentChapterFinished,
-            icon: const Icon(Icons.check_circle_outline_rounded),
-            label: const Text('Marcar como concluído'),
-          ),
-          const SizedBox(height: 12),
-          if (nextCh != null)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () async {
-                  await StorageService.markChapterAsRead(
-                    widget.manga,
-                    widget.chapter,
-                  );
-                  if (mounted) _goToChapter(nextCh);
-                },
-                icon: const Icon(Icons.skip_next_rounded),
-                label: Text('Ler Próximo: Cap. ${nextCh.chapterNumber}'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: YomiPalette.ensoRed,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        StorageService.profileNotifier,
+        ProfilePaletteService.paletteNotifier,
+      ]),
+      builder: (context, _) {
+        final profile = StorageService.profileNotifier.value;
+        final palette = ProfilePaletteService.paletteNotifier.value;
+        final mascotName = profile.effectiveBlobatarName;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+          color: YomiPalette.pitchBlack,
+          child: Column(
+            children: [
+              YomiProfileBlobatar(
+                profile: profile,
+                size: 86,
+                adaptiveHue: palette.hue,
+                overrideExpressionId: 'love',
+                interactiveCycleOnTap: true,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Fim do Capítulo ${widget.chapter.chapterNumber}',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-            )
-          else
-            const Text(
-              'Você chegou ao capítulo mais recente desta fonte!',
-              style: TextStyle(color: Colors.white54),
-            ),
-          if (prevCh != null) ...[
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: () => _goToChapter(prevCh),
-              icon: const Icon(Icons.skip_previous_rounded),
-              label: Text('Voltar para Cap. ${prevCh.chapterNumber}'),
-            ),
-          ],
-        ],
-      ),
+              const SizedBox(height: 6),
+              Text(
+                nextCh != null
+                    ? '$mascotName adorou ler com você! O próximo capítulo já está pronto.'
+                    : '$mascotName comemorou: você alcançou o capítulo mais recente!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.5, color: palette.soft),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                alignment: WrapAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _markCurrentChapterFinished,
+                    icon: const Icon(Icons.check_circle_outline_rounded),
+                    label: const Text('Marcar como concluído'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _openMangaPage,
+                    icon: const Icon(Icons.menu_book_rounded),
+                    label: const Text('Ver página do mangá'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (nextCh != null)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      await StorageService.markChapterAsRead(
+                        widget.manga,
+                        widget.chapter,
+                      );
+                      if (mounted) _goToChapter(nextCh);
+                    },
+                    icon: const Icon(Icons.skip_next_rounded),
+                    label: Text('Ler Próximo: Cap. ${nextCh.chapterNumber}'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: palette.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                )
+              else
+                const Text(
+                  'Você chegou ao capítulo mais recente desta fonte!',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              if (prevCh != null) ...[
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () => _goToChapter(prevCh),
+                  icon: const Icon(Icons.skip_previous_rounded),
+                  label: Text('Voltar para Cap. ${prevCh.chapterNumber}'),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

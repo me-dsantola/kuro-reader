@@ -16,6 +16,7 @@ import 'package:kuro_reader/services/storage_service.dart';
 import 'package:kuro_reader/widgets/reader_toolbar.dart';
 import 'package:kuro_reader/services/appearance_controller.dart';
 import 'package:kuro_reader/widgets/frosted_surface.dart';
+import 'package:kuro_reader/widgets/yomi_blobatar_studio.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -139,7 +140,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Página 9 de 24'), findsOneWidget);
-    expect(find.byType(YomiCoverImage), findsOneWidget);
+    expect(find.byType(YomiCoverImage), findsWidgets);
     expect(find.text('Continuar leitura'), findsOneWidget);
     await preview(tester, 'inicio');
     await tester.ensureVisible(find.text('Explorar'));
@@ -168,7 +169,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Biblioteca'), 250);
+    await tester.scrollUntilVisible(
+      find.text('Biblioteca'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Biblioteca'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -401,4 +406,63 @@ void main() {
       }),
     );
   });
+
+  testWidgets(
+    'profile dashboard renders Blobatar mascot, recent reads, reading lists, and favorites without stats',
+    (tester) async {
+      screen(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme(),
+          home: ProfileDashboardScreen(
+            onGoToExplore: () {},
+            onGoToSettings: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(YomiProfileBlobatar), findsWidgets);
+      expect(find.text('Editar perfil'), findsOneWidget);
+      expect(find.text('Gêneros favoritos'), findsOneWidget);
+      expect(find.text('Obras lidas recentemente'), findsOneWidget);
+      expect(find.text('Listas de leitura'), findsOneWidget);
+
+      await tester.drag(find.byType(ListView).first, const Offset(0, -350));
+      await tester.pumpAndSettle();
+      expect(find.text('Obras favoritas'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  test(
+    'buildSortedChapterList deduplicates multi-language chapters and sorts ascending for next chapter',
+    () async {
+      final ch1En = Chapter(
+        id: 'c1-en',
+        chapterNumber: '1',
+        title: 'Ch 1',
+        language: 'EN',
+        pages: 20,
+      );
+      final ch1Pt = Chapter(
+        id: 'c1-pt',
+        chapterNumber: '1',
+        title: 'Cap 1',
+        language: 'PT-BR',
+        pages: 20,
+      );
+      final ch2Pt = Chapter(
+        id: 'c2-pt',
+        chapterNumber: '2',
+        title: 'Cap 2',
+        language: 'PT-BR',
+        pages: 22,
+      );
+      await StorageService.cacheMangaChapters(manga.id, [ch2Pt, ch1En, ch1Pt]);
+
+      final sorted = HomeOverviewScreen.buildSortedChapterList(manga, ch1Pt);
+      expect(sorted.map((c) => c.id).toList(), ['c1-pt', 'c2-pt']);
+    },
+  );
 }

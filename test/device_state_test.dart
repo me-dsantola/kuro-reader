@@ -94,6 +94,11 @@ void main() {
         MediaQuery.disableAnimationsOf(tester.element(find.text('Leitor'))),
         isFalse,
       );
+      service.applyNativeState({'powerSaving': true});
+      await tester.pump();
+      expect(find.textContaining('Economia de energia'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      expect(find.textContaining('Economia de energia'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       service.dispose();
