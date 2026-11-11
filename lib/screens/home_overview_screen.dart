@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/manga_models.dart';
@@ -673,6 +674,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
             SizedBox(
               height: rollItems.isEmpty ? 0 : 196,
               child: ListView.separated(
+                scrollCacheExtent: const ScrollCacheExtent.pixels(1500),
                 scrollDirection: Axis.horizontal,
                 itemCount: rollItems.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
