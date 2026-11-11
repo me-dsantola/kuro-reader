@@ -25,7 +25,7 @@ class HomeOverviewScreen extends StatefulWidget {
   });
 
   static List<Chapter> buildSortedChapterList(Manga manga, Chapter current) {
-    final cached = StorageService.getCachedMangaChapters(manga.id);
+    final cached = StorageService.getOfflineOrCachedChapters(manga.id);
     final byNum = <String, Chapter>{};
     for (final c in cached) {
       final key = c.chapterNumber.trim();

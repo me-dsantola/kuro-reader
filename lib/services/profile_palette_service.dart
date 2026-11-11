@@ -324,6 +324,57 @@ class ProfilePaletteService {
     return synchronousFallbackFor(profile);
   }
 
+  /// Synchronous initial palette for a [Manga] detail screen before async cover extraction finishes.
+  static ProfileAdaptivePalette synchronousFallbackForManga(Manga manga) {
+    final mangaCacheKey = 'manga:${manga.compositeId}';
+    if (_cache.containsKey(mangaCacheKey)) {
+      return _cache[mangaCacheKey]!;
+    }
+    for (final url in manga.getAllCandidateCoverUrls(highRes: false)) {
+      if (_cache.containsKey(url)) {
+        return _cache[url]!;
+      }
+    }
+    return paletteNotifier.value;
+  }
+
+  /// Extracts a vibrant adaptive palette directly from the [manga]'s cover image.
+  static Future<ProfileAdaptivePalette> resolveForManga(Manga manga) async {
+    final mangaCacheKey = 'manga:${manga.compositeId}';
+    if (_cache.containsKey(mangaCacheKey)) {
+      return _cache[mangaCacheKey]!;
+    }
+
+    final candidates = manga
+        .getAllCandidateCoverUrls(highRes: false)
+        .take(3)
+        .toList();
+
+    for (final url in candidates) {
+      final vibrant = await _extractFromSource(
+        url,
+        allowLowSaturation: false,
+      );
+      if (vibrant != null) {
+        _cache[mangaCacheKey] = vibrant;
+        return vibrant;
+      }
+    }
+
+    for (final url in candidates) {
+      final subtle = await _extractFromSource(
+        url,
+        allowLowSaturation: true,
+      );
+      if (subtle != null) {
+        _cache[mangaCacheKey] = subtle;
+        return subtle;
+      }
+    }
+
+    return paletteNotifier.value;
+  }
+
   static Future<ProfileAdaptivePalette?> _extractFromSource(
     String source, {
     required bool allowLowSaturation,

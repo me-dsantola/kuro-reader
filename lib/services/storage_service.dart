@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'dart:io';
 import 'backup_codec.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
 import '../models/reader_anchor.dart';
@@ -77,6 +80,13 @@ class StorageService {
       ValueNotifier<bool>(true);
 
   static const String readingListsKey = 'user_reading_lists';
+  static const String lastAutoBackupAtKey = 'last_auto_backup_at';
+  static const MethodChannel _autoBackupChannel = MethodChannel(
+    'yomi/auto_backup',
+  );
+  static Timer? _autoBackupDebounce;
+  static final List<StreamSubscription<BoxEvent>> _autoBackupSubscriptions = [];
+  static bool _restoringAutoBackup = false;
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -85,6 +95,17 @@ class StorageService {
     await Hive.openBox(downloadsBoxName);
     final settings = await Hive.openBox(settingsBoxName);
     await recoverInterruptedRestore();
+
+    // 0. Restauração Automática pós-reinstalação:
+    // Se esta instalação estiver limpa (sem favoritos, histórico ou perfil configurado),
+    // consulta o backup automático persistido no aparelho/OS e restaura sem depender de código manual.
+    final isFreshInstall =
+        favBox.isEmpty &&
+        historyBox.isEmpty &&
+        settings.get('user_profile') == null;
+    if (isFreshInstall) {
+      await tryRestoreFromDeviceAutoBackup();
+    }
 
     // 1. Conteúdo Adulto: Oculto de cara na primeira abertura e sempre desligado por padrão.
     final bool keepNsfwLockedOnStartup =
@@ -112,6 +133,12 @@ class StorageService {
       const firstRunProfile = UserProfile(isConfigured: false);
       await settings.put('user_profile', firstRunProfile.toMap());
       profileNotifier.value = firstRunProfile;
+    }
+
+    // 4. Ativa observadores de backup automático contínuo no dispositivo
+    _attachAutoBackupWatchers();
+    if (!isFreshInstall) {
+      unawaited(syncAutoBackupNow());
     }
   }
 
@@ -286,13 +313,40 @@ class StorageService {
   }
 
   // --- FAVORITOS (COM COFRE INCÓGNITO QUANDO NSFW = HIDDEN) ---
-  static bool isFavorite(String mangaId) => favBox.containsKey(mangaId);
+  static bool isFavorite(String mangaId) =>
+      Hive.isBoxOpen(favBoxName) && favBox.containsKey(mangaId);
 
   static Future<void> toggleFavorite(Manga manga) async {
     if (isFavorite(manga.id)) {
       await favBox.delete(manga.id);
     } else {
       await favBox.put(manga.id, manga.toMap());
+    }
+  }
+
+  /// Garante que o título esteja salvo na Biblioteca (favoritos) e que seus capítulos
+  /// estejam em cache para navegação offline na Biblioteca.
+  static Future<void> ensureInLibrary(
+    Manga manga, {
+    List<Chapter>? chapters,
+  }) async {
+    if (Hive.isBoxOpen(favBoxName) && !favBox.containsKey(manga.id)) {
+      await favBox.put(manga.id, manga.toMap());
+    }
+    if (Hive.isBoxOpen(historyBoxName) &&
+        chapters != null &&
+        chapters.isNotEmpty) {
+      final existing = getCachedMangaChapters(manga.id);
+      final seen = <String>{};
+      final merged = <Chapter>[
+        for (final ch in [...chapters, ...existing])
+          if (seen.add(ch.id)) ch,
+      ];
+      await cacheMangaChapters(
+        manga.id,
+        merged,
+        titleKey: manga.normalizedTitleKey,
+      );
     }
   }
 
@@ -788,5 +842,177 @@ class StorageService {
       result.add(Map<String, dynamic>.from(raw));
     }
     return result;
+  }
+
+  /// Retorna todos os capítulos baixados offline para uma obra específica,
+  /// permitindo abrir e ler a obra pela Biblioteca mesmo sem internet.
+  static List<Chapter> getDownloadedChaptersForManga(String mangaId) {
+    if (!Hive.isBoxOpen(downloadsBoxName)) return const [];
+    final chapters = <Chapter>[];
+    final seen = <String>{};
+    for (final raw in downloadsBox.values) {
+      if (raw is! Map) continue;
+      final manga = _storedManga(raw['manga']);
+      final chapter = _storedChapter(raw['chapter']);
+      if (manga == null || chapter == null) continue;
+      if (manga.id == mangaId && seen.add(chapter.id)) {
+        chapters.add(chapter);
+      }
+    }
+    chapters.sort((a, b) => b.numericChapter.compareTo(a.numericChapter));
+    return chapters;
+  }
+
+  static int countDownloadedChaptersForManga(String mangaId) =>
+      getDownloadedChaptersForManga(mangaId).length;
+
+  /// Combina capítulos baixados offline com o cache de capítulos da obra,
+  /// garantindo que a página do mangá funcione 100% offline na Biblioteca.
+  static List<Chapter> getOfflineOrCachedChapters(String mangaId) {
+    final downloaded = getDownloadedChaptersForManga(mangaId);
+    final cached = Hive.isBoxOpen(historyBoxName)
+        ? getCachedMangaChapters(mangaId)
+        : const <Chapter>[];
+    if (downloaded.isEmpty) return cached;
+    if (cached.isEmpty) return downloaded;
+    final seen = <String>{};
+    return [
+      for (final ch in [...downloaded, ...cached])
+        if (seen.add(ch.id)) ch,
+    ];
+  }
+
+  // --- BACKUP AUTOMÁTICO PERSISTENTE NO DISPOSITIVO (SOBREVIVE À REINSTALAÇÃO) ---
+  static bool get _isTestEnv =>
+      !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+
+  static File? _desktopAutoBackupFile() {
+    if (kIsWeb || _isTestEnv) return null;
+    final home =
+        Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'];
+    if (home == null || home.trim().isEmpty) return null;
+    return File('$home/.yomi_backup/yomi_auto_backup.txt');
+  }
+
+  static void _attachAutoBackupWatchers() {
+    for (final sub in _autoBackupSubscriptions) {
+      sub.cancel();
+    }
+    _autoBackupSubscriptions.clear();
+    if (!Hive.isBoxOpen(favBoxName) ||
+        !Hive.isBoxOpen(historyBoxName) ||
+        !Hive.isBoxOpen(settingsBoxName)) {
+      return;
+    }
+    _autoBackupSubscriptions.addAll([
+      favBox.watch().listen((_) => _scheduleAutoBackup()),
+      historyBox.watch().listen((_) => _scheduleAutoBackup()),
+      settingsBox.watch().listen((event) {
+        if (event.key == lastAutoBackupAtKey ||
+            event.key == restoreJournalKey) {
+          return;
+        }
+        _scheduleAutoBackup();
+      }),
+    ]);
+  }
+
+  static void _scheduleAutoBackup() {
+    if (_restoringAutoBackup) return;
+    _autoBackupDebounce?.cancel();
+    _autoBackupDebounce = Timer(const Duration(milliseconds: 900), () {
+      unawaited(syncAutoBackupNow());
+    });
+  }
+
+  /// Salva imediatamente o estado completo do usuário no armazenamento persistente
+  /// do dispositivo e no agente de backup do sistema operacional.
+  static Future<bool> syncAutoBackupNow() async {
+    if (_restoringAutoBackup ||
+        !Hive.isBoxOpen(favBoxName) ||
+        !Hive.isBoxOpen(historyBoxName) ||
+        !Hive.isBoxOpen(settingsBoxName)) {
+      return false;
+    }
+    try {
+      final hasUserData =
+          favBox.isNotEmpty ||
+          historyBox.isNotEmpty ||
+          userProfile.isConfigured ||
+          getReadingLists().isNotEmpty;
+      if (!hasUserData) return false;
+
+      final payload = exportFullBackupJson();
+      bool savedAny = false;
+
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          final ok = await _autoBackupChannel.invokeMethod<bool>(
+            'saveAutoBackup',
+            {'payload': payload},
+          );
+          if (ok == true) savedAny = true;
+        } catch (_) {}
+      }
+
+      final file = _desktopAutoBackupFile();
+      if (file != null) {
+        try {
+          if (!file.parent.existsSync()) {
+            await file.parent.create(recursive: true);
+          }
+          await file.writeAsString(payload, flush: true);
+          savedAny = true;
+        } catch (_) {}
+      }
+
+      if (savedAny && Hive.isBoxOpen(settingsBoxName)) {
+        await settingsBox.put(
+          lastAutoBackupAtKey,
+          DateTime.now().toIso8601String(),
+        );
+      }
+      return savedAny;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Tenta localizar e restaurar automaticamente o backup salvo no aparelho
+  /// (por exemplo, logo após desinstalar e reinstalar o aplicativo).
+  static Future<bool> tryRestoreFromDeviceAutoBackup() async {
+    if (_restoringAutoBackup) return false;
+    _restoringAutoBackup = true;
+    try {
+      String? payload;
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          payload = await _autoBackupChannel.invokeMethod<String>(
+            'loadAutoBackup',
+          );
+        } catch (_) {}
+      }
+      if (payload == null || payload.trim().isEmpty) {
+        final file = _desktopAutoBackupFile();
+        if (file != null && file.existsSync()) {
+          try {
+            payload = await file.readAsString();
+          } catch (_) {}
+        }
+      }
+      if (payload == null || payload.trim().isEmpty) return false;
+      final restored = await importFullBackupJson(payload.trim());
+      if (restored && Hive.isBoxOpen(settingsBoxName)) {
+        await settingsBox.put(
+          lastAutoBackupAtKey,
+          DateTime.now().toIso8601String(),
+        );
+      }
+      return restored;
+    } catch (_) {
+      return false;
+    } finally {
+      _restoringAutoBackup = false;
+    }
   }
 }

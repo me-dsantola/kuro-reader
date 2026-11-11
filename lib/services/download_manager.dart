@@ -12,12 +12,19 @@ class DownloadManager {
   static final ValueNotifier<Map<String, double>> activeDownloads =
       ValueNotifier({});
 
+  /// Rastreia downloads de obras inteiras em lote: `mangaId -> (concluídos, total)`
+  static final ValueNotifier<Map<String, ({int completed, int total})>>
+  activeMangaDownloads = ValueNotifier({});
+
   static final _inFlight = <String, Future<void>>{};
   static final _deletingChapters = <String>{};
   static bool _deletingAll = false;
 
   static bool isDownloading(String chapterId) =>
       _inFlight.containsKey(chapterId);
+
+  static bool isDownloadingManga(String mangaId) =>
+      activeMangaDownloads.value.containsKey(mangaId);
 
   /// A Hive index alone does not prove every offline page still exists.
   static Future<bool> hasCompleteDownload(String chapterId) async {
@@ -29,6 +36,71 @@ class DownloadManager {
       if (!await ImageFileValidator.isCompleteImage(file)) return false;
     }
     return true;
+  }
+
+  /// Seleciona uma lista limpa de capítulos únicos por número para download da obra inteira,
+  /// priorizando PT-BR quando houver múltiplas traduções do mesmo número.
+  static List<Chapter> deduplicateForBatchDownload(List<Chapter> chapters) {
+    final byNum = <String, Chapter>{};
+    for (final ch in chapters) {
+      final key = ch.chapterNumber.trim().isEmpty
+          ? ch.id
+          : ch.chapterNumber.trim();
+      final existing = byNum[key];
+      if (existing == null) {
+        byNum[key] = ch;
+      } else {
+        final existingPt = existing.language.toUpperCase().contains('PT');
+        final newPt = ch.language.toUpperCase().contains('PT');
+        if (!existingPt && newPt) {
+          byNum[key] = ch;
+        }
+      }
+    }
+    final list = byNum.values.toList()
+      ..sort((a, b) => a.numericChapter.compareTo(b.numericChapter));
+    return list;
+  }
+
+  /// Baixa uma obra inteira (todos os capítulos fornecidos) e garante que ela
+  /// seja automaticamente adicionada à Biblioteca e fique disponível offline.
+  static Future<int> downloadManga({
+    required Manga manga,
+    required List<Chapter> chapters,
+    bool useDataSaver = false,
+  }) async {
+    final uniqueChapters = deduplicateForBatchDownload(chapters);
+    if (uniqueChapters.isEmpty) return 0;
+
+    // Adiciona imediatamente à Biblioteca e salva o índice de capítulos para leitura offline
+    await StorageService.ensureInLibrary(manga, chapters: uniqueChapters);
+
+    final total = uniqueChapters.length;
+    int completedCount = 0;
+    _updateMangaProgress(manga.id, completed: 0, total: total);
+
+    try {
+      for (final chapter in uniqueChapters) {
+        try {
+          await downloadChapter(
+            manga: manga,
+            chapter: chapter,
+            useDataSaver: useDataSaver,
+          );
+          completedCount++;
+        } catch (_) {
+          // Continua com os próximos capítulos caso um capítulo específico falhe
+        }
+        _updateMangaProgress(
+          manga.id,
+          completed: completedCount,
+          total: total,
+        );
+      }
+      return completedCount;
+    } finally {
+      _removeMangaProgress(manga.id);
+    }
   }
 
   static Future<void> downloadChapter({
@@ -64,7 +136,10 @@ class DownloadManager {
     bool useDataSaver,
   ) async {
     if (StorageService.isChapterDownloaded(chapter.id)) {
-      if (await hasCompleteDownload(chapter.id)) return;
+      if (await hasCompleteDownload(chapter.id)) {
+        await StorageService.ensureInLibrary(manga, chapters: [chapter]);
+        return;
+      }
       // Reuse only verified page files from an interrupted attempt.
       await StorageService.downloadsBox.delete(chapter.id);
     }
@@ -141,6 +216,9 @@ class DownloadManager {
       'paths': savedPaths,
       'downloadedAt': DateTime.now().toIso8601String(),
     });
+
+    // Garante que toda obra baixada entre automaticamente para a Biblioteca e funcione offline
+    await StorageService.ensureInLibrary(manga, chapters: [chapter]);
   }
 
   static Future<void> deleteChapter(String chapterId) async {
@@ -190,5 +268,25 @@ class DownloadManager {
     final current = Map<String, double>.from(activeDownloads.value);
     current.remove(chapterId);
     activeDownloads.value = current;
+  }
+
+  static void _updateMangaProgress(
+    String mangaId, {
+    required int completed,
+    required int total,
+  }) {
+    final current = Map<String, ({int completed, int total})>.from(
+      activeMangaDownloads.value,
+    );
+    current[mangaId] = (completed: completed, total: total);
+    activeMangaDownloads.value = current;
+  }
+
+  static void _removeMangaProgress(String mangaId) {
+    final current = Map<String, ({int completed, int total})>.from(
+      activeMangaDownloads.value,
+    );
+    current.remove(mangaId);
+    activeMangaDownloads.value = current;
   }
 }

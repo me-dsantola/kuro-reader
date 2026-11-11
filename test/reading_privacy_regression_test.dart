@@ -131,18 +131,19 @@ void main() {
   );
 
   testWidgets(
-    'backup settings describe manual export without promising auto backup',
+    'backup settings provide automatic device backup and manual export option',
     (tester) async {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await tester.scrollUntilVisible(
-        find.text('Exporte um backup antes de desinstalar'),
+        find.text('Backup automático ativo no seu aparelho'),
         350,
       );
-      expect(find.textContaining('Auto-Backup Ativo'), findsNothing);
       expect(
-        find.text('Exporte um backup antes de desinstalar'),
+        find.text('Backup automático ativo no seu aparelho'),
         findsOneWidget,
       );
+      expect(find.text('Salvar no Aparelho'), findsOneWidget);
+      expect(find.text('Restaurar do Aparelho'), findsOneWidget);
     },
   );
 }

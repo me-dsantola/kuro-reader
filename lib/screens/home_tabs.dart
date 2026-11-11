@@ -236,6 +236,7 @@ class YomiEnsoLogo extends StatelessWidget {
               fontWeight: FontWeight.w900,
               letterSpacing: 2.0,
               color: YomiPalette.pureWhite,
+              decoration: TextDecoration.none,
             ),
           ),
           Padding(
@@ -252,6 +253,7 @@ class YomiEnsoLogo extends StatelessWidget {
               fontWeight: FontWeight.w900,
               letterSpacing: 2.0,
               color: YomiPalette.pureWhite,
+              decoration: TextDecoration.none,
             ),
           ),
         ],
@@ -541,14 +543,15 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                 valueListenable: StorageService.favBox.listenable(),
                 builder: (context, Box favBox, _) {
                   return ValueListenableBuilder(
-                    valueListenable: StorageService.settingsBox.listenable(
-                      keys: [StorageService.readingListsKey],
-                    ),
+                    valueListenable: StorageService.settingsBox.listenable(),
                     builder: (context, Box settingsBox, _) {
                       final continueList =
                           StorageService.getContinueReadingList();
                       final favorites = StorageService.getFavorites();
                       final readingLists = StorageService.getReadingLists();
+                      final pendingUpdatesCount = FavoriteUpdatesService
+                          .allPending(favorites)
+                          .length;
                       final genreTags = profile.genreTags;
 
                       return ListView(
@@ -683,7 +686,7 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                                           const Spacer(),
                                           IconButton(
                                             tooltip:
-                                                'Atualizações de favoritos',
+                                                'Notificações e capítulos de favoritos',
                                             onPressed: () => Navigator.push(
                                               context,
                                               MaterialPageRoute(
@@ -691,28 +694,29 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                                                     const FavoriteUpdatesScreen(),
                                               ),
                                             ),
-                                            icon: Stack(
-                                              clipBehavior: Clip.none,
-                                              children: [
-                                                const Icon(
-                                                  Icons
-                                                      .notifications_none_rounded,
+                                            icon: Badge(
+                                              isLabelVisible:
+                                                  pendingUpdatesCount > 0,
+                                              backgroundColor: accent,
+                                              label: Text(
+                                                pendingUpdatesCount > 99
+                                                    ? '99+'
+                                                    : '$pendingUpdatesCount',
+                                                style: const TextStyle(
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.bold,
                                                   color: Colors.white,
-                                                  size: 24,
                                                 ),
-                                                Positioned(
-                                                  right: 1,
-                                                  top: 1,
-                                                  child: Container(
-                                                    width: 8,
-                                                    height: 8,
-                                                    decoration: BoxDecoration(
-                                                      color: accent,
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
+                                              ),
+                                              child: Icon(
+                                                pendingUpdatesCount > 0
+                                                    ? Icons
+                                                          .notifications_active_rounded
+                                                    : Icons
+                                                          .notifications_none_rounded,
+                                                color: Colors.white,
+                                                size: 24,
+                                              ),
                                             ),
                                           ),
                                           IconButton(
@@ -2459,6 +2463,7 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   bool _checkingUpdates = false;
+  bool _downloadingLibraryOffline = false;
   bool _searching = false;
   String _searchQuery = '';
   String _selectedFilterId = 'all'; // 'all', 'favorites', or list.id
@@ -2468,6 +2473,110 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _confirmAndDownloadLibraryOffline(
+    List<Manga> titles,
+    ProfileAdaptivePalette palette,
+  ) async {
+    if (_downloadingLibraryOffline || titles.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: palette.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: palette.primary.withValues(alpha: 0.35)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.downloading_rounded, color: palette.primary),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Disponibilizar Biblioteca Offline?',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Deseja baixar os capítulos das ${titles.length} obra(s) da sua Biblioteca para leitura offline?\n\n'
+          'Todas as páginas serão salvas no seu aparelho para que você possa abrir e ler sua Biblioteca inteira mesmo sem internet.',
+          style: const TextStyle(color: Colors.white70, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: palette.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.download_rounded, size: 18),
+            label: Text('Baixar (${titles.length} obras)'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+    setState(() => _downloadingLibraryOffline = true);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Iniciando download offline de ${titles.length} obra(s) da Biblioteca...',
+        ),
+      ),
+    );
+
+    int totalDownloadedChapters = 0;
+    try {
+      for (final manga in titles) {
+        if (!mounted) break;
+        try {
+          List<Chapter> chapters = StorageService.getOfflineOrCachedChapters(
+            manga.id,
+          );
+          if (chapters.isEmpty) {
+            final bySource = await MangaDexService.discoverAllSourcesForManga(
+              manga,
+            );
+            for (final list in bySource.values) {
+              if (list.length > chapters.length) {
+                chapters = list;
+              }
+            }
+          }
+          if (chapters.isNotEmpty) {
+            totalDownloadedChapters += await DownloadManager.downloadManga(
+              manga: manga,
+              chapters: chapters,
+              useDataSaver: StorageService.dataSaverEnabled,
+            );
+          }
+        } catch (_) {}
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _downloadingLibraryOffline = false);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Biblioteca disponível offline ($totalDownloadedChapters capítulos baixados)!',
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _checkUpdates() async {
@@ -2790,9 +2899,55 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                             ),
                                       ),
                                       IconButton(
+                                        tooltip:
+                                            'Baixar Biblioteca para ler offline',
+                                        onPressed:
+                                            _downloadingLibraryOffline ||
+                                                (allFavorites.isEmpty &&
+                                                    readingLists.isEmpty)
+                                            ? null
+                                            : () {
+                                                final uniqueTitles =
+                                                    <String, Manga>{
+                                                      for (final m
+                                                          in allFavorites)
+                                                        m.id: m,
+                                                      for (final l
+                                                          in readingLists)
+                                                        for (final m
+                                                            in l.mangas)
+                                                          m.id: m,
+                                                    }.values.toList();
+                                                _confirmAndDownloadLibraryOffline(
+                                                  uniqueTitles,
+                                                  palette,
+                                                );
+                                              },
+                                        icon: _downloadingLibraryOffline
+                                            ? SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: palette.primary,
+                                                    ),
+                                              )
+                                            : Icon(
+                                                Icons.downloading_rounded,
+                                                color: palette.primary,
+                                              ),
+                                      ),
+                                      IconButton(
                                         tooltip: 'Central de atualizações',
-                                        icon: const Icon(
-                                          Icons.notifications_outlined,
+                                        icon: Badge(
+                                          isLabelVisible: FavoriteUpdatesService
+                                              .allPending(allFavorites)
+                                              .isNotEmpty,
+                                          backgroundColor: palette.primary,
+                                          child: const Icon(
+                                            Icons.notifications_outlined,
+                                          ),
                                         ),
                                         onPressed: () => Navigator.push(
                                           context,
@@ -3786,7 +3941,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 22),
                       Text(
-                        'Backup manual dos seus dados',
+                        'Backup Automático & Sincronização no Aparelho',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
@@ -3799,25 +3954,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         decoration: BoxDecoration(
                           color: palette.surface,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white10),
+                          border: Border.all(
+                            color: palette.primary.withValues(alpha: 0.28),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
                                 Icon(
                                   Icons.cloud_done_rounded,
-                                  color: Colors.greenAccent,
+                                  color: palette.primary,
                                   size: 18,
                                 ),
-                                SizedBox(width: 8),
-                                Expanded(
+                                const SizedBox(width: 8),
+                                const Expanded(
                                   child: Text(
-                                    'Exporte um backup antes de desinstalar',
+                                    'Backup automático ativo no seu aparelho',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 13,
+                                      fontSize: 13.5,
                                     ),
                                   ),
                                 ),
@@ -3825,13 +3982,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'Backup manual: o código contém seus favoritos, listas, perfil e histórico, inclusive obras sensíveis. Base64 NÃO é criptografia. Guarde em local privado. Imagens baixadas não estão incluídas.',
+                              'Seus favoritos, listas, perfil, mascote e histórico são salvos automaticamente no armazenamento persistente do telefone. Se você desinstalar e instalar o YOMI novamente, seus dados são restaurados automaticamente sem precisar colar códigos.',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.white60,
+                                color: Colors.white70,
+                                height: 1.35,
                               ),
                             ),
                             const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: FilledButton.icon(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: palette.primary,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () async {
+                                      final messenger = ScaffoldMessenger.of(
+                                        context,
+                                      );
+                                      final ok =
+                                          await StorageService.syncAutoBackupNow();
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            ok
+                                                ? 'Backup automático atualizado no aparelho com sucesso!'
+                                                : 'Adicione favoritos ou configure o perfil para salvar o backup no aparelho.',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(
+                                      Icons.backup_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Salvar no Aparelho'),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () async {
+                                      final messenger = ScaffoldMessenger.of(
+                                        context,
+                                      );
+                                      final restored =
+                                          await StorageService.tryRestoreFromDeviceAutoBackup();
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            restored
+                                                ? 'Dados restaurados automaticamente do aparelho!'
+                                                : 'Nenhum backup salvo encontrado no aparelho.',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(
+                                      Icons.settings_backup_restore_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Restaurar do Aparelho'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(color: Colors.white12, height: 22),
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.qr_code_rounded,
+                                  color: Colors.white70,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Exporte um backup antes de desinstalar (Opcional / Outro Celular)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
                             Row(
                               children: [
                                 Expanded(
@@ -3857,22 +4095,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       Icons.copy_all_rounded,
                                       size: 18,
                                     ),
-                                    label: const Text('Copiar Backup'),
+                                    label: const Text('Copiar Código'),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
-                                  child: FilledButton.icon(
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: palette.primary,
-                                      foregroundColor: Colors.white,
-                                    ),
+                                  child: OutlinedButton.icon(
                                     onPressed: _showRestoreBackupModal,
                                     icon: const Icon(
                                       Icons.restore_rounded,
                                       size: 18,
                                     ),
-                                    label: const Text('Restaurar'),
+                                    label: const Text('Colar Código'),
                                   ),
                                 ),
                               ],
@@ -4054,6 +4288,62 @@ class _MangaGridCardState extends State<MangaGridCard> {
                                         ),
                                       ),
                                     ),
+                                  // Indicador discreto de capítulos baixados offline
+                                  ValueListenableBuilder(
+                                    valueListenable: StorageService.downloadsBox
+                                        .listenable(),
+                                    builder: (context, Box dlBox, _) {
+                                      final dlCount =
+                                          StorageService.countDownloadedChaptersForManga(
+                                            widget.manga.id,
+                                          );
+                                      if (dlCount <= 0) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Positioned(
+                                        top: 6,
+                                        left: 6,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.78,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            border: Border.all(
+                                              color: palette.secondary
+                                                  .withValues(alpha: 0.55),
+                                              width: 0.8,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.offline_pin_rounded,
+                                                size: 10,
+                                                color: palette.secondary,
+                                              ),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                '$dlCount',
+                                                style: TextStyle(
+                                                  fontSize: 8.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: palette.soft,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                   // Coração se estiver nos favoritos
                                   ValueListenableBuilder(
                                     valueListenable: StorageService.favBox

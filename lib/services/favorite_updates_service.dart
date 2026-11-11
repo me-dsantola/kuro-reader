@@ -29,16 +29,38 @@ class FavoriteUpdatesService {
         .toList();
   }
 
+  static Future<int> checkAllFavorites(List<Manga> favorites) async {
+    int totalFound = 0;
+    for (final manga in favorites) {
+      try {
+        totalFound += await checkFavorite(manga);
+      } catch (_) {}
+    }
+    return totalFound;
+  }
+
   static Future<int> checkFavorite(Manga manga) async {
     if (!StorageService.isFavorite(manga.id)) return 0;
     if (manga.isNsfw && !StorageService.nsfwMode.allowNsfwFetch) return 0;
 
-    final chaptersBySource =
-        await MangaDexService.discoverAllSourcesForManga(manga);
-    final chapters = chaptersBySource[MangaSourceType.mangadex] ??
+    final chaptersBySource = await MangaDexService.discoverAllSourcesForManga(
+      manga,
+    );
+    List<Chapter> chapters =
+        chaptersBySource[MangaSourceType.mangadex] ??
         chaptersBySource[manga.source] ??
         const <Chapter>[];
+    if (chapters.isEmpty) {
+      for (final list in chaptersBySource.values) {
+        if (list.length > chapters.length) {
+          chapters = list;
+        }
+      }
+    }
     if (chapters.isEmpty) return 0;
+
+    final sortedDesc = List<Chapter>.from(chapters)
+      ..sort((a, b) => b.numericChapter.compareTo(a.numericChapter));
 
     final key = '$_prefix${manga.id}';
     final previous = StorageService.settingsBox.get(key);
@@ -49,16 +71,40 @@ class FavoriteUpdatesService {
       if (oldIds is List) known.addAll(oldIds.whereType<String>());
       final oldPending = previous['pending'];
       if (oldPending is List) {
-        pending.addAll(oldPending.whereType<Map>().map(
-          (entry) => Chapter.fromMap(Map<String, dynamic>.from(entry)),
-        ));
+        pending.addAll(
+          oldPending.whereType<Map>().map(
+            (entry) => Chapter.fromMap(Map<String, dynamic>.from(entry)),
+          ),
+        );
       }
     }
 
-    // First check establishes a baseline; old chapters are not "new".
-    final fresh = previous is Map
-        ? chapters.where((chapter) => !known.contains(chapter.id)).toList()
-        : <Chapter>[];
+    final List<Chapter> fresh;
+    if (previous is Map) {
+      fresh = sortedDesc
+          .where((chapter) => !known.contains(chapter.id))
+          .toList();
+    } else {
+      // Na primeira verificação, destaca capítulos posteriores ao último lido
+      // ou o capítulo mais recente disponível da obra favorita.
+      final lastRead = StorageService.getLastReadChapter(manga.id);
+      if (lastRead != null) {
+        fresh = sortedDesc
+            .where(
+              (ch) =>
+                  ch.numericChapter > lastRead.numericChapter &&
+                  !StorageService.isChapterRead(ch.id),
+            )
+            .take(10)
+            .toList();
+      } else {
+        fresh = sortedDesc
+            .where((ch) => !StorageService.isChapterRead(ch.id))
+            .take(1)
+            .toList();
+      }
+    }
+
     final pendingIds = pending.map((chapter) => chapter.id).toSet();
     for (final chapter in fresh) {
       if (pendingIds.add(chapter.id)) pending.add(chapter);
@@ -69,7 +115,7 @@ class FavoriteUpdatesService {
     // Bounded local state. Do not rely on chapter counts or estimated totals.
     final updatedKnown = <String>{
       ...known,
-      ...chapters.map((chapter) => chapter.id),
+      ...sortedDesc.map((chapter) => chapter.id),
     }.toList();
     await StorageService.settingsBox.put(key, {
       'known': updatedKnown.length > 3000
@@ -89,5 +135,11 @@ class FavoriteUpdatesService {
       ...Map<String, dynamic>.from(previous),
       'pending': <Map<String, dynamic>>[],
     });
+  }
+
+  static Future<void> markAllSeen(List<Manga> favorites) async {
+    for (final manga in favorites) {
+      await markSeen(manga);
+    }
   }
 }
