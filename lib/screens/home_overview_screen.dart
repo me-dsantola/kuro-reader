@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
 import '../services/favorite_updates_service.dart';
@@ -50,65 +51,8 @@ class HomeOverviewScreen extends StatefulWidget {
 }
 
 class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
-  List<Manga> _popularMangas = _curatedPopularFallback;
+  List<Manga> _popularMangas = [];
   bool _loadingPopular = false;
-
-  static final List<Manga> _curatedPopularFallback = [
-    Manga(
-      id: '32d76d19-8a05-4db0-9fc2-e0b0648fe9d0',
-      title: 'Solo Leveling',
-      description:
-          'Em um mundo onde caçadores despertos enfrentam masmorras mortais, Sung Jinwoo ergue-se das sombras.',
-      status: 'COMPLETED',
-      coverFileName: 'e90bdc47-c8b9-4df7-b2c0-17641b645ee1.jpg',
-      tags: const ['Ação', 'Fantasia'],
-    ),
-    Manga(
-      id: 'a77742b1-befd-49a4-bff5-1ad4e6b0ef7b',
-      title: 'Chainsaw Man',
-      description:
-          'Denji funde seu coração com Pochita e torna-se o temido Homem-Motosserra.',
-      status: 'ONGOING',
-      coverFileName: 'eb2d1f4c-3405-4908-9173-748b02b47d1e.jpg',
-      tags: const ['Seinen', 'Ação'],
-    ),
-    Manga(
-      id: 'c52b2ce3-7f95-469c-96b0-479524fb7a1a',
-      title: 'Jujutsu Kaisen',
-      description:
-          'Yuji Itadori mergulha no mundo das maldições após engolir um artefato amaldiçoado.',
-      status: 'COMPLETED',
-      coverFileName: '0e5cb1d2-c2f2-4a2b-a868-b039d7df7106.jpg',
-      tags: const ['Sobrenatural', 'Shounen'],
-    ),
-    Manga(
-      id: '4141c5dc-c525-4df5-afd7-cc7d192a832f',
-      title: 'Blue Lock',
-      description:
-          'Trezentos atacantes disputam no projeto mais egoísta e intenso do futebol japonês.',
-      status: 'ONGOING',
-      coverFileName: 'b9d8b55d-e65b-403c-b06a-c6b267d39278.jpg',
-      tags: const ['Esportes', 'Drama'],
-    ),
-    Manga(
-      id: '801513ba-a712-498c-8f57-cae55b38cc92',
-      title: 'Berserk',
-      description:
-          'A jornada sombria e implacável de Guts, o Espadachim Negro.',
-      status: 'ONGOING',
-      coverFileName: '22f71c45-1007-4826-9958-87822300f660.jpg',
-      tags: const ['Seinen', 'Fantasia'],
-    ),
-    Manga(
-      id: 'b0b721ff-c388-4486-aa0f-c2b0bb321512',
-      title: 'Sousou no Frieren',
-      description:
-          'Após derrotar o Rei Demônio, a maga elfa Frieren embarca numa jornada para compreender os humanos.',
-      status: 'ONGOING',
-      coverFileName: 'b3b4e0d8-307f-4a47-9234-26e9895f5525.jpg',
-      tags: const ['Fantasia', 'Aventura'],
-    ),
-  ];
 
   @override
   void initState() {
@@ -125,7 +69,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
 
   Future<void> _loadPopularMangas() async {
     if (_loadingPopular) return;
-    _loadingPopular = true;
+    setState(() => _loadingPopular = true);
     try {
       final fetched = await MangaDexService.fetchPopularMangas(
         limit: 12,
@@ -135,9 +79,9 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
         setState(() => _popularMangas = fetched);
       }
     } catch (_) {
-      // Keep curated popular titles roll on offline/test environments.
+      // Keep actual previously fetched titles on temporary failures.
     } finally {
-      _loadingPopular = false;
+      if (mounted) setState(() => _loadingPopular = false);
     }
   }
 
@@ -722,9 +666,21 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
               onAction: widget.onExplore,
             ),
             const SizedBox(height: 12),
+            if (rollItems.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: _loadingPopular
+                    ? const LinearProgressIndicator()
+                    : TextButton.icon(
+                        onPressed: _loadPopularMangas,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Tentar carregar recomendações'),
+                      ),
+              ),
             SizedBox(
-              height: 196,
+              height: rollItems.isEmpty ? 0 : 196,
               child: ListView.separated(
+                scrollCacheExtent: const ScrollCacheExtent.pixels(1500),
                 scrollDirection: Axis.horizontal,
                 itemCount: rollItems.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -741,10 +697,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
                           Expanded(
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: YomiCoverImage(
-                                manga: m,
-                                width: 112,
-                              ),
+                              child: YomiCoverImage(manga: m, width: 112),
                             ),
                           ),
                           const SizedBox(height: 6),

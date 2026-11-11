@@ -69,14 +69,33 @@ void main() {
       await http.runWithClient(() async {
         await DownloadManager.downloadChapter(manga: manga, chapter: chapter);
         expect(await DownloadManager.hasCompleteDownload(chapter.id), isTrue);
-        final path = StorageService.getDownloadedChapterPaths(
-          chapter.id,
-        ).single;
+        final path = StorageService.getDownloadedChapterPaths(chapter.id)
+            .single;
         await File(path).writeAsString('corrupt image');
         expect(await DownloadManager.hasCompleteDownload(chapter.id), isFalse);
         await DownloadManager.downloadChapter(manga: manga, chapter: chapter);
         expect(await DownloadManager.hasCompleteDownload(chapter.id), isTrue);
       }, () => MockClient((_) async => http.Response.bytes(png, 200)));
+    },
+  );
+
+  test(
+    'download uses an alternate image URL when the original CDN fails',
+    () async {
+      var calls = 0;
+      await http.runWithClient(
+        () async {
+          await DownloadManager.downloadChapter(manga: manga, chapter: chapter);
+          expect(calls, 2);
+          expect(await DownloadManager.hasCompleteDownload(chapter.id), isTrue);
+        },
+        () => MockClient((request) async {
+          calls++;
+          return request.url.host == 'pages.example'
+              ? http.Response('expired', 403)
+              : http.Response.bytes(png, 200);
+        }),
+      );
     },
   );
 

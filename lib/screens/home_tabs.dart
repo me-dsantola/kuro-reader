@@ -59,6 +59,7 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
   int _index = 0;
   bool _triedTitleRecovery = false;
   bool _exhausted = false;
+  int _generation = 0;
 
   @override
   void initState() {
@@ -70,12 +71,15 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
   void didUpdateWidget(covariant YomiCoverImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.manga.compositeId != widget.manga.compositeId ||
-        oldWidget.highRes != widget.highRes) {
+        oldWidget.highRes != widget.highRes ||
+        oldWidget.manga.getRawCoverUrl(highRes: widget.highRes) !=
+            widget.manga.getRawCoverUrl(highRes: widget.highRes)) {
       _initCandidates();
     }
   }
 
   void _initCandidates() {
+    _generation++;
     _candidates = List<String>.from(
       widget.manga.getAllCandidateCoverUrls(highRes: widget.highRes),
     );
@@ -93,14 +97,16 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
       return;
     }
     _triedTitleRecovery = true;
+    final generation = _generation;
     final resolved = await MangaDexService.resolveCoverUrlByTitle(
       widget.manga.title,
     );
-    if (!mounted) return;
+    if (!mounted || generation != _generation) return;
     if (resolved != null && resolved.isNotEmpty) {
       final newUrls = yomiCandidateImageUrls(resolved);
       if (newUrls.isNotEmpty) {
         setState(() {
+          _index = _candidates.length;
           _candidates.addAll(newUrls);
           _exhausted = false;
         });

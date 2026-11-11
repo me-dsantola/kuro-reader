@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import '../models/reader_page_geometry.dart';
 import 'reader_scroll_controller.dart';
 
@@ -138,7 +139,7 @@ class _WebtoonViewState extends State<WebtoonView> {
         physics: (_activePointers >= 2 || _isZoomed)
             ? const NeverScrollableScrollPhysics()
             : null,
-        cacheExtent: 800,
+        scrollCacheExtent: const ScrollCacheExtent.pixels(800),
         slivers: [
           SliverVariedExtentList.builder(
             itemCount: widget.geometry.pageCount,

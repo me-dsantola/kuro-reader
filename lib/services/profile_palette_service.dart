@@ -486,7 +486,7 @@ class ProfileImagePicker {
           'pickImage',
         );
         if (pickedPath != null && pickedPath.trim().isNotEmpty) {
-          return _persistLocalCopy(pickedPath.trim(), slot: slot);
+          return await _persistLocalCopy(pickedPath.trim(), slot: slot);
         }
         return null;
       }
@@ -510,7 +510,7 @@ class ProfileImagePicker {
         ]);
         final selected = result.stdout.toString().trim();
         if (selected.isNotEmpty && File(selected).existsSync()) {
-          return _persistLocalCopy(selected, slot: slot);
+          return await _persistLocalCopy(selected, slot: slot);
         }
       }
     } catch (_) {

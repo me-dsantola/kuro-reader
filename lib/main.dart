@@ -154,6 +154,7 @@ class MainNavigationShell extends StatefulWidget {
 
 class _MainNavigationShellState extends State<MainNavigationShell> {
   late int _currentIndex;
+  final _visitedTabs = <int>{};
   final _chrome = ScrollChromeController();
 
   @override
@@ -165,6 +166,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     final openOnProfile =
         StorageService.userProfile.openOnProfileByDefault == true;
     _currentIndex = openOnProfile ? 3 : 0;
+    _visitedTabs.add(_currentIndex);
     AppearanceController.instance.addListener(_syncChrome);
   }
 
@@ -184,7 +186,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   void _switchTab(int index) {
     _chrome.show();
-    setState(() => _currentIndex = index);
+    setState(() {
+      _visitedTabs.add(index);
+      _currentIndex = index;
+    });
   }
 
   static const List<_FloatingNavItem> _primaryNavItems = [
@@ -258,7 +263,15 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 AppearanceController.instance.value.autoHideMenus
                 ? _chrome.onScroll(notification)
                 : false,
-            child: IndexedStack(index: _currentIndex, children: pages),
+            child: IndexedStack(
+              index: _currentIndex,
+              children: [
+                for (var i = 0; i < pages.length; i++)
+                  _visitedTabs.contains(i)
+                      ? TickerMode(enabled: i == _currentIndex, child: pages[i])
+                      : const SizedBox.shrink(),
+              ],
+            ),
           ),
           bottomNavigationBar: ListenableBuilder(
             listenable: _chrome,

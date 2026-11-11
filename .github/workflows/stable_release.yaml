@@ -2,7 +2,7 @@ name: Validate and publish YOMI stable
 
 on:
   push:
-    branches: [release/yomi-stable-validation, main]
+    branches: [release/yomi-stable-validation, main, fix/flutter-analyze-apk-build-20261111]
   workflow_dispatch:
 
 permissions:
@@ -15,7 +15,7 @@ concurrency:
 jobs:
   quality:
     name: Analyze and test
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/yomi-stable-validation'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/yomi-stable-validation' || github.ref == 'refs/heads/fix/flutter-analyze-apk-build-20261111'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
 
   signing-helper:
     name: Test signing assistant on Windows PowerShell 5.1
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/yomi-stable-validation'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/yomi-stable-validation' || github.ref == 'refs/heads/fix/flutter-analyze-apk-build-20261111'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
