@@ -1,0 +1,86 @@
+{
+  "total_series": 1,
+  "items": [
+    {
+      "id": "tg_456250e5316c",
+      "title": "Vingadores Costa Oeste",
+      "category": "HQ",
+      "chapters_count": 9,
+      "cover_file_id": "BQACAgEAAyEFAAMBA6zTrgADBmr0wJdQBOWyVf-kv-KMpIgGINd_AAIeCQACbKWoR4MtTtfidmyOPQQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capitulo 01.pdf",
+          "file_id": "BQACAgEAAyEFAAMBA6zTrgADBmr0wJdQBOWyVf-kv-KMpIgGINd_AAIeCQACbKWoR4MtTtfidmyOPQQ",
+          "message_id": 6,
+          "file_size": 22746868
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capitulo 02.pdf",
+          "file_id": "BQACAgEAAyEFAAMBA6zTrgADB2r0wJco2PK-G3qIAAHuck10e5Bp6wACHwkAAmylqEexAfspAAHN5_09BA",
+          "message_id": 7,
+          "file_size": 14724364
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capitulo 03.pdf",
+          "file_id": "BQACAgEAAyEFAAMBA6zTrgADAmr0wJdtcD50Zx9Vml__cCsVlCi0AAIZCQACbKWoR128cLgms6rdPQQ",
+          "message_id": 2,
+          "file_size": 15345812
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capitulo 04.pdf",
+          "file_id": "BQACAgEAAyEFAAMBA6zTrgADCGr0wJdoF88C7EnJNwGo_eJgk_74AAIgCQACbKWoR91NuHxD22UHPQQ",
+          "message_id": 8,
+          "file_size": 15601345
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capitulo 05.pdf",
+          "file_id": "BQACAgEAAyEFAAMBA6zTrgADCWr0wJfOSResVlIP3gMGR0CNkot4AAIhCQACbKWoRyclYjN8tEdiPQQ",
+          "message_id": 9,
+          "file_size": 13732487
+        },
+        {
+          "number": 6.0,
+          "title": "Capítulo 6",
+          "file_name": "Capitulo 06.pdf",
+          "file_id": "BQACAgEAAyEFAAMBA6zTrgADA2r0wJe9ekZpNvkacJf_DfQK91xeAAIaCQACbKWoR49K52b9WPRxPQQ",
+          "message_id": 3,
+          "file_size": 12192111
+        },
+        {
+          "number": 8.0,
+          "title": "Capítulo 8",
+          "file_name": "Capitulo 08.pdf",
+          "file_id": "BQACAgEAAyEFAAMBA6zTrgADCmr0wJfl6WLXOgSdy1-fZfqznX5_AAIiCQACbKWoRyufw5jL_KQYPQQ",
+          "message_id": 10,
+          "file_size": 12363037
+        },
+        {
+          "number": 9.0,
+          "title": "Capítulo 9",
+          "file_name": "Capitulo 09.pdf",
+          "file_id": "BQACAgEAAyEFAAMBA6zTrgADBGr0wJerzRQ1TY3gd3X5DAP7GjJQAAIbCQACbKWoR3FVUAk2Zs_LPQQ",
+          "message_id": 4,
+          "file_size": 11204646
+        },
+        {
+          "number": 10.0,
+          "title": "Capítulo 10",
+          "file_name": "Capitulo 10_.pdf",
+          "file_id": "BQACAgEAAyEFAAMBA6zTrgADBWr0wJcPwd_LrMAU4REnfrw-S7UQAAIdCQACbKWoRx1wrUVj8LhGPQQ",
+          "message_id": 5,
+          "file_size": 12626614
+        }
+      ]
+    }
+  ]
+}
