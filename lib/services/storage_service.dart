@@ -310,22 +310,56 @@ class StorageService {
     return all;
   }
 
-  // --- CACHE DE CAPÍTULOS PARA MODO OFFLINE ---
+  // --- CACHE DE CAPÍTULOS PARA MODO OFFLINE & DETECÇÃO DE 0 CAPÍTULOS ---
   static Future<void> cacheMangaChapters(
     String mangaId,
-    List<Chapter> chapters,
-  ) async {
-    if (chapters.isEmpty) return;
+    List<Chapter> chapters, {
+    String? titleKey,
+  }) async {
+    if (chapters.isEmpty) {
+      final existing = getCachedMangaChapters(mangaId);
+      if (existing.isEmpty) {
+        await recordKnownChaptersCount(mangaId, 0, titleKey: titleKey);
+      }
+      return;
+    }
     await historyBox.put(
       'chapters_$mangaId',
       chapters.map((c) => c.toMap()).toList(),
     );
-    await historyBox.put('chapters_count_$mangaId', chapters.length);
+    await recordKnownChaptersCount(
+      mangaId,
+      chapters.length,
+      titleKey: titleKey,
+    );
   }
 
-  static int getKnownChaptersCount(String mangaId, int fallback) {
+  static Future<void> recordKnownChaptersCount(
+    String mangaId,
+    int count, {
+    String? titleKey,
+  }) async {
+    if (!Hive.isBoxOpen(historyBoxName)) return;
+    await historyBox.put('chapters_count_$mangaId', count);
+    final cleanTitle = titleKey?.trim() ?? '';
+    if (cleanTitle.length >= 3) {
+      await historyBox.put('chapters_count_title_$cleanTitle', count);
+    }
+  }
+
+  static int getKnownChaptersCount(
+    String mangaId,
+    int fallback, {
+    String? titleKey,
+  }) {
+    if (!Hive.isBoxOpen(historyBoxName)) return fallback;
     final cached = historyBox.get('chapters_count_$mangaId');
-    if (cached is int && cached > 0) return cached;
+    if (cached is int && cached >= 0) return cached;
+    final cleanTitle = titleKey?.trim() ?? '';
+    if (cleanTitle.length >= 3) {
+      final byTitle = historyBox.get('chapters_count_title_$cleanTitle');
+      if (byTitle is int && byTitle >= 0) return byTitle;
+    }
     return fallback;
   }
 

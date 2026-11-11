@@ -50,7 +50,6 @@ class _PrivacyShieldState extends State<PrivacyShield>
     ]),
     builder: (context, _) {
       final shielded = _shielded;
-      final palette = ProfilePaletteService.paletteNotifier.value;
       return Stack(
         fit: StackFit.expand,
         children: [
@@ -61,21 +60,19 @@ class _PrivacyShieldState extends State<PrivacyShield>
           if (shielded)
             ColoredBox(
               color: YomiPalette.pitchBlack,
-              child: Center(
+              child: const Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.shield_moon_rounded,
-                      size: 64,
-                      color: palette.primary,
-                    ),
-                    const SizedBox(height: 16),
-                    const YomiEnsoLogo(fontSize: 28),
-                    const SizedBox(height: 8),
-                    const Text(
+                    YomiEnsoLogo(fontSize: 30),
+                    SizedBox(height: 12),
+                    Text(
                       'Proteção de Privacidade Ativa',
-                      style: TextStyle(color: Colors.white54, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 13,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ],
                 ),

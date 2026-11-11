@@ -279,24 +279,12 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                         child: FrostedSurface(
-                          borderRadius: BorderRadius.circular(26),
+                          borderRadius: BorderRadius.circular(999),
                           child: SizedBox(
-                            height: 66,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                for (final item in _primaryNavItems)
-                                  Expanded(
-                                    child: _buildDockItem(
-                                      item: item,
-                                      selected:
-                                          _currentIndex == item.tabIndex ||
-                                          (_currentIndex == 5 &&
-                                              item.tabIndex == 3),
-                                      accentColor: palette.primary,
-                                    ),
-                                  ),
-                              ],
+                            height: 64,
+                            child: _buildAnimatedLiquidTabBar(
+                              palette: palette,
+                              disableAnimations: disableAnimations,
                             ),
                           ),
                         ),
@@ -312,57 +300,183 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     );
   }
 
+  int get _activeVisualSlot {
+    final mappedTab = _currentIndex == 5 ? 3 : _currentIndex;
+    final idx = _primaryNavItems.indexWhere((e) => e.tabIndex == mappedTab);
+    return idx >= 0 ? idx : 0;
+  }
+
+  Widget _buildAnimatedLiquidTabBar({
+    required ProfileAdaptivePalette palette,
+    required bool disableAnimations,
+  }) {
+    final activeSlot = _activeVisualSlot;
+    final count = _primaryNavItems.length;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = constraints.maxWidth;
+        final slotWidth = totalWidth / count;
+
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onHorizontalDragUpdate: (details) {
+            final dx = details.localPosition.dx.clamp(0.0, totalWidth - 1);
+            final slot = (dx ~/ slotWidth).clamp(0, count - 1);
+            final targetTab = _primaryNavItems[slot].tabIndex;
+            if (targetTab != _currentIndex) {
+              _switchTab(targetTab);
+            }
+          },
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: activeSlot.toDouble()),
+            duration: disableAnimations
+                ? Duration.zero
+                : const Duration(milliseconds: 420),
+            curve: Curves.easeOutBack,
+            builder: (context, slotPos, _) {
+              final clampedSlot = slotPos.clamp(0.0, (count - 1).toDouble());
+              final distFromRest =
+                  (clampedSlot - clampedSlot.roundToDouble()).abs() * 2.0;
+              final stretchPx = (distFromRest * 14.0).clamp(0.0, 14.0);
+              final shrinkY = (distFromRest * 2.0).clamp(0.0, 2.0);
+              final centerRatio = count > 1
+                  ? (clampedSlot / (count - 1)) * 2.0 - 1.0
+                  : 0.0;
+
+              final pillLeft = (clampedSlot * slotWidth + 5.0 - stretchPx / 2)
+                  .clamp(3.0, totalWidth - slotWidth + 3.0);
+              final pillWidth = (slotWidth - 10.0 + stretchPx).clamp(
+                36.0,
+                totalWidth,
+              );
+
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Iluminação ambiente que acompanha a aba ativa (estilo iOS 26)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(999),
+                          gradient: RadialGradient(
+                            center: Alignment(centerRatio, 0),
+                            radius: 1.35,
+                            colors: [
+                              palette.primary.withValues(alpha: 0.22),
+                              palette.secondary.withValues(alpha: 0.06),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Cápsula líquida de vidro deslizante entre os menus
+                  Positioned(
+                    left: pillLeft,
+                    width: pillWidth,
+                    top: 5.0 + shrinkY,
+                    bottom: 5.0 + shrinkY,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(999),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              palette.secondary.withValues(alpha: 0.28),
+                              palette.primary.withValues(alpha: 0.24),
+                              palette.primary.withValues(alpha: 0.12),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: palette.soft.withValues(alpha: 0.48),
+                            width: 1.1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: palette.primary.withValues(alpha: 0.34),
+                              blurRadius: 16,
+                              spreadRadius: 0.5,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Ícones e rótulos das abas
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      for (var i = 0; i < count; i++)
+                        Expanded(
+                          child: _buildDockItem(
+                            item: _primaryNavItems[i],
+                            selected: i == activeSlot,
+                            palette: palette,
+                            disableAnimations: disableAnimations,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildDockItem({
     required _FloatingNavItem item,
     required bool selected,
-    required Color accentColor,
+    required ProfileAdaptivePalette palette,
+    required bool disableAnimations,
   }) {
-    final color = selected ? accentColor : Colors.white54;
+    final color = selected ? Colors.white : Colors.white60;
     return Semantics(
       button: true,
       selected: selected,
       label: item.label,
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(999),
         onTap: () => _switchTab(item.tabIndex),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? accentColor.withValues(alpha: 0.16)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          child: AnimatedScale(
+            scale: selected ? 1.07 : 1.0,
+            duration: disableAnimations
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeOutBack,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
                   selected ? item.selectedIcon : item.icon,
-                  size: 22,
-                  color: color,
+                  size: 21,
+                  color: selected ? palette.soft : color,
                 ),
-              ),
-              const SizedBox(height: 3),
-              Flexible(
-                child: Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                    color: color,
+                const SizedBox(height: 3),
+                Flexible(
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                      color: color,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

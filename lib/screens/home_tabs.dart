@@ -603,22 +603,6 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                                             ),
                                           ),
                                         ),
-                                        // Left vertical katakana "マンガ"
-                                        Positioned(
-                                          left: 18,
-                                          top: 76,
-                                          child: Text(
-                                            'マ\nン\nガ',
-                                            style: TextStyle(
-                                              fontSize: 19,
-                                              height: 1.15,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white.withValues(
-                                                alpha: 0.42,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
                                         // Direct 1-tap Banner Change Pill Button
                                         Positioned(
                                           left: 14,
@@ -674,39 +658,6 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                                                 ),
                                               ),
                                             ),
-                                          ),
-                                        ),
-                                        // Right motto "HISTÓRIAS QUE NOS ENCONTRAM"
-                                        Positioned(
-                                          right: 18,
-                                          bottom: 42,
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Text(
-                                                'HISTÓRIAS\nQUE NOS\nENCONTRAM',
-                                                textAlign: TextAlign.right,
-                                                style: TextStyle(
-                                                  fontSize: 9.5,
-                                                  height: 1.25,
-                                                  letterSpacing: 1.1,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.85),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Container(
-                                                width: 22,
-                                                height: 3,
-                                                decoration: BoxDecoration(
-                                                  color: accent,
-                                                  borderRadius:
-                                                      BorderRadius.circular(2),
-                                                ),
-                                              ),
-                                            ],
                                           ),
                                         ),
                                       ],
@@ -1914,7 +1865,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-  void _openTagFilterModal() {
+  void _openTagFilterModal(ProfileAdaptivePalette palette) {
     // Edits remain local until Apply. Dismissing the sheet cancels the draft.
     final draftIncluded = Set<CanonicalTag>.of(_includedTags);
     final draftExcluded = Set<CanonicalTag>.of(_excludedTags);
@@ -1922,7 +1873,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: YomiPalette.surface,
+      backgroundColor: palette.surface,
       isScrollControlled: true,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
@@ -1974,7 +1925,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 ..clear()
                                 ..addAll(MangaSourceType.values);
                             }),
-                            child: const Text('Limpar filtros'),
+                            child: Text(
+                              'Limpar filtros',
+                              style: TextStyle(color: palette.secondary),
+                            ),
                           ),
                         ],
                       ),
@@ -1995,11 +1949,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               ),
                               shape: const Border(),
                               collapsedShape: const Border(),
-                              title: const Text(
+                              title: Text(
                                 'Fontes de catálogo',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
+                                  color: palette.soft,
                                 ),
                               ),
                               subtitle: Text(
@@ -2021,8 +1976,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                           ),
                                           backgroundColor:
                                               YomiPalette.pitchBlack,
-                                          selectedColor: source.accentColor
+                                          selectedColor: palette.primary
                                               .withValues(alpha: 0.28),
+                                          side: BorderSide(
+                                            color: draftSources.contains(source)
+                                                ? palette.primary
+                                                : Colors.white24,
+                                          ),
                                           labelStyle: const TextStyle(
                                             color: YomiPalette.pureWhite,
                                           ),
@@ -2064,10 +2024,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                     group == TagCategoryGroup.genres,
                                 title: Text(
                                   group.title,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
-                                    color: YomiPalette.sakuraSoft,
+                                    color: palette.soft,
                                   ),
                                 ),
                                 children: [
@@ -2086,6 +2046,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                           tag: tag,
                                           included: draftIncluded.contains(tag),
                                           excluded: draftExcluded.contains(tag),
+                                          palette: palette,
                                           onTap: () => setModalState(() {
                                             if (draftIncluded.remove(tag)) {
                                               draftExcluded.add(tag);
@@ -2107,6 +2068,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: palette.primary,
+                            foregroundColor: Colors.white,
+                          ),
                           onPressed: () {
                             if (!mounted) return;
                             if (!StorageService.nsfwMode.allowNsfwFetch) {
@@ -2150,9 +2115,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     required CanonicalTag tag,
     required bool included,
     required bool excluded,
+    required ProfileAdaptivePalette palette,
     required VoidCallback onTap,
   }) {
-    final accent = excluded ? YomiPalette.sakuraPink : YomiPalette.ensoRed;
+    final accent = excluded ? palette.secondary : palette.primary;
     final active = included || excluded;
     return Semantics(
       button: true,
@@ -2194,9 +2160,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
-                      color: excluded
-                          ? YomiPalette.sakuraPink
-                          : YomiPalette.pureWhite,
+                      color: excluded ? palette.secondary : YomiPalette.pureWhite,
                       decoration: excluded ? TextDecoration.lineThrough : null,
                     ),
                   ),
@@ -2217,355 +2181,268 @@ class _ExploreScreenState extends State<ExploreScreen> {
         (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
       );
     }
-    final latestRoll = displayed.where((m) => !m.isCoverOnly).take(10).toList();
     const catalogControlsHeight = 112.0;
-    final allowNsfw = StorageService.nsfwMode.allowNsfwFetch;
 
-    final catalogAppBar = AppBar(
-      title: const FittedBox(
-        fit: BoxFit.scaleDown,
-        child: YomiEnsoLogo(fontSize: 24),
-      ),
-      centerTitle: true,
-      backgroundColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      scrolledUnderElevation: 0,
-      flexibleSpace: const FrostedSurface(child: SizedBox.expand()),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(catalogControlsHeight),
-        child: SizedBox(
-          height: catalogControlsHeight,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        textInputAction: TextInputAction.search,
-                        onChanged: _scheduleTitleSearch,
-                        onSubmitted: (_) {
-                          _searchDebounce?.cancel();
-                          _loadMangas(reset: true);
-                        },
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText:
-                              'Buscar obras (One Piece, Solo Leveling, Batman...)',
-                          hintStyle: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            color: YomiPalette.ensoRed,
-                          ),
-                          suffixIcon: _searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(
-                                    Icons.clear,
-                                    color: Colors.white54,
-                                  ),
-                                  onPressed: () {
-                                    _searchDebounce?.cancel();
-                                    _searchController.clear();
-                                    _loadMangas(reset: true);
-                                  },
-                                )
-                              : null,
-                          filled: true,
-                          fillColor: YomiPalette.surface,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 0,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Badge(
-                      isLabelVisible:
-                          _includedTags.isNotEmpty || _excludedTags.isNotEmpty,
-                      label: Text(
-                        '${_includedTags.length + _excludedTags.length}',
-                      ),
-                      backgroundColor: YomiPalette.ensoRed,
-                      child: IconButton.filledTonal(
-                        tooltip: 'Filtros de catálogo',
-                        style: IconButton.styleFrom(
-                          backgroundColor: YomiPalette.surface,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        onPressed: _openTagFilterModal,
-                        icon: const Icon(
-                          Icons.tune_rounded,
-                          color: YomiPalette.sakuraPink,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Ordenar por',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, color: Colors.white70),
-                      ),
-                    ),
-                    CatalogSortControl(
-                      value: _catalogSort,
-                      onChanged: (sort) {
-                        if (sort == _catalogSort) return;
-                        _searchDebounce?.cancel();
-                        setState(() => _catalogSort = sort);
-                        _loadMangas(reset: true);
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    return ValueListenableBuilder<ProfileAdaptivePalette>(
+      valueListenable: ProfilePaletteService.paletteNotifier,
+      builder: (context, palette, _) {
+        final catalogAppBar = AppBar(
+          title: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: YomiEnsoLogo(fontSize: 24),
           ),
-        ),
-      ),
-    );
-
-    return ValueListenableBuilder<AppearancePreferences>(
-      valueListenable: AppearanceController.instance,
-      builder: (context, appearance, _) => Scaffold(
-        body: RefreshIndicator(
-          color: YomiPalette.ensoRed,
-          onRefresh: () => _loadMangas(reset: true),
-          child: CustomScrollView(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverAppBar(
-                key: const ValueKey('catalog-scroll-header'),
-                title: catalogAppBar.title,
-                centerTitle: true,
-                backgroundColor: Colors.transparent,
-                surfaceTintColor: Colors.transparent,
-                scrolledUnderElevation: 0,
-                flexibleSpace: catalogAppBar.flexibleSpace,
-                bottom: catalogAppBar.bottom,
-                floating: AppearanceController.instance.value.autoHideMenus,
-                pinned: !AppearanceController.instance.value.autoHideMenus,
-                snap:
-                    AppearanceController.instance.value.autoHideMenus &&
-                    !MediaQuery.disableAnimationsOf(context),
-              ),
-              if (_isLoading)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: YomiPalette.ensoRed,
-                    ),
-                  ),
-                )
-              else if (_error != null && _mangas.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.wifi_off_rounded,
-                            size: 48,
-                            color: YomiPalette.ensoRed,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Não foi possível consultar os catálogos. Tente novamente ou leia pela aba Offline.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton.icon(
-                            onPressed: () => _loadMangas(reset: true),
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Tentar novamente'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              else ...[
-                const SliverToBoxAdapter(child: YomiSakuraBanner()),
-
-                // BARRA RÁPIDA DE FONTES ATIVAS (MDX, ANI, MAL, CMK, HQs)
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 46,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
-                      children: MangaSourceType.values
-                          .where((s) {
-                            if (s == MangaSourceType.adultSource &&
-                                !allowNsfw) {
-                              return false;
-                            }
-                            return true;
-                          })
-                          .map((src) {
-                            final isOn = _enabledSources.contains(src);
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: FilterChip(
-                                labelStyle: const TextStyle(
-                                  color: YomiPalette.pureWhite,
-                                ),
-                                checkmarkColor: YomiPalette.pureWhite,
-                                visualDensity: VisualDensity.compact,
-                                selected: isOn,
-                                selectedColor: src.accentColor.withValues(
-                                  alpha: 0.28,
-                                ),
-                                backgroundColor: YomiPalette.surface,
-                                side: BorderSide(
-                                  color: isOn
-                                      ? src.accentColor
-                                      : Colors.white12,
-                                ),
-                                label: Text(
-                                  '${src.badge} • ${src.label}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: isOn
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          flexibleSpace: const FrostedSurface(child: SizedBox.expand()),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(catalogControlsHeight),
+            child: SizedBox(
+              height: catalogControlsHeight,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            textInputAction: TextInputAction.search,
+                            onChanged: _scheduleTitleSearch,
+                            onSubmitted: (_) {
+                              _searchDebounce?.cancel();
+                              _loadMangas(reset: true);
+                            },
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText:
+                                  'Buscar obras (One Piece, Solo Leveling, Batman...)',
+                              hintStyle: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.55),
+                              ),
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: palette.primary,
+                              ),
+                              suffixIcon: _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(
+                                        Icons.clear,
+                                        color: Colors.white54,
+                                      ),
+                                      onPressed: () {
+                                        _searchDebounce?.cancel();
+                                        _searchController.clear();
+                                        _loadMangas(reset: true);
+                                      },
+                                    )
+                                  : null,
+                              filled: true,
+                              fillColor: palette.surface,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 0,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: palette.primary.withValues(
+                                    alpha: 0.22,
                                   ),
                                 ),
-                                onSelected: (val) {
-                                  setState(() {
-                                    if (val) {
-                                      _enabledSources.add(src);
-                                    } else if (_enabledSources.length > 1) {
-                                      _enabledSources.remove(src);
-                                    }
-                                  });
-                                  _loadMangas(reset: true);
-                                },
                               ),
-                            );
-                          })
-                          .toList(),
-                    ),
-                  ),
-                ),
-
-                if (latestRoll.isNotEmpty &&
-                    _searchController.text.isEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(16, 14, 16, 10),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.new_releases_rounded,
-                            size: 18,
-                            color: YomiPalette.ensoRed,
-                          ),
-                          SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              _catalogSort == CatalogSort.latest
-                                  ? 'Atualizações dos catálogos'
-                                  : _catalogSort == CatalogSort.popular
-                                  ? 'Populares nos catálogos'
-                                  : 'Títulos A–Z',
-                              style: TextStyle(
-                                fontSize: 15.5,
-                                fontWeight: FontWeight.w800,
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: palette.primary.withValues(
+                                    alpha: 0.18,
+                                  ),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: palette.primary,
+                                  width: 1.2,
+                                ),
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 10),
+                        Badge(
+                          isLabelVisible:
+                              _includedTags.isNotEmpty ||
+                              _excludedTags.isNotEmpty,
+                          label: Text(
+                            '${_includedTags.length + _excludedTags.length}',
+                          ),
+                          backgroundColor: palette.primary,
+                          child: IconButton.filledTonal(
+                            tooltip: 'Filtros de catálogo',
+                            style: IconButton.styleFrom(
+                              backgroundColor: palette.surface,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(
+                                  color: palette.primary.withValues(
+                                    alpha: 0.22,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            onPressed: () => _openTagFilterModal(palette),
+                            icon: Icon(
+                              Icons.tune_rounded,
+                              color: palette.secondary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Ordenar por',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ),
+                        CatalogSortControl(
+                          value: _catalogSort,
+                          onChanged: (sort) {
+                            if (sort == _catalogSort) return;
+                            _searchDebounce?.cancel();
+                            setState(() => _catalogSort = sort);
+                            _loadMangas(reset: true);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        return ValueListenableBuilder<AppearancePreferences>(
+          valueListenable: AppearanceController.instance,
+          builder: (context, appearance, _) => Scaffold(
+            backgroundColor: YomiPalette.pitchBlack,
+            body: RefreshIndicator(
+              color: palette.primary,
+              onRefresh: () => _loadMangas(reset: true),
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverAppBar(
+                    key: const ValueKey('catalog-scroll-header'),
+                    title: catalogAppBar.title,
+                    centerTitle: true,
+                    backgroundColor: Colors.transparent,
+                    surfaceTintColor: Colors.transparent,
+                    scrolledUnderElevation: 0,
+                    flexibleSpace: catalogAppBar.flexibleSpace,
+                    bottom: catalogAppBar.bottom,
+                    floating:
+                        AppearanceController.instance.value.autoHideMenus,
+                    pinned:
+                        !AppearanceController.instance.value.autoHideMenus,
+                    snap:
+                        AppearanceController.instance.value.autoHideMenus &&
+                        !MediaQuery.disableAnimationsOf(context),
                   ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 196,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: latestRoll.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 12),
-                        itemBuilder: (context, idx) => SizedBox(
-                          width: 124,
-                          child: MangaGridCard(
-                            manga: latestRoll[idx],
-                            heroPrefix: 'roll',
+                  if (_isLoading)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: palette.primary,
+                        ),
+                      ),
+                    )
+                  else if (_error != null && _mangas.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.wifi_off_rounded,
+                                size: 48,
+                                color: palette.primary,
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Não foi possível consultar os catálogos. Tente novamente ou leia pela aba Offline.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                              const SizedBox(height: 16),
+                              FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: palette.primary,
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: () => _loadMangas(reset: true),
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Tentar novamente'),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(16, 18, 16, 4),
-                      child: Text(
-                        'Catálogo Unificado (Mangás, Manhwas & HQs)',
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
+                    )
+                  else ...[
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
+                      sliver: SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              childAspectRatio: 0.62,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 16,
+                            ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => MangaGridCard(
+                            manga: displayed[index],
+                            heroPrefix: 'explore',
+                          ),
+                          childCount: displayed.length,
                         ),
                       ),
                     ),
-                  ),
+                    if (_isLoadingMore)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: palette.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ],
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          childAspectRatio: 0.62,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 16,
-                        ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => MangaGridCard(
-                        manga: displayed[index],
-                        heroPrefix: 'explore',
-                      ),
-                      childCount: displayed.length,
-                    ),
-                  ),
-                ),
-                if (_isLoadingMore)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: YomiPalette.ensoRed,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -2780,7 +2657,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           body: Stack(
             fit: StackFit.expand,
             children: [
-              // Identidade visual sutil da Biblioteca (estante ao luar + pagode + livros YOMI)
+              // Identidade visual sutil e escura da Biblioteca (estante ao luar + pagode + livros YOMI)
               Positioned.fill(
                 child: IgnorePointer(
                   child: RepaintBoundary(
@@ -2788,7 +2665,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       painter: YomiMoonlitLibraryBackdropPainter(
                         accentColor: palette.primary,
                         secondaryColor: palette.secondary,
+                        opacity: 0.18,
                       ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.46),
                     ),
                   ),
                 ),
@@ -3232,15 +3119,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
       );
     }
 
-    // Visão Geral ('all'): Mascote + Roll de Favoritos + Rolls de Listas de Leitura + Grade completa
+    // Visão Geral ('all'): Roll de Favoritos + Rolls de Listas de Leitura + Grade completa
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
       children: [
-        const YomiMascotCompanionCard(
-          message:
-              'Organize suas obras favoritas e crie listas temáticas para cada momento de leitura!',
-        ),
-        const SizedBox(height: 16),
         _buildReadingListRoll(
           title: 'Obras Favoritas',
           subtitle: 'Suas obras marcadas com coração',
@@ -3270,11 +3152,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
               fontWeight: FontWeight.w900,
               color: Colors.white,
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Toque no sino para verificar novidades. A primeira verificação registra os capítulos atuais sem alertas antigos.',
-            style: TextStyle(fontSize: 11.5, color: Colors.white60),
           ),
           const SizedBox(height: 12),
           GridView.builder(
@@ -4016,7 +3893,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 }
 
 // ============================================================================
-// CARD UNIFICADO COM TÍTULO SEMPRE VISÍVEL + SELO DE FONTE + SÓ CAPA CINZA
+// CARD UNIFICADO COM TÍTULO SEMPRE VISÍVEL + PRETO E BRANCO PARA 0 CAPÍTULOS
 // ============================================================================
 class MangaGridCard extends StatefulWidget {
   final Manga manga;
@@ -4035,10 +3912,17 @@ class MangaGridCard extends StatefulWidget {
 class _MangaGridCardState extends State<MangaGridCard> {
   bool _peekUnblurred = false;
 
+  static const ColorFilter _grayscaleFilter = ColorFilter.matrix(<double>[
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0, 0, 0, 1, 0,
+  ]);
+
   @override
   Widget build(BuildContext context) {
     final heroTag = '${widget.heroPrefix}_cover_${widget.manga.compositeId}';
-    final isCoverOnly = widget.manga.isCoverOnly;
+    final titleKey = widget.manga.normalizedTitleKey;
 
     return ValueListenableBuilder<ProfileAdaptivePalette>(
       valueListenable: ProfilePaletteService.paletteNotifier,
@@ -4046,222 +3930,187 @@ class _MangaGridCardState extends State<MangaGridCard> {
         return ValueListenableBuilder<NsfwDisplayMode>(
           valueListenable: StorageService.nsfwModeNotifier,
           builder: (context, nsfwMode, _) {
-            final shouldBlur =
-                widget.manga.isNsfw &&
-                nsfwMode == NsfwDisplayMode.blurred &&
-                !_peekUnblurred;
-
-            return GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      MangaDetailScreen(manga: widget.manga, heroTag: heroTag),
-                ),
+            return ValueListenableBuilder(
+              valueListenable: StorageService.historyBox.listenable(
+                keys: [
+                  'chapters_count_${widget.manga.id}',
+                  if (titleKey.isNotEmpty) 'chapters_count_title_$titleKey',
+                ],
               ),
-              onLongPress: widget.manga.isNsfw
-                  ? () => setState(() => _peekUnblurred = true)
-                  : () => showAddMangaToReadingListSheet(context, widget.manga),
-              onLongPressEnd: widget.manga.isNsfw
-                  ? (_) => setState(() => _peekUnblurred = false)
-                  : null,
-              onLongPressCancel: widget.manga.isNsfw
-                  ? () => setState(() => _peekUnblurred = false)
-                  : null,
-              child: Opacity(
-                opacity: isCoverOnly ? 0.55 : 1.0,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Hero(
-                        tag: heroTag,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              ColorFiltered(
-                                colorFilter: isCoverOnly
-                                    ? const ColorFilter.mode(
-                                        Colors.grey,
-                                        BlendMode.saturation,
-                                      )
-                                    : const ColorFilter.mode(
-                                        Colors.transparent,
-                                        BlendMode.multiply,
+              builder: (context, Box historyBox, _) {
+                final knownChapters = StorageService.getKnownChaptersCount(
+                  widget.manga.id,
+                  widget.manga.availableChaptersCount,
+                  titleKey: titleKey,
+                );
+                final isCoverOnly = knownChapters == 0;
+                final shouldBlur =
+                    widget.manga.isNsfw &&
+                    nsfwMode == NsfwDisplayMode.blurred &&
+                    !_peekUnblurred;
+
+                Widget coverImage = YomiCoverImage(
+                  manga: widget.manga,
+                  highRes: false,
+                );
+                if (isCoverOnly) {
+                  coverImage = ColorFiltered(
+                    colorFilter: _grayscaleFilter,
+                    child: coverImage,
+                  );
+                }
+
+                return GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MangaDetailScreen(
+                        manga: widget.manga,
+                        heroTag: heroTag,
+                      ),
+                    ),
+                  ),
+                  onLongPress: widget.manga.isNsfw
+                      ? () => setState(() => _peekUnblurred = true)
+                      : () => showAddMangaToReadingListSheet(
+                          context,
+                          widget.manga,
+                        ),
+                  onLongPressEnd: widget.manga.isNsfw
+                      ? (_) => setState(() => _peekUnblurred = false)
+                      : null,
+                  onLongPressCancel: widget.manga.isNsfw
+                      ? () => setState(() => _peekUnblurred = false)
+                      : null,
+                  child: Opacity(
+                    opacity: isCoverOnly ? 0.62 : 1.0,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Hero(
+                            tag: heroTag,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  coverImage,
+                                  if (shouldBlur)
+                                    BackdropFilter(
+                                      filter: ImageFilter.blur(
+                                        sigmaX: 14,
+                                        sigmaY: 14,
                                       ),
-                                child: YomiCoverImage(
-                                  manga: widget.manga,
-                                  highRes: false,
-                                ),
-                              ),
-                              if (shouldBlur)
-                                BackdropFilter(
-                                  filter: ImageFilter.blur(
-                                    sigmaX: 14,
-                                    sigmaY: 14,
-                                  ),
-                                  child: Container(
-                                    color: Colors.black.withValues(alpha: 0.45),
-                                    alignment: Alignment.center,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.visibility_off_rounded,
-                                          color: palette.secondary,
-                                          size: 22,
+                                      child: Container(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.45,
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '18+ Segure p/ ver',
-                                          textAlign: TextAlign.center,
+                                        alignment: Alignment.center,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.visibility_off_rounded,
+                                              color: palette.secondary,
+                                              size: 22,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '18+ Segure p/ ver',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: palette.soft,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  // Se tiver apenas a capa (0 capítulos), mostra faixa discreta
+                                  if (isCoverOnly)
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      child: Container(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.78,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 3,
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: const Text(
+                                          '0 CAPÍTULOS',
                                           style: TextStyle(
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: palette.soft,
+                                            fontSize: 8.5,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.4,
+                                            color: Colors.white70,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              // Badge da Fonte (MDX, ANI, MAL, CMK, HQs ou 18+)
-                              Positioned(
-                                top: 6,
-                                left: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Color.alphaBlend(
-                                      widget.manga.source.accentColor
-                                          .withValues(alpha: 0.3),
-                                      YomiPalette.pitchBlack,
-                                    ),
-                                    border: Border.all(
-                                      color: widget.manga.source.accentColor,
-                                    ),
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: Text(
-                                    widget.manga.source.badge,
-                                    style: const TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Se tiver apenas a capa (0 capítulos), mostra faixa cinza explícita
-                              if (isCoverOnly)
-                                Positioned(
-                                  bottom: 0,
-                                  left: 0,
-                                  right: 0,
-                                  child: Container(
-                                    color: Colors.black87,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 3,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: const Text(
-                                      'SÓ CAPA (0 CAPS)',
-                                      style: TextStyle(
-                                        fontSize: 8.5,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white70,
                                       ),
                                     ),
-                                  ),
-                                )
-                              else if (widget
-                                  .manga
-                                  .alternativeSources
-                                  .isNotEmpty)
-                                Positioned(
-                                  bottom: 6,
-                                  right: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 5,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black87,
-                                      borderRadius: BorderRadius.circular(5),
-                                      border: Border.all(
-                                        color: palette.secondary,
-                                        width: 0.8,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      '+${widget.manga.alternativeSources.length} fonte',
-                                      style: TextStyle(
-                                        fontSize: 8.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: palette.soft,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              // Coração se estiver nos favoritos
-                              ValueListenableBuilder(
-                                valueListenable: StorageService.favBox
-                                    .listenable(keys: [widget.manga.id]),
-                                builder: (context, Box box, _) {
-                                  if (!StorageService.isFavorite(
-                                    widget.manga.id,
-                                  )) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  return Positioned(
-                                    top: 6,
-                                    right: 6,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.75,
+                                  // Coração se estiver nos favoritos
+                                  ValueListenableBuilder(
+                                    valueListenable: StorageService.favBox
+                                        .listenable(keys: [widget.manga.id]),
+                                    builder: (context, Box box, _) {
+                                      if (!StorageService.isFavorite(
+                                        widget.manga.id,
+                                      )) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Positioned(
+                                        top: 6,
+                                        right: 6,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.75,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.favorite_rounded,
+                                            size: 13,
+                                            color: palette.primary,
+                                          ),
                                         ),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.favorite_rounded,
-                                        size: 13,
-                                        color: palette.primary,
-                                      ),
-                                    ),
-                                  );
-                                },
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    SizedBox(
-                      height: 30,
-                      child: Text(
-                        widget.manga.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          height: 1.2,
-                          color: isCoverOnly ? Colors.white54 : Colors.white,
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          height: 30,
+                          child: Text(
+                            widget.manga.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              height: 1.2,
+                              color: isCoverOnly
+                                  ? Colors.white54
+                                  : Colors.white,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           },
         );

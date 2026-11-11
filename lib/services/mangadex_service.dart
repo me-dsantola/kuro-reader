@@ -159,6 +159,7 @@ class MangaDexAdapter implements IMangaSourceAdapter {
       final knownCount = StorageService.getKnownChaptersCount(
         m.id,
         m.availableChaptersCount,
+        titleKey: m.normalizedTitleKey,
       );
       items.add(m.copyWith(availableChaptersCount: knownCount));
     }
@@ -288,18 +289,27 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
       final String coverXL = (coverObj['extraLarge'] ?? coverLarge).toString();
 
       // AniList may omit chapter totals; unknown is not a fabricated count.
-      final int chCount = (m['chapters'] as num?)?.toInt() ?? -1;
+      final statusStr = (m['status'] ?? 'RELEASING').toString().toUpperCase();
+      final rawCh = (m['chapters'] as num?)?.toInt();
+      final fallbackCh =
+          (rawCh == 0 || statusStr == 'NOT_YET_RELEASED') ? 0 : -1;
+      final itemId = 'ani_title_${Uri.encodeComponent(title)}';
+      final int chCount = StorageService.getKnownChaptersCount(
+        itemId,
+        fallbackCh,
+        titleKey: normalizeMangaTitle(title),
+      );
       final List<String> parsedGenres = List<String>.from(
         m['genres'] ?? [],
       ).take(6).toList();
 
       items.add(
         Manga(
-          id: 'ani_title_${Uri.encodeComponent(title)}',
+          id: itemId,
           source: MangaSourceType.anilist,
           title: title,
           description: cleanDesc,
-          status: (m['status'] ?? 'RELEASING').toString().toUpperCase(),
+          status: statusStr,
           directCoverUrl: coverLarge,
           directHighResCoverUrl: coverXL,
           tags: ['AniList Oficial', ...parsedGenres],
@@ -388,7 +398,17 @@ class JikanMalAdapter implements IMangaSourceAdapter {
       final String largeImgUrl = (jpgMap['large_image_url'] ?? imgUrl)
           .toString();
       // Jikan returns null when the chapter total is unknown.
-      final int chCount = (entry['chapters'] as num?)?.toInt() ?? -1;
+      final statusStr =
+          (entry['status'] ?? 'Publishing').toString().toUpperCase();
+      final rawCh = (entry['chapters'] as num?)?.toInt();
+      final fallbackCh =
+          (rawCh == 0 || statusStr.contains('NOT YET')) ? 0 : -1;
+      final itemId = 'mal_title_${Uri.encodeComponent(title)}';
+      final int chCount = StorageService.getKnownChaptersCount(
+        itemId,
+        fallbackCh,
+        titleKey: normalizeMangaTitle(title),
+      );
 
       final List rawGenres = entry['genres'] ?? [];
       final tags = rawGenres
@@ -499,7 +519,20 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
             final String coverLarge =
                 (poster['large'] ?? poster['original'] ?? coverSmall)
                     .toString();
-            final int chCount = (attr['chapterCount'] as num?)?.toInt() ?? -1;
+            final statusStr =
+                (attr['status'] ?? 'current').toString().toUpperCase();
+            final rawCh = (attr['chapterCount'] as num?)?.toInt();
+            final fallbackCh = (rawCh == 0 ||
+                    statusStr == 'UNRELEASED' ||
+                    statusStr == 'UPCOMING')
+                ? 0
+                : -1;
+            final itemId = 'cmk_title_${Uri.encodeComponent(title)}';
+            final int chCount = StorageService.getKnownChaptersCount(
+              itemId,
+              fallbackCh,
+              titleKey: normalizeMangaTitle(title),
+            );
             final String subtype = (attr['subtype'] ?? 'manga')
                 .toString()
                 .toUpperCase();
@@ -1173,6 +1206,11 @@ class MangaDexService {
     targetUuid ??= await _resolveMangaDexUuidByTitle(manga.title);
 
     if (targetUuid == null || targetUuid.isEmpty) {
+      await StorageService.cacheMangaChapters(
+        manga.id,
+        const [],
+        titleKey: manga.normalizedTitleKey,
+      );
       return {manga.source: []};
     }
 
@@ -1280,10 +1318,14 @@ class MangaDexService {
       // network window must not silently erase the reader's chapter history.
       final cached = StorageService.getCachedMangaChapters(manga.id);
       final seen = bestList.map((ch) => ch.id).toSet();
-      await StorageService.cacheMangaChapters(manga.id, [
-        ...bestList,
-        ...cached.where((ch) => seen.add(ch.id)),
-      ]);
+      await StorageService.cacheMangaChapters(
+        manga.id,
+        [
+          ...bestList,
+          ...cached.where((ch) => seen.add(ch.id)),
+        ],
+        titleKey: manga.normalizedTitleKey,
+      );
     }
 
     return sourceChaptersMap;

@@ -221,15 +221,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _welcome(context, palette),
-                    const SizedBox(height: 16),
-                    YomiMascotCompanionCard(
-                      compact: true,
-                      message: recent.isNotEmpty
-                          ? 'Pronto para continuar sua leitura de onde parou?'
-                          : 'Escolha uma obra nos títulos mais populares abaixo!',
-                      onTap: widget.onProfile,
-                    ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 22),
                     if (recent.isNotEmpty) ...[
                       _sectionHeader(
                         title: 'Continue lendo',
@@ -253,23 +245,18 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
                       const SizedBox(height: 24),
                     ],
                     _popularAndForYouRollSection(context, palette),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 20),
                     _shortcuts(context, palette),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
+                    YomiMascotCompanionCard(
+                      compact: true,
+                      message: recent.isNotEmpty
+                          ? 'Continue sua jornada de onde parou!'
+                          : 'Escolha uma obra popular para começar!',
+                      onTap: widget.onProfile,
+                    ),
+                    const SizedBox(height: 12),
                     _updates(context, palette),
-                    if (recent.length > 1) ...[
-                      const SizedBox(height: 24),
-                      _section(
-                        'Outras leituras',
-                        Icons.history_rounded,
-                        palette.secondary,
-                      ),
-                      const SizedBox(height: 12),
-                      for (final item in recent.skip(1).take(4)) ...[
-                        _readingCard(context, item, palette: palette),
-                        const SizedBox(height: 10),
-                      ],
-                    ],
                   ],
                 ),
               ),
@@ -474,19 +461,6 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    ],
-  );
-
-  Widget _section(String title, IconData icon, Color accentColor) => Row(
-    children: [
-      Icon(icon, size: 18, color: accentColor),
-      const SizedBox(width: 8),
-      Expanded(
-        child: Text(
-          title,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
         ),
       ),
     ],
@@ -780,17 +754,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            m.tags.isNotEmpty ? m.tags.first : 'Mangá',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.white60,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
@@ -847,39 +811,33 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
     Color accentColor,
     VoidCallback onTap,
   ) => Material(
-    color: YomiPalette.surface,
+    color: YomiPalette.surface.withValues(alpha: 0.75),
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       side: const BorderSide(color: Colors.white10),
     ),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
-            Icon(icon, color: accentColor),
+            Icon(icon, size: 19, color: accentColor),
             const SizedBox(width: 10),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    description,
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
-                  ),
-                ],
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: Colors.white38,
             ),
           ],
         ),

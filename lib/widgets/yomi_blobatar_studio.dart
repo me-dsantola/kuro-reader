@@ -644,32 +644,32 @@ class YomiMoonlitLibraryBackdropPainter extends CustomPainter {
   const YomiMoonlitLibraryBackdropPainter({
     this.accentColor = const Color(0xFFE11D48),
     this.secondaryColor = const Color(0xFFF472B6),
-    this.opacity = 0.48,
+    this.opacity = 0.22,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     final skyDark = Color.lerp(
-      const Color(0xFF070709),
+      const Color(0xFF050507),
       accentColor,
-      0.26 * opacity,
+      0.14 * opacity,
     )!;
     final skyGlow = Color.lerp(
-      const Color(0xFF0F080D),
+      const Color(0xFF0A0609),
       accentColor,
-      0.42 * opacity,
+      0.24 * opacity,
     )!;
 
-    // 1. Night window sky gradient on the right half
+    // 1. Night window sky gradient on the right half (deeply darkened)
     canvas.drawRect(
       rect,
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [skyGlow, skyDark, const Color(0xFF070709)],
-          stops: const [0.0, 0.55, 1.0],
+          colors: [skyGlow, skyDark, const Color(0xFF050507)],
+          stops: const [0.0, 0.50, 1.0],
         ).createShader(rect),
     );
 
