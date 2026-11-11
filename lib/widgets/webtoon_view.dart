@@ -138,7 +138,7 @@ class _WebtoonViewState extends State<WebtoonView> {
         physics: (_activePointers >= 2 || _isZoomed)
             ? const NeverScrollableScrollPhysics()
             : null,
-        cacheExtent: 800,
+        scrollCacheExtent: 800,
         slivers: [
           SliverVariedExtentList.builder(
             itemCount: widget.geometry.pageCount,
