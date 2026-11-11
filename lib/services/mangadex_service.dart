@@ -1214,114 +1214,130 @@ class MangaDexService {
       return {manga.source: []};
     }
 
-    // Load the latest chapter window in one request for a responsive mobile
-    // experience. Fetching up to four 500-item pages before showing the
-    // chapter list was especially slow on cellular networks.
-    // Older chapter pagination should be exposed as an explicit "load more"
-    // action rather than blocking the initial view.
+    // Carregamento otimizado com preenchimento inteligente de lacunas (Smart Gap Filling):
+    // 1. Busca primeiro em PT-BR para não diluir os limites com múltiplos idiomas.
+    // 2. Se a obra for grande (ex: One Piece com 1000+ capítulos), busca páginas subsequentes automaticamente.
+    // 3. Busca em EN para preencher de forma transparente quaisquer capítulos ausentes em PT-BR.
+    // 4. Desduplica por número de capítulo garantindo sequência contínua (1, 2, 3...) sem duplicatas na tela.
     const pageSize = 500;
-    final fullUrl =
-        '$_baseUrl/manga/$targetUuid/feed?limit=$pageSize&offset=$offset'
-        '&translatedLanguage[]=pt-br&translatedLanguage[]=en&translatedLanguage[]=es&translatedLanguage[]=es-la'
-        '&includes[]=scanlation_group'
-        '&order[chapter]=desc'
-        '&includeExternalUrl=0';
-    final response = await safeHttpGet(fullUrl);
-    final data = jsonDecode(response.body);
-    final List entries = data['data'] ?? [];
-    final total = data['total'];
-    _olderChapterPages[manga.id] = total is int
-        ? offset + entries.length < total
-        : entries.length == pageSize;
-    final List<Chapter> rawAll = entries
-        .whereType<Map<String, dynamic>>()
-        .map(
-          (entry) => Chapter.fromJson(entry, source: MangaSourceType.mangadex),
-        )
-        .where((ch) => ch.pages > 0)
-        .toList();
 
-    // Both chapter views below come from MangaDex. Do not present either
-    // as a separate ComicK provider until a real ComicK adapter exists.
-    final Map<String, Chapter> preferredLanguageChapters = {};
-    final Map<String, Chapter> mdxStandard = {};
+    Future<({List<Chapter> chapters, int total})> fetchFeed(
+      String lang, {
+      int reqOffset = 0,
+    }) async {
+      try {
+        final url =
+            '$_baseUrl/manga/$targetUuid/feed?limit=$pageSize&offset=$reqOffset'
+            '&translatedLanguage[]=$lang'
+            '&includes[]=scanlation_group'
+            '&order[chapter]=desc'
+            '&includeExternalUrl=0';
+        final response = await safeHttpGet(url);
+        final data = jsonDecode(response.body);
+        final List entries = data['data'] ?? [];
+        final total = (data['total'] as int?) ?? entries.length;
+        final list = entries
+            .whereType<Map<String, dynamic>>()
+            .map(
+              (entry) =>
+                  Chapter.fromJson(entry, source: MangaSourceType.mangadex),
+            )
+            .where((ch) => ch.pages > 0)
+            .toList();
+        return (chapters: list, total: total);
+      } catch (_) {
+        return (chapters: <Chapter>[], total: 0);
+      }
+    }
 
-    for (final ch in rawAll) {
-      final numKey = ch.chapterNumber;
-      if (!preferredLanguageChapters.containsKey(numKey)) {
-        preferredLanguageChapters[numKey] = Chapter(
-          id: ch.id,
-          source: MangaSourceType.mangadex,
-          chapterNumber: ch.chapterNumber,
-          title: ch.title,
-          language: ch.language,
-          pages: ch.pages,
-          scanlator: ch.scanlator,
-        );
-      } else {
-        final existing = preferredLanguageChapters[numKey]!;
-        // Prefer PT-BR, then English, then Spanish regardless of API order.
-        const languagePriority = <String, int>{
-          'PT-BR': 0,
-          'EN': 1,
-          'ES': 2,
-          'ES-LA': 3,
-        };
-        if ((languagePriority[ch.language] ?? 99) <
-            (languagePriority[existing.language] ?? 99)) {
-          preferredLanguageChapters[numKey] = Chapter(
-            id: ch.id,
-            source: MangaSourceType.mangadex,
-            chapterNumber: ch.chapterNumber,
-            title: ch.title,
-            language: ch.language,
-            pages: ch.pages,
-            scanlator: ch.scanlator,
-          );
+    final initialFeeds = await Future.wait([
+      fetchFeed('pt-br', reqOffset: offset),
+      fetchFeed('en', reqOffset: offset),
+    ]);
+
+    final ptResult = initialFeeds[0];
+    final enResult = initialFeeds[1];
+
+    final List<Chapter> allPtChapters = List<Chapter>.from(ptResult.chapters);
+    final List<Chapter> allEnChapters = List<Chapter>.from(enResult.chapters);
+
+    // Para obras com muitos capítulos (ex: One Piece, Bleach, Detective Conan),
+    // carrega páginas adicionais do feed em paralelo até cobrir todo o catálogo inicial.
+    if (offset == 0) {
+      final extraFetches = <Future<({List<Chapter> chapters, int total})>>[];
+      if (ptResult.total > pageSize) {
+        for (
+          int nextOff = pageSize;
+          nextOff < ptResult.total && nextOff < 1500;
+          nextOff += pageSize
+        ) {
+          extraFetches.add(fetchFeed('pt-br', reqOffset: nextOff));
         }
       }
-
-      if (ch.language == 'PT-BR' || ch.language == 'EN') {
-        final langKey = '${ch.language}_${ch.chapterNumber}';
-        mdxStandard.putIfAbsent(
-          langKey,
-          () => Chapter(
-            id: ch.id,
-            source: MangaSourceType.mangadex,
-            chapterNumber: ch.chapterNumber,
-            title: ch.title,
-            language: ch.language,
-            pages: ch.pages,
-            scanlator: ch.scanlator,
-          ),
-        );
+      if (allPtChapters.isEmpty && enResult.total > pageSize) {
+        for (
+          int nextOff = pageSize;
+          nextOff < enResult.total && nextOff < 1500;
+          nextOff += pageSize
+        ) {
+          extraFetches.add(fetchFeed('en', reqOffset: nextOff));
+        }
+      }
+      if (extraFetches.isNotEmpty) {
+        final extraResults = await Future.wait(extraFetches);
+        for (final res in extraResults) {
+          allPtChapters.addAll(res.chapters);
+        }
       }
     }
 
-    final preferredList = preferredLanguageChapters.values.toList();
-    final mdxList = mdxStandard.values.toList();
+    final Map<String, Chapter> completeChapters = {};
 
-    // Preserve the existing selection keys for old library entries, but
-    // chapter.source truthfully identifies the MangaDex API.
-    sourceChaptersMap[manga.source] = mdxList;
-    sourceChaptersMap[MangaSourceType.mangadex] = mdxList;
-    for (final alt in manga.alternativeSources) {
-      sourceChaptersMap.putIfAbsent(alt.source, () => mdxList);
+    // 1. Prioridade máxima: capítulos traduzidos em PT-BR
+    for (final ch in allPtChapters) {
+      final numKey = ch.chapterNumber.trim();
+      if (numKey.isEmpty) continue;
+      completeChapters.putIfAbsent(numKey, () => ch);
     }
 
-    final bestList = preferredList.length >= mdxList.length
-        ? preferredList
-        : mdxList;
-    // A follow-up page should not overwrite the previously cached window.
+    // 2. Preenchimento de lacunas (gaps) com Inglês (EN):
+    // Capítulos ausentes em PT-BR são preenchidos pelo equivalente em EN sem duplicar
+    for (final ch in allEnChapters) {
+      final numKey = ch.chapterNumber.trim();
+      if (numKey.isEmpty) continue;
+      completeChapters.putIfAbsent(numKey, () => ch);
+    }
+
+    // 3. Fallback adicional em espanhol para obras que não possuem PT-BR nem EN
+    if (completeChapters.isEmpty) {
+      final esResult = await fetchFeed('es', reqOffset: offset);
+      for (final ch in esResult.chapters) {
+        final numKey = ch.chapterNumber.trim();
+        if (numKey.isNotEmpty) completeChapters.putIfAbsent(numKey, () => ch);
+      }
+    }
+
+    final completeList = completeChapters.values.toList()
+      ..sort((a, b) => b.numericChapter.compareTo(a.numericChapter));
+
+    _olderChapterPages[manga.id] =
+        (ptResult.total > allPtChapters.length) ||
+        (enResult.total > allEnChapters.length);
+
+    sourceChaptersMap[manga.source] = completeList;
+    sourceChaptersMap[MangaSourceType.mangadex] = completeList;
+    for (final alt in manga.alternativeSources) {
+      sourceChaptersMap.putIfAbsent(alt.source, () => completeList);
+    }
+
+    // Grava no cache para leitura offline instantânea
     if (offset == 0) {
-      // Preserve older pages already fetched on a previous visit. The first
-      // network window must not silently erase the reader's chapter history.
       final cached = StorageService.getCachedMangaChapters(manga.id);
-      final seen = bestList.map((ch) => ch.id).toSet();
+      final seen = completeList.map((ch) => ch.id).toSet();
       await StorageService.cacheMangaChapters(
         manga.id,
         [
-          ...bestList,
+          ...completeList,
           ...cached.where((ch) => seen.add(ch.id)),
         ],
         titleKey: manga.normalizedTitleKey,
