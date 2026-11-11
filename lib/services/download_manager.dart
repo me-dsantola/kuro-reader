@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
-import 'observed_http.dart';
+
+import 'reader_image_session.dart';
+
 import 'package:path_provider/path_provider.dart';
+
 import '../models/manga_models.dart';
 import 'mangadex_service.dart';
 import 'storage_service.dart';
@@ -85,56 +89,60 @@ class DownloadManager {
     int completed = 0;
     const int batchSize = 3;
 
-    for (int i = 0; i < urls.length; i += batchSize) {
-      final end = (i + batchSize < urls.length) ? i + batchSize : urls.length;
-      final batchIndices = List.generate(end - i, (index) => i + index);
+    final session = ReaderImageSession(
+      urls: urls,
+      headers: manga.customHeaders,
+      maxCacheBytes: 0,
+      reloadUrls: () async =>
+          (await MangaDexService.fetchChapterPages(chapter))
+              .getUrls(useDataSaver: useDataSaver),
+    );
+    try {
+      for (int i = 0; i < urls.length; i += batchSize) {
+        final end = (i + batchSize < urls.length) ? i + batchSize : urls.length;
+        final batchIndices = List.generate(end - i, (index) => i + index);
 
-      await Future.wait(
-        batchIndices.map((pageIndex) async {
-          final url = urls[pageIndex];
-          String ext = 'jpg';
-          final rawExt = url.split('.').last.split('?').first.toLowerCase();
-          if (rawExt == 'png' ||
-              rawExt == 'webp' ||
-              rawExt == 'jpg' ||
-              rawExt == 'jpeg') {
-            ext = rawExt;
-          }
-          final fileName = '${pageIndex.toString().padLeft(3, '0')}.$ext';
-          final file = File('${chapterDir.path}/$fileName');
-
-          // Reaproveita páginas completas de uma tentativa anterior.
-          if (await ImageFileValidator.isCompleteImage(file)) {
-            savedPaths[pageIndex] = file.path;
-          } else {
-            final response = await ObservedHttp.get(
-              Uri.parse(url),
-              headers: manga.customHeaders,
-              timeout: const Duration(seconds: 30),
-            ).timeout(const Duration(seconds: 30));
-            if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-              throw Exception('Falha ao baixar página ${pageIndex + 1}');
+        await Future.wait(
+          batchIndices.map((pageIndex) async {
+            final url = urls[pageIndex];
+            String ext = 'jpg';
+            final rawExt = url.split('.').last.split('?').first.toLowerCase();
+            if (rawExt == 'png' ||
+                rawExt == 'webp' ||
+                rawExt == 'jpg' ||
+                rawExt == 'jpeg') {
+              ext = rawExt;
             }
-            // A gravação temporária evita tratar arquivos incompletos como válidos.
-            final temporary = File('${file.path}.part');
-            await temporary.writeAsBytes(response.bodyBytes, flush: true);
-            if (!await ImageFileValidator.isCompleteImage(temporary)) {
-              await temporary.delete();
-              throw FormatException(
-                'Imagem inválida na página ${pageIndex + 1}',
-              );
-            }
-            if (await file.exists()) await file.delete();
-            await temporary.rename(file.path);
-            savedPaths[pageIndex] = file.path;
-          }
+            final fileName = '${pageIndex.toString().padLeft(3, '0')}.$ext';
+            final file = File('${chapterDir.path}/$fileName');
 
-          completed++;
-          _updateProgress(chapter.id, completed / urls.length);
-        }),
-      );
+            // Reaproveita páginas completas de uma tentativa anterior.
+            if (await ImageFileValidator.isCompleteImage(file)) {
+              savedPaths[pageIndex] = file.path;
+            } else {
+              final bytes = await session.pageBytes(pageIndex);
+              // A gravação temporária evita tratar arquivos incompletos como válidos.
+              final temporary = File('${file.path}.part');
+              await temporary.writeAsBytes(bytes, flush: true);
+              if (!await ImageFileValidator.isCompleteImage(temporary)) {
+                await temporary.delete();
+                throw FormatException(
+                  'Imagem inválida na página ${pageIndex + 1}',
+                );
+              }
+              if (await file.exists()) await file.delete();
+              await temporary.rename(file.path);
+              savedPaths[pageIndex] = file.path;
+            }
+
+            completed++;
+            _updateProgress(chapter.id, completed / urls.length);
+          }),
+        );
+      }
+    } finally {
+      session.close();
     }
-
     await StorageService.downloadsBox.put(chapter.id, {
       'chapter': chapter.toMap(),
       'manga': manga.toMap(),

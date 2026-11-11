@@ -1,14 +1,22 @@
+Warning: truncated output (original token count: 44301)
+Total output lines: 4118
+
 import '../widgets/appearance_settings.dart';
 import '../services/appearance_controller.dart';
 import '../models/catalog_sort.dart';
 import '../widgets/catalog_sort_control.dart';
 import 'favorite_updates_screen.dart';
+
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
 import '../models/manga_models.dart';
 import '../services/mangadex_service.dart';
 import '../services/storage_service.dart';
@@ -59,6 +67,7 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
   int _index = 0;
   bool _triedTitleRecovery = false;
   bool _exhausted = false;
+  int _generation = 0;
 
   @override
   void initState() {
@@ -70,12 +79,15 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
   void didUpdateWidget(covariant YomiCoverImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.manga.compositeId != widget.manga.compositeId ||
-        oldWidget.highRes != widget.highRes) {
+        oldWidget.highRes != widget.highRes ||
+        oldWidget.manga.getRawCoverUrl(highRes: widget.highRes) !=
+            widget.manga.getRawCoverUrl(highRes: widget.highRes)) {
       _initCandidates();
     }
   }
 
   void _initCandidates() {
+    _generation++;
     _candidates = List<String>.from(
       widget.manga.getAllCandidateCoverUrls(highRes: widget.highRes),
     );
@@ -93,14 +105,16 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
       return;
     }
     _triedTitleRecovery = true;
+    final generation = _generation;
     final resolved = await MangaDexService.resolveCoverUrlByTitle(
       widget.manga.title,
     );
-    if (!mounted) return;
+    if (!mounted || generation != _generation) return;
     if (resolved != null && resolved.isNotEmpty) {
       final newUrls = yomiCandidateImageUrls(resolved);
       if (newUrls.isNotEmpty) {
         setState(() {
+          _index = _candidates.length;
           _candidates.addAll(newUrls);
           _exhausted = false;
         });
@@ -384,11 +398,7 @@ class _ToriiSakuraBannerPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final darkTint = Color.lerp(
-      const Color(0xFF070709),
-      accentColor,
-      0.22,
-    )!;
+    final darkTint = Color.lerp(const Color(0xFF070709), accentColor, 0.22)!;
     final bgPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
@@ -403,8 +413,7 @@ class _ToriiSakuraBannerPainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 24);
     canvas.drawCircle(sunCenter, 58, haloPaint);
 
-    final sunPaint = Paint()
-      ..color = accentColor.withValues(alpha: 0.88);
+    final sunPaint = Paint()..color = accentColor.withValues(alpha: 0.88);
     canvas.drawCircle(sunCenter, 42, sunPaint);
 
     final mountainPaint = Paint()..color = const Color(0xFF0B0810);
@@ -448,8 +457,7 @@ class _ToriiSakuraBannerPainter extends CustomPainter {
       toriiPaint,
     );
 
-    final sakuraPaint = Paint()
-      ..color = secondaryColor.withValues(alpha: 0.62);
+    final sakuraPaint = Paint()..color = secondaryColor.withValues(alpha: 0.62);
     final petals = [
       Offset(size.width * 0.12, size.height * 0.28),
       Offset(size.width * 0.28, size.height * 0.50),
@@ -1292,10 +1300,7 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
-                                YomiCoverImage(
-                                  manga: manga,
-                                  highRes: false,
-                                ),
+                                YomiCoverImage(manga: manga, highRes: false),
                                 Positioned(
                                   left: 6,
                                   bottom: 6,
@@ -1583,10 +1588,7 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                 'Obras favoritas',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                ),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
               ),
             ),
           ],
@@ -1602,28 +1604,18 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
             ),
             child: Column(
               children: [
-                Icon(
-                  Icons.favorite_border_rounded,
-                  color: accent,
-                  size: 32,
-                ),
+                Icon(Icons.favorite_border_rounded, color: accent, size: 32),
                 const SizedBox(height: 10),
                 const Text(
                   'Sua vitrine de Obras Favoritas está vazia',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                 ),
                 const SizedBox(height: 6),
                 const Text(
                   'Toque no ícone de coração em qualquer Mangá, Manhwa ou Webtoon para destacá-lo no seu perfil.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 12.5,
-                  ),
+                  style: TextStyle(color: Colors.white60, fontSize: 12.5),
                 ),
                 const SizedBox(height: 14),
                 FilledButton.tonalIcon(
@@ -1928,375 +1920,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             child: Text(
                               'Limpar filtros',
                               style: TextStyle(color: palette.secondary),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Text(
-                        'Toque para incluir, novamente para excluir e uma terceira vez para limpar a tag.',
-                        style: TextStyle(fontSize: 12, color: Colors.white70),
-                      ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          children: [
-                            ExpansionTile(
-                              key: const PageStorageKey('catalog-sources'),
-                              tilePadding: EdgeInsets.zero,
-                              childrenPadding: const EdgeInsets.only(
-                                bottom: 12,
-                              ),
-                              shape: const Border(),
-                              collapsedShape: const Border(),
-                              title: Text(
-                                'Fontes de catálogo',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: palette.soft,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${visibleSources.where(draftSources.contains).length} de ${visibleSources.length} ativas',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              children: [
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    for (final source in visibleSources)
-                                      Tooltip(
-                                        message:
-                                            'Mantenha ao menos uma fonte ativa',
-                                        child: FilterChip(
-                                          selected: draftSources.contains(
-                                            source,
-                                          ),
-                                          backgroundColor:
-                                              YomiPalette.pitchBlack,
-                                          selectedColor: palette.primary
-                                              .withValues(alpha: 0.28),
-                                          side: BorderSide(
-                                            color: draftSources.contains(source)
-                                                ? palette.primary
-                                                : Colors.white24,
-                                          ),
-                                          labelStyle: const TextStyle(
-                                            color: YomiPalette.pureWhite,
-                                          ),
-                                          checkmarkColor: YomiPalette.pureWhite,
-                                          label: Text(
-                                            '${source.badge} • ${source.label}',
-                                          ),
-                                          onSelected: (enabled) =>
-                                              setModalState(() {
-                                                if (enabled) {
-                                                  draftSources.add(source);
-                                                } else if (visibleSources
-                                                        .where(
-                                                          draftSources.contains,
-                                                        )
-                                                        .length >
-                                                    1) {
-                                                  draftSources.remove(source);
-                                                }
-                                              }),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            for (final group in groups)
-                              ExpansionTile(
-                                key: PageStorageKey(
-                                  'catalog-tags-${group.name}',
-                                ),
-                                tilePadding: EdgeInsets.zero,
-                                childrenPadding: const EdgeInsets.only(
-                                  bottom: 12,
-                                ),
-                                shape: const Border(),
-                                collapsedShape: const Border(),
-                                initiallyExpanded:
-                                    group == TagCategoryGroup.genres,
-                                title: Text(
-                                  group.title,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: palette.soft,
-                                  ),
-                                ),
-                                children: [
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      for (final tag
-                                          in CanonicalTag.values.where(
-                                            (tag) =>
-                                                tag.group == group &&
-                                                (mode.allowNsfwFetch ||
-                                                    !tag.isNsfwOnly),
-                                          ))
-                                        _filterTag(
-                                          tag: tag,
-                                          included: draftIncluded.contains(tag),
-                                          excluded: draftExcluded.contains(tag),
-                                          palette: palette,
-                                          onTap: () => setModalState(() {
-                                            if (draftIncluded.remove(tag)) {
-                                              draftExcluded.add(tag);
-                                            } else if (!draftExcluded.remove(
-                                              tag,
-                                            )) {
-                                              draftIncluded.add(tag);
-                                            }
-                                          }),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: palette.primary,
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: () {
-                            if (!mounted) return;
-                            if (!StorageService.nsfwMode.allowNsfwFetch) {
-                              draftIncluded.removeWhere(
-                                (tag) => tag.isNsfwOnly,
-                              );
-                              draftExcluded.removeWhere(
-                                (tag) => tag.isNsfwOnly,
-                              );
-                            }
-                            setState(() {
-                              _includedTags
-                                ..clear()
-                                ..addAll(draftIncluded);
-                              _excludedTags
-                                ..clear()
-                                ..addAll(draftExcluded);
-                              _enabledSources
-                                ..clear()
-                                ..addAll(draftSources);
-                            });
-                            Navigator.pop(sheetContext);
-                            _loadMangas(reset: true);
-                          },
-                          icon: const Icon(Icons.done_all_rounded),
-                          label: const Text('Aplicar filtros'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _filterTag({
-    required CanonicalTag tag,
-    required bool included,
-    required bool excluded,
-    required ProfileAdaptivePalette palette,
-    required VoidCallback onTap,
-  }) {
-    final accent = excluded ? palette.secondary : palette.primary;
-    final active = included || excluded;
-    return Semantics(
-      button: true,
-      selected: active,
-      label:
-          '${tag.label}: ${included
-              ? "incluída"
-              : excluded
-              ? "excluída"
-              : "sem filtro"}',
-      child: Material(
-        color: active ? accent.withValues(alpha: 0.2) : YomiPalette.pitchBlack,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: active ? accent : Colors.white24),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 48),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (active) ...[
-                  Icon(
-                    excluded
-                        ? Icons.remove_circle_outline
-                        : Icons.add_circle_outline,
-                    size: 16,
-                    color: accent,
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Flexible(
-                  child: Text(
-                    tag.label,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: excluded ? palette.secondary : YomiPalette.pureWhite,
-                      decoration: excluded ? TextDecoration.lineThrough : null,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final displayed = List<Manga>.of(_mangas);
-    if (_catalogSort == CatalogSort.title) {
-      displayed.sort(
-        (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-      );
-    }
-    const catalogControlsHeight = 112.0;
-
-    return ValueListenableBuilder<ProfileAdaptivePalette>(
-      valueListenable: ProfilePaletteService.paletteNotifier,
-      builder: (context, palette, _) {
-        final catalogAppBar = AppBar(
-          title: const FittedBox(
-            fit: BoxFit.scaleDown,
-            child: YomiEnsoLogo(fontSize: 24),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-          scrolledUnderElevation: 0,
-          flexibleSpace: const FrostedSurface(child: SizedBox.expand()),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(catalogControlsHeight),
-            child: SizedBox(
-              height: catalogControlsHeight,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            textInputAction: TextInputAction.search,
-                            onChanged: _scheduleTitleSearch,
-                            onSubmitted: (_) {
-                              _searchDebounce?.cancel();
-                              _loadMangas(reset: true);
-                            },
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              hintText:
-                                  'Buscar obras (One Piece, Solo Leveling, Batman...)',
-                              hintStyle: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.55),
-                              ),
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: palette.primary,
-                              ),
-                              suffixIcon: _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(
-                                        Icons.clear,
-                                        color: Colors.white54,
-                                      ),
-                                      onPressed: () {
-                                        _searchDebounce?.cancel();
-                                        _searchController.clear();
-                                        _loadMangas(reset: true);
-                                      },
-                                    )
-                                  : null,
-                              filled: true,
-                              fillColor: palette.surface,
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 0,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: palette.primary.withValues(
-                                    alpha: 0.22,
-                                  ),
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: palette.primary.withValues(
-                                    alpha: 0.18,
-                                  ),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide(
-                                  color: palette.primary,
-                                  width: 1.2,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Badge(
-                          isLabelVisible:
-                              _includedTags.isNotEmpty ||
-                              _excludedTags.isNotEmpty,
-                          label: Text(
-                            '${_includedTags.length + _excludedTags.length}',
-                          ),
-                          backgroundColor: palette.primary,
-                          child: IconButton.filledTonal(
-                            tooltip: 'Filtros de catálogo',
-                            style: IconButton.styleFrom(
-                              backgroundColor: palette.surface,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                side: BorderSide(
-                                  color: palette.primary.withValues(
-                                    alpha: 0.22,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            onPressed: () => _openTagFilterModal(palette),
-                            icon: Icon(
-                              Icons.tune_rounded,
-                              color: palette.secondary,
-                            ),
+          …4301 tokens truncated…          ),
                           ),
                         ),
                       ],
@@ -2353,10 +1977,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     scrolledUnderElevation: 0,
                     flexibleSpace: catalogAppBar.flexibleSpace,
                     bottom: catalogAppBar.bottom,
-                    floating:
-                        AppearanceController.instance.value.autoHideMenus,
-                    pinned:
-                        !AppearanceController.instance.value.autoHideMenus,
+                    floating: AppearanceController.instance.value.autoHideMenus,
+                    pinned: !AppearanceController.instance.value.autoHideMenus,
                     snap:
                         AppearanceController.instance.value.autoHideMenus &&
                         !MediaQuery.disableAnimationsOf(context),
@@ -2605,9 +2227,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
                   final manga = items[index];
-                  final pendingCount = FavoriteUpdatesService.pendingFor(
-                    manga,
-                  ).length;
+                  final pendingCount = FavoriteUpdatesService.pendingFor(manga)
+                      .length;
                   return SizedBox(
                     width: 114,
                     child: Stack(
@@ -2803,8 +2424,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                         ),
                                       ),
                                       IconButton(
-                                        tooltip:
-                                            'Verificar novos capítulos dos favoritos',
+                                        tooltip: 'Verificar novos capítulos dos favoritos',
                                         onPressed: _checkingUpdates
                                             ? null
                                             : _checkUpdates,
@@ -2939,8 +2559,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                           ),
                                           children: [
                                             const YomiMascotCompanionCard(
-                                              message:
-                                                  'Sua estante ao luar está pronta! Favorita obras ou crie listas personalizadas para organizá-las aqui.',
+                                              message: 'Sua estante ao luar está pronta! Favorita obras ou crie listas personalizadas para organizá-las aqui.',
                                             ),
                                             const SizedBox(height: 28),
                                             Container(
@@ -3076,8 +2695,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         items: favorites,
         palette: palette,
         heroPrefix: 'lib_fav',
-        headerNote:
-            'Toque no sino para verificar novidades. Segure em uma obra para adicioná-la a uma lista de leitura.',
+        headerNote: 'Toque no sino para verificar novidades. Segure em uma obra para adicioná-la a uma lista de leitura.',
       );
     }
 
@@ -3248,9 +2866,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final manga = items[index];
-                    final count = FavoriteUpdatesService.pendingFor(
-                      manga,
-                    ).length;
+                    final count = FavoriteUpdatesService.pendingFor(manga)
+                        .length;
                     return Stack(
                       children: [
                         MangaGridCard(manga: manga, heroPrefix: heroPrefix),
@@ -3402,8 +3019,7 @@ class DownloadsScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             const YomiMascotCompanionCard(
-                              message:
-                                  'Baixe capítulos nas páginas das obras para ler mesmo sem internet!',
+                              message: 'Baixe capítulos nas páginas das obras para ler mesmo sem internet!',
                             ),
                           ],
                         ),
@@ -3913,10 +3529,26 @@ class _MangaGridCardState extends State<MangaGridCard> {
   bool _peekUnblurred = false;
 
   static const ColorFilter _grayscaleFilter = ColorFilter.matrix(<double>[
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0, 0, 0, 1, 0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ]);
 
   @override
