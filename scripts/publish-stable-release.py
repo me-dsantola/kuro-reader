@@ -35,8 +35,10 @@ def main():
         if release['targetCommitish'] != commit or not release['isDraft']:
             raise ValueError('This version is already published or belongs to another commit.')
     else:
+        notes_path = Path(f'docs/release-{manifest["version"]}.md')
+        notes_arg = ['--notes-file', str(notes_path)] if notes_path.exists() else ['--notes-file', 'docs/release-1.2.0.md']
         gh('release', 'create', tag, '--repo', repo, '--target', commit, '--draft',
-           '--title', 'YOMI ' + manifest['version'], '--notes-file', 'docs/release-1.2.0.md')
+           '--title', 'YOMI ' + manifest['version'], *notes_arg)
     gh('release', 'upload', tag, '--repo', repo, '--clobber', *(str(path) for path in assets))
     gh('release', 'edit', tag, '--repo', repo, '--draft=false', '--prerelease=false', '--latest')
     print(f'Published {repo}/releases/tag/{tag}')
