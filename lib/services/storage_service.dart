@@ -308,6 +308,63 @@ class StorageService {
     return added;
   }
 
+  static const String readLaterListId = 'read_later_default_list';
+  static const String readLaterListName = 'Ler mais tarde';
+
+  static UserReadingList getOrCreateReadLaterList() {
+    final lists = _rawReadingLists();
+    final existing = lists.firstWhere(
+      (l) => l.id == readLaterListId,
+      orElse: () => UserReadingList(
+        id: readLaterListId,
+        name: readLaterListName,
+        description: 'Obras salvas para ler depois',
+      ),
+    );
+    return existing;
+  }
+
+  static bool isMangaInReadLater(String mangaId) {
+    return isMangaInReadingList(readLaterListId, mangaId);
+  }
+
+  static Future<bool> toggleReadLater(Manga manga) async {
+    final current = List<UserReadingList>.from(_rawReadingLists());
+    var idx = current.indexWhere((l) => l.id == readLaterListId);
+    if (idx < 0) {
+      final newList = UserReadingList(
+        id: readLaterListId,
+        name: readLaterListName,
+        description: 'Obras salvas para ler depois',
+        mangas: [manga],
+      );
+      current.insert(0, newList);
+      await settingsBox.put(
+        readingListsKey,
+        current.map((l) => l.toMap()).toList(),
+      );
+      return true;
+    }
+
+    final list = current[idx];
+    final mangas = List<Manga>.from(list.mangas);
+    final existingIdx = mangas.indexWhere((m) => m.id == manga.id);
+    final bool added;
+    if (existingIdx >= 0) {
+      mangas.removeAt(existingIdx);
+      added = false;
+    } else {
+      mangas.insert(0, manga);
+      added = true;
+    }
+    current[idx] = list.copyWith(mangas: mangas);
+    await settingsBox.put(
+      readingListsKey,
+      current.map((l) => l.toMap()).toList(),
+    );
+    return added;
+  }
+
   // --- FAVORITOS (COM COFRE INCÓGNITO QUANDO NSFW = HIDDEN) ---
   static bool isFavorite(String mangaId) =>
       Hive.isBoxOpen(favBoxName) && favBox.containsKey(mangaId);

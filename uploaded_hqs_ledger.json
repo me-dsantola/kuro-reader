@@ -29,6 +29,741 @@
       "series": "A História do Universo Marvel (Volume 2)",
       "chapter": 5.0,
       "file_id": "BQACAgEAAyEGAAMBA6zTrgADEGr1BywIbp2WdDYxiAXIsHLTOhXQAALhCQACbKWoR2kHn2XgtHpiPQQ"
+    },
+    "0a4e2949e2549d491e38ee6b6914cdd472666384094f938199fd71725ad36cee": {
+      "series": "A História do Universo Marvel (Volume 2)",
+      "chapter": 6.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADEWr1B-JMIiyabbARNtBMbMv6J-oaAALmCQACbKWoR2svv7EPvIFGPQQ"
+    },
+    "1dd069cdda45fe6ba3d1d3eea25f0a00f74ab7b1c0d207f72460f3b9d3ce8846": {
+      "series": "A Maldição do Homem-Coisa",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADEmr1CIHs2G0Gapw82ZG35tj47U9pAALpCQACbKWoR3XyyMwUdKBvPQQ"
+    },
+    "c990a89387ed81ffc3ec65ef61870da8b886a5a636ebda0818d54781df167b4e": {
+      "series": "A Maldição do Homem-Coisa",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADE2r1CMfkTCsXEMZdp_ISJoBGuSTvAALqCQACbKWoR13MTUynLqZUPQQ"
+    },
+    "b1727e8ecbd38390dbdc37dee53f1b2b37a51a58f441d26615b96101df2bca39": {
+      "series": "A Maldição do Homem-Coisa",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADFGr1CVJ0zHYOkYyYFHNFl4K2zyNRAALrCQACbKWoRyFeLuAa8eKNPQQ"
+    },
+    "2fec2697dd91a01d6640a27979608ce3bc2ecdd81d9873e3a9461be37b15cb97": {
+      "series": "A Ordem Negra (2019)",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADFWr1CaUrGuwKB2D732-oPgG3QCcJAALsCQACbKWoR27MiGE0tRbiPQQ"
+    },
+    "e3fb9e8d8a26b76f9046c14e51b6e0eb1ea56c8c2343041ea1ee47ad057e533b": {
+      "series": "A Ordem Negra (2019)",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADFmr1CkqaXcfPSkfYv4pTqPi0shIqAALwCQACbKWoR20AAbxKsN0vZj0E"
+    },
+    "45db3a4705e949c204e11b4f9aea7958256716d95f9764c11f2b1b68b9386f6d": {
+      "series": "A Ordem Negra (2019)",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADF2r1CqEcGMoP0QcepYrVUJaiE20mAALxCQACbKWoR6KIWU0_NfiePQQ"
+    },
+    "43e48799c638c25531c8061b0756539912d9531175dd221012f27cb62924b074": {
+      "series": "A Ordem Negra (2019)",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADGGr1C0AI45qXyXABFFG4HZBXSmOYAALzCQACbKWoR16oZSZNVzSLPQQ"
+    },
+    "834dc965f2bb72050c772af595752a752b2513ec359225bb2900b31d3c157030": {
+      "series": "A União (2021)",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADGWr1C-DM2xPb5WAzAyNZDA2jUSckAAL4CQACbKWoR0RnrggwnWNyPQQ"
+    },
+    "01faef7705dc8addd37bc692b7229f08b14a6e2ed7414e05a3c5d9c3f397a179": {
+      "series": "A Última Aniquilação",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADGmr1DF2TFSCCJgnmQxjVeRYd7CqsAAL5CQACbKWoRw_kFCFLtixNPQQ"
+    },
+    "4686d5fc55a0ba9aafecb2338390c841cd32f241d88b0888f9c0b5894a3ae230": {
+      "series": "A Última Aniquilação",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADG2r1DNahmstlO7UnkUeXUZHkt3UDAAL7CQACbKWoR9eJGfDL43FgPQQ"
+    },
+    "fb3bbd662a73a4af136f983effa380393f1a9c5577b224bb1036532d13d6d230": {
+      "series": "A Última Aniquilação",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADHGr1DYD1ZrpS97swx4Wey6uZzjTzAAMKAAJspahHzcVbjShYhHE9BA"
+    },
+    "6bc848897a8bef79a2180116a81240e1976762403c2c52abe5add7b03eaff920": {
+      "series": "A-FORCE - Volume #1",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADHWr1EOw9RhlmHrY6e_3dQjDO9PpmAAIECgACbKWoR64gSe6EI0g-PQQ"
+    },
+    "9038667f70a7b3e1c997746840df1ff80e952323f14706b696cc9d8cb3d7cd47": {
+      "series": "A-FORCE - Volume #1",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADHmr1ETB4LLUTUeqxHPLzbq5OlVo7AAIGCgACbKWoRyav4xEPBqn0PQQ"
+    },
+    "328a34e8c6063c913ef679a03155564dadb9e357b49ab2ead9c3a5315c832f7f": {
+      "series": "A-FORCE - Volume #1",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADH2r1Eah6L4khkcPYBy-V1sW1KNP1AAIICgACbKWoR5iadA_BSnlmPQQ"
+    },
+    "d814f880e7b15a5265affbe5fee4beddf4b90f001573903644f0f22d3a8d89ef": {
+      "series": "A-FORCE - Volume #1",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADIGr1EhWOgPb46t_gVL0f4BL1QEepAAILCgACbKWoRx_GmcUt7SFEPQQ"
+    },
+    "56870cab404af80953427968858bf639f770e4169a7e94504673efde642b104e": {
+      "series": "A-FORCE - Volume #1",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADIWr1Elvj2nZLYgTgk9AtagjKYNGlAAIMCgACbKWoRw8bX87LchrxPQQ"
+    },
+    "2782a946fb9b18ecc7e6a3c28a0b3029ed34c866eddaf21a5f6b2b883b230ea4": {
+      "series": "A-FORCE - Volume #2",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADImr1Et8glPtcjchgjhjKXHtqbF2qAAINCgACbKWoR4dMibrv3x1tPQQ"
+    },
+    "2fc5d4ca36bdf2f05af6c2276c9cc792cd3704ebc0d17c3197f06230eea3c5c3": {
+      "series": "A-FORCE - Volume #2",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADI2r1EuZYZZv_ox7JCBtgYRMwzjLzAAIOCgACbKWoR0KfSe3FKldSPQQ"
+    },
+    "014559fd59b05abd21a517439b0750fa9211a84cec5138c2a9cb592ac92e5d47": {
+      "series": "A-FORCE - Volume #2",
+      "chapter": 7.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADJGr1E1hunlbFSdn-7lT-EkXa6Q1UAAITCgACbKWoR9zWvSYkX1xRPQQ"
+    },
+    "09282c14331027b56756b2606830562e664398a381c76675ef54a7095c68d6b6": {
+      "series": "Abdução (2006)",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADJWr1E7lwo3_-xu1OpX9JR6haNOc8AAIUCgACbKWoR74vyMXpmuS1PQQ"
+    },
+    "abaaa0c1899a6389b45238ca7c1e5f01456e16741b03cd65e781157a813f44d8": {
+      "series": "Abdução (2006)",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADJmr1E77KqncaHbH4W3TLo4VG7rH3AAIVCgACbKWoRw4cGnuVxL7wPQQ"
+    },
+    "553bec9fe3dbf4c4fdf23ac232bccd030644f8cdbecab4d90710a8ba93b26fbc": {
+      "series": "Abdução (2006)",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADJ2r1FDHLSyW6gtZ9M2Fsi_4Sqet7AAIXCgACbKWoR6yv0O6eIHz0PQQ"
+    },
+    "1076c5d63683f2515b892db02a6c476e38fab3ac617606a8d66c5e20d812f3f8": {
+      "series": "Aero",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADKGr1FKeQ6V71YKZmsbqMUxLAXCheAAIbCgACbKWoRzKqhR34mbTjPQQ"
+    },
+    "168e73ddeb8c362a01aba7bce5e300fcaa918c6e327675efce8d5ef4a2dee3a9": {
+      "series": "Aero",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADKWr1FcncBJ-UAj8C4EhLW6OtYzPgAAIcCgACbKWoR1xoFR1vSx-nPQQ"
+    },
+    "6f316bd91261cc8499cabe6a8543563cfd2299e2256d0d4f70debce0754a6376": {
+      "series": "Agentes da Atlas - 2006",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADKmr1FhjjZAEl6SAWo6X_KVNGZXF4AAIeCgACbKWoR0TUacb1_W2OPQQ"
+    },
+    "a3eabab28d198021fa19132c0baf3cae05b9ecac1b5b3f0374301a271de089ad": {
+      "series": "Agentes da Atlas - 2006",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADK2r1Fk0gZlTwcvAq5N0Kc2CfeHzTAAIgCgACbKWoR4uboiCtthlAPQQ"
+    },
+    "70c8d44fc78b8b3f5b159ad9079ffe99ce8991fccd63c142d5c5d8c21c00d107": {
+      "series": "Agentes da Atlas - Guerra dos Reinos: Novos Agentes da Atlas",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADLGr1FtW_uEoylQV_Cgbjxy2NoBJDAAIiCgACbKWoR6t9N7NXmPdCPQQ"
+    },
+    "84eae3cd56631b44e3ab9eca763e7b27c15bc05b6b78f0016d6d2ddd6b3a95d4": {
+      "series": "Aniquilação (2006)",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADLWr1Fx9u9vq8WvZYLFoPJ4PVcI88AAIjCgACbKWoR6Bj6kJM6-JwPQQ"
+    },
+    "d02965e26674f72c102232fa958b85fc473ed5a51e7f70cdbfae5d25c1eec727": {
+      "series": "Aniquilação (2006)",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADLmr1F0Ri9xu7io_-J4AUygyCKcBRAAIkCgACbKWoR8ejIAABZikbLD0E"
+    },
+    "2c95d71f0c8f2792932f895971c85fa4ae4c3f37a609fc3e2c711ac97f0d2088": {
+      "series": "Aniquilação (2006)",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADL2r1F3Cqm7GQtthn5qL-kEMuHGREAAIlCgACbKWoR_YQZL0W1e3oPQQ"
+    },
+    "e1a09d7ac6c7ea21b6890b5d4eec43ba06e9a14a2c106b2be1ff5fe647a96799": {
+      "series": "Aniquilação (2006)",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADMGr1F4HUsLGpqCNVUNzBpYGYZKlEAAImCgACbKWoR9mWzRyD_dFKPQQ"
+    },
+    "0605114946e6bd3f34b068263be24445c78398a218c666d2e205ab54b5a565b5": {
+      "series": "Aniquilação (2006)",
+      "chapter": 6.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADMWr1F7DMfrmS2BpQXNutQ2Kg6ZdMAAInCgACbKWoR29aKSn1KYIyPQQ"
+    },
+    "1476ce1d0384c3f9b64a12c7a62235033292a95b029f21367bf135abe1769cea": {
+      "series": "Aniquilação (2006) - Drax: O Destruidor",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADMmr1F8OftlQ9XMlInXC9wOXEkGFRAAIoCgACbKWoR7NB8xwtCBIcPQQ"
+    },
+    "753a0aba36b18af6b70271f5525d638be6ffbe3343bed68494fa454aeee4ec63": {
+      "series": "Aniquilação (2006) - Drax: O Destruidor",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADM2r1F-0eRiQwy64Y_EZ6SObK02YCAAIpCgACbKWoR3ZGXXtEy8__PQQ"
+    },
+    "71d6912cc6deb40c4052e34444e11f6b9d733bc2a89be17561cdf81b8848c44c": {
+      "series": "Aniquilação (2006) - Drax: O Destruidor",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADNGr1GDI6PuASDhKWe7wM2TTmYqc1AAIrCgACbKWoR64dkfpcb5SzPQQ"
+    },
+    "88877a58a365675e4c97a919dd8a534f61b1d6aabd69881a01c82f23acb919e9": {
+      "series": "Aniquilação (2006) - Drax: O Destruidor",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADNWr1GIk5iqCRTtojkGLssaifwl9TAAItCgACbKWoR1HvCmjHYHtaPQQ"
+    },
+    "6df268ac7f58846502317d0a8f8609ff85fc5fa4b46f8b2ca22c310b629d25eb": {
+      "series": "Aniquilação (2006) - Nova",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADNmr1GKtSiIEcvoBVkt38XwG5Gs1AAAIvCgACbKWoR8HU4t9sokmePQQ"
+    },
+    "920e4b29f76990542fd5a3e7a110a9af1ff31203b6faa5e89072a41530deb937": {
+      "series": "Aniquilação (2006) - Surfista Prateado",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADN2r1GOmmps57UwuhY2SumD5R0Pz7AAIxCgACbKWoR1dGTHx1y3t8PQQ"
+    },
+    "dbc45fbf53121b02a758781de9808f24df85e410cb9eb521761677910a16bcb4": {
+      "series": "Aniquilação Tormenta",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADOGr1GPKx5tUyK0k7xM8txXo2EZRzAAIyCgACbKWoR6A5ikOfL3-sPQQ"
+    },
+    "68cbb7c7d6bfd93fb98896da3420897ed30db1b2c5307a5f370050a8853d67ef": {
+      "series": "Aniquilação Tormenta",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADO2r1G-QY8GkmpKi8v1Df6IHGe1M7AAI6CgACbKWoR-27nBc2GFXAPQQ"
+    },
+    "b25c042154f807e2957b3bb18fe5897938aa4e5e8b4c07285c6b672532636ee5": {
+      "series": "Aranha-Geddon",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADPGr1HCyFm5YK5nn8D_Tg6rNGj_EOAAI7CgACbKWoR8wiyOsKwmicPQQ"
+    },
+    "48394a18ca1c698341660163130d1cd1f071d9aea31080b95c62b9165ef26dcf": {
+      "series": "Aranha-Geddon",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADPWr1HJQ6kRwmeYJuwGoGI3n24rybAAI9CgACbKWoR4sqUAjkuGs3PQQ"
+    },
+    "e5762372513cc926c4c67426f479d629bc6c52fe34f2372ce660c8e283658afc": {
+      "series": "Aranha-Geddon",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADPmr1HQ89bHW7u2jpWyjWDlQnElM5AAJACgACbKWoR5sTB9b3JA5nPQQ"
+    },
+    "e3e36464d80895798d91d6608103747235d5f91a3b8d0632b294d2f767e95bf4": {
+      "series": "Aranha-Geddon",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADP2r1Hbc7qYI9jRKyJhQz75s4YHfxAAJBCgACbKWoRw17y7qYKuLhPQQ"
+    },
+    "b017dd63ce96a3bc1f00cdabe941fbc2c7ac8384efdc6479d642c8647b89d834": {
+      "series": "Aranha-Geddon",
+      "chapter": 7.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADQGr1HlXCysaJTAABkr3fmmuu1NxJowACQwoAAmylqEcdL8-0VsUocj0E"
+    },
+    "c069ff9fff8ba3de2322f5667fc089af93941e99e0933ea9d2973513bfb4c2ec": {
+      "series": "Aranha-Geddon",
+      "chapter": 11.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADQWr1IHWD9DxEv0ccTCSOkD0YX2LKAAJGCgACbKWoRyWZt7N5Gf5VPQQ"
+    },
+    "a5361540b5bbd2b376659e284df440753bf4d5855be3266a1e7316f845c54df0": {
+      "series": "Aranha-Geddon",
+      "chapter": 12.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADQmr1IMH2BboMOIbUUe3ed9ujUzhJAAJHCgACbKWoR2HVDwnxXJ9XPQQ"
+    },
+    "49f04c2e9a6840613d52eae9780f88f9abcbc5ee963414e23e6c6b2fc90265a8": {
+      "series": "Aranha-Geddon",
+      "chapter": 14.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADQ2r1IRtO7jhkICejn7ORCgfO0OZXAAJJCgACbKWoR-XzXnIQeczhPQQ"
+    },
+    "4770080962db33da3ddf73a8629f7648b3cae3c8edc0493896eb64501d219499": {
+      "series": "Aranha-Geddon",
+      "chapter": 15.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADRGr1IZOL40rqC-y1cBAZkb50qCW9AAJKCgACbKWoR8j8_3jMhWjrPQQ"
+    },
+    "f87f24d61f0a8fc94f9d3cd21a2241a8a33f998703882ff43cb0e69289f3c38f": {
+      "series": "Aranha-Geddon",
+      "chapter": 16.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADRWr1Ifgg7nFSakxrxgp1h3gOt2XQAAJMCgACbKWoR-ojFuOMwdxTPQQ"
+    },
+    "8f2723e37dd6cd73a7e1ec7578b00d3995231dea719e38022906aeae20da4f53": {
+      "series": "Aranha-Geddon",
+      "chapter": 18.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADRmr1JLN9xycWMzQPLUV8lJlbDGfTAAJVCgACbKWoRw9r64961y59PQQ"
+    },
+    "a5311b20f7488216011f3d5d092162569b5525a28624c67e8160bd00410422e2": {
+      "series": "Aranha-Geddon - Limiar do Aranha-Geddon",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADR2r1JVTbNSgrvqkXPat5seW7Kj06AAJWCgACbKWoR2Sez0LwoR3kPQQ"
+    },
+    "260711ea66c09f0493618586a4f00ac6bf3f3c75313b62f0a69596dd0bdd790f": {
+      "series": "Aranha-Geddon - Limiar do Aranha-Geddon",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADSGr1JacGY0sFy5eZwCA4bs7BKUEGAAJXCgACbKWoR46qenWvj5JUPQQ"
+    },
+    "7fa7a57cc25d57f86ff00443171982ca47368af9b340b4dca5778fb8ce549f36": {
+      "series": "Aranha-Geddon - Limiar do Aranha-Geddon",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADSWr1JgABjtWXS8NWKWJGJSHWPuFgqwACWgoAAmylqEdyCzUSrXdygj0E"
+    },
+    "a3990dc5eeb30db5edd73dd9d6b64f750692a7fade29e7fd742fdfa7ec867115": {
+      "series": "Aranha-Geddon - Limiar do Aranha-Geddon",
+      "chapter": 6.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADSmr1JnjGiCPnJYeWbY1T2vvMkgWiAAJbCgACbKWoRx_fU07RP2fwPQQ"
+    },
+    "c13429a92add312353b9b5060a33732c1b3a7b14114c3aa129d3b5653e83be5a": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADS2r1JvhFPqBVcVD2vwjxTTUpDYREAAJdCgACbKWoR7aRGZ7UKy5BPQQ"
+    },
+    "1424700417575f7893c6d1c87c501f1a2c3040c20074aae6d1beec1c83306f06": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADTGr1Jv5jpRtWa-eD2oQmaAIVip3fAAJeCgACbKWoRwJxMehV8TP4PQQ"
+    },
+    "7ea7cc2914c352a6c0882038233a50b62002593ac095243f73cfa367d22330e3": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADTWr1J7_grehFCXj72Ra3BxPpyeMAA2AKAAJspahH3yjBERA8sEU9BA"
+    },
+    "3938cb276b76d58baac52120c5e05a505fe8bc5b035473159b5a316f957259fe": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADTmr1KCZJ95Q2AkZgP2vXPny5TPf_AAJjCgACbKWoR1AUSigivcuJPQQ"
+    },
+    "e58969a6829278b998b17a84eb582a9a6b3f49299040f581257e5de1fc79dc2d": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 6.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADT2r1KGtgwPZCLCwGi9PTEA0UBNibAAJkCgACbKWoR4hgbUAJ5GqCPQQ"
+    },
+    "3357239154eb446a3d5c852f3b181dc526065533228368dd9e8f8c2f0dea9bc4": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 7.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADUGr1KPoCqR-2egdXNr80QTqz20t3AAJlCgACbKWoR93Xhd4tAmhPPQQ"
+    },
+    "ba13fa365af25ee7d2aeb11c9a02170a03e913aa0652681cc1d10fde1871a4a4": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 9.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADUWr1KSXXUvZS52D4QsYlX8lNfGbZAAJmCgACbKWoR7NTBO6TwD8NPQQ"
+    },
+    "880a02c9b6175eec2cb9cdf0a1261dd58791f29436f4b55cf7b07510b2ca6565": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 10.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADUmr1KWju998tWUXSsFaWswyCssh8AAJnCgACbKWoR_VXxEZAazfUPQQ"
+    },
+    "fe8626eb7c7d5a92c9f7267e6fa7ff1414915acf23025693980c41f6dd573c6c": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 11.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADU2r1KcljImqXX5FTnZJc6g2C4yGLAAJpCgACbKWoR7aRhmRzUahiPQQ"
+    },
+    "3f178e2c6f294b1e7fe17ab43241855baaeec61a86112ef903b71cf5de552f35": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 12.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADVGr1Kd0weCAGIoM-xVg0RONb6IQbAAJqCgACbKWoR5O71etGEQh0PQQ"
+    },
+    "9b458dcdb4b36681d0de8793865d678f3cf053deeccf91b8b284eedf1ada8eaf": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 14.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADVWr1KfB5oWTchTv2WxHroUeCCyIKAAJrCgACbKWoRwZ01phzdXX_PQQ"
+    },
+    "c9dac1fbce35917b45bd7f67d475dade8d3a4584268593773bbd021a598133de": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 15.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADVmr1KkSrVNHkPR1UyqX_MzELhqRaAAJtCgACbKWoRyjrcbXL0N2NPQQ"
+    },
+    "3cb2b1bdc556e1df5afea3d04e99fa28c71cf91fc36ed01d3f4a1ad76a84cc06": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 16.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADV2r1KuMCmYMiSokHm4yOCVN6eePHAAJuCgACbKWoRxlU1Iz7ZJZhPQQ"
+    },
+    "e423bf7e90fff67c7e07b295a828ab5631c99d0d8c32ad1954bf35068245ac94": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 17.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADWGr1KupQjXRPPCNNSLRe676GYCDCAAJvCgACbKWoR5Xd0wKghGQIPQQ"
+    },
+    "c4299c8bc7600becd4fc73c7612bee91cc568537b2aac207648360597b1c7afc": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 18.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADWWr1K1_IP5bHF_XrneDSyyuu2tIZAAJyCgACbKWoRw-Z9tVnVSMaPQQ"
+    },
+    "9c9655177fb462fba2446e6d9578f08f3243fb167c9aa97bf23ef06cce0b3a61": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 19.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADWmr1K3LwlYTCYUbV3xWUgHO_qfLTAAJzCgACbKWoR11igj9wtbUzPQQ"
+    },
+    "22cbf30f10e37e2277a30f85355ae5579e4f56b985192802f16747c2c7f6c6ea": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 20.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADW2r1K4a5OnLpfcXeF00wEZOtwqy9AAJ0CgACbKWoR_SigVR8Q8SsPQQ"
+    },
+    "a050c090df756e83f840a19c4bae25b52ed4b9636019dbd0c539f7c827e101cc": {
+      "series": "Aranhaverso (2014)",
+      "chapter": 21.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADXGr1K_RsT_1RFacuGS-GOD_7d8XSAAJ2CgACbKWoRwRJ-qA-LUrrPQQ"
+    },
+    "379fb279bd3f044f30e2f1d2c50402a3109c15cda1a970124d8881a9737874fe": {
+      "series": "Aranhaverso (2019)",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADXWr1LGQIgpLZEo8c4kOpkleNJ2X-AAJ3CgACbKWoRwrgOE-GPeC9PQQ"
+    },
+    "45d90e603bb541e3a8a5c02a3c62b6aa0b41c204b736296afea5e7383741aa9c": {
+      "series": "Aranhaverso (2019)",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADXmr1LO6qjjRn1WPz6fInCIy6HrqaAAJ4CgACbKWoR65TjXMStdNhPQQ"
+    },
+    "adf324410bd7077d49e6f286a363bd727e32d4622b45814e3feb8822a66760a3": {
+      "series": "Aranhaverso (2019)",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADX2r1LYeEwAvzHAMsPuinCcc20Ky4AAJ5CgACbKWoR9VA0AmTaASuPQQ"
+    },
+    "574238b10ce591340a7b547554215b288f4bb70a6586f67b058ee844fc82149d": {
+      "series": "Aranhaverso (2019)",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADYGr1Ld-pQUNvN4WB0OQO2U_IXqbDAAJ6CgACbKWoR1MY6BrtiO8JPQQ"
+    },
+    "cc837c78782e10aa326de6fb71d84d1c2b3804a99510c6ff3977f16f69c3f0f0": {
+      "series": "Aranhaverso (2019)",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADYWr1LeRcPzEPWkgMCUukK5IIegABGQACewoAAmylqEdPFF4V_WwYeD0E"
+    },
+    "b3f6ab3da52f0cd2f40cbf4e392f01adc91c58047121eac1c6c0e03b8bd8ee82": {
+      "series": "Aranhaverso (2019)",
+      "chapter": 6.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADYmr1LlWwa7CmUMNc113VlcAlMZ7nAAJ8CgACbKWoR7KmW2z0qv17PQQ"
+    },
+    "4dfbba5ec19efa295bbaea10d523d9ea253b204c992623e2c613a68eb14d9122": {
+      "series": "Aranhaverso - No Limiar do Aranhaverso (2014)",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADY2r1Los0M60zuTurnMctlGjthFa9AAJ9CgACbKWoR6VMmEmpVv8BPQQ"
+    },
+    "a4c1f2e621a9380d85e35f585cb1a5e81ee275ddb8852b14f440c8f2b8e0bbfe": {
+      "series": "Aranhaverso - No Limiar do Aranhaverso (2014)",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADZGr1LwQUSDkyHfdaeHcy-MzTWbHSAAJ_CgACbKWoR-OLqp1UAoCqPQQ"
+    },
+    "c709fdc5075814e9ece58b0940f2049fdf35c13a3796965e2ecb05c190104964": {
+      "series": "Aranhaverso - No Limiar do Aranhaverso (2014)",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADZWr1L3MR1qtquwvDqcWhne8E5NApAAKBCgACbKWoR6hUCRROOLXKPQQ"
+    },
+    "dc42e536f68baf246fd3d74ae27fb028e7420d698bfbeac126663674bcdb0ca2": {
+      "series": "Aranhaverso - No Limiar do Aranhaverso (2014)",
+      "chapter": 6.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADZmr1L4fUtCHg8fc9lFHYwhvVoJ85AAKDCgACbKWoR-qh9w_iBoXhPQQ"
+    },
+    "dd2a1679948a6cf73a0ce6c520cedc8799a6ba5af04ba337038256f2a22ca368": {
+      "series": "Aranhaverso - No Limiar do Aranhaverso (2014)",
+      "chapter": 7.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADZ2r1L45GFf7J94t9CcBF2xRBq9LPAAKECgACbKWoRzpLts1KPiDKPQQ"
+    },
+    "e4fd3974727e83fdaf4f12ecfba05e782a9fee9b8fb1bfe6e42eb3002c25d6eb": {
+      "series": "Aranhaverso - No Limiar do Aranhaverso (2014)",
+      "chapter": 8.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADaGr1MC9jfMmbEktOXeQWtmUbAnMHAAKHCgACbKWoR-TyWSGEJC-VPQQ"
+    },
+    "5eb8cd0d10836af8ebd278fd88e68e2dea84c091ca2db24c2cd652f85acb75a2": {
+      "series": "Aranhaverso - No Limiar do Aranhaverso (2014)",
+      "chapter": 9.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADaWr1MH6EeEnsOnuEENaRpHDLgctNAAKICgACbKWoR1b8JNAunNAYPQQ"
+    },
+    "b2d6bb30ff5f65dbbd49496eb8ee1a01d8a02d5af56de92670a23853909f06c3": {
+      "series": "Aranhaverso - No Limiar do Aranhaverso (2022)",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADamr1MQvqYqcAAZmcmaGv02Yy6frHewACiQoAAmylqEfxkX_l3KFNXT0E"
+    },
+    "19455971fe9d2076b9980424c939a01b082eaa040f07ab3127e46f6bacfd8774": {
+      "series": "Aranhaverso - No Limiar do Aranhaverso (2022)",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADa2r1MZo1jykfLYxF1kEoE48XZTvZAAKLCgACbKWoR3qHOXBHyve4PQQ"
+    },
+    "2b695c1f44f383d1864fad81f29652ecaa11ec9f36d2ce966eafe8ed59b452a1": {
+      "series": "Arcana Mística (2007)",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADbGr1Mf--qSAPv5kmq-iUCtTKEbiZAAKNCgACbKWoR4mtfRhL53u6PQQ"
+    },
+    "a76010a7f55b58d01d2d262cdafdf21f6cf2ec30f0c2640c16e6f704ff8062f2": {
+      "series": "As Poderosas Valquíria",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADbWr1MgZJpl-JtRHZqaWpljG6Xg67AAKOCgACbKWoRzZ0ykTVJzaRPQQ"
+    },
+    "fd385d07eaa1cba474be3c9e9fbeea35fba8c5d16be620c1ba806dd023b5ac93": {
+      "series": "As Poderosas Valquíria",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADbmr1Ml-ouES3hpxItxh9CVPw6mXhAAKQCgACbKWoR32QbdTte8juPQQ"
+    },
+    "20ea3e8e9374f8d9d85ac7e0393472bec5a8b6ec53bf83cb1e7abca6290c19c8": {
+      "series": "As Poderosas Valquíria",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADb2r1MoG7v1hun9Mc2m1HS1nZYrhoAAKRCgACbKWoRzetYNzj5XS-PQQ"
+    },
+    "e028004b21e8894e6be74e363e076ad66f2cacbceac3de088a45eafc7bcdd63e": {
+      "series": "As Poderosas Valquíria",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADcGr1MvHQRxf99XBNtDvmhJprWna7AAKTCgACbKWoR031CZgrICNtPQQ"
+    },
+    "7d7ea5ede746ab58e10db5a2be95e06f07bd42d8409c7963a3af33834003e3b5": {
+      "series": "As Variantes (2022)",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADcWr1M4AxiPPqcvhXU08_gV503urYAAKUCgACbKWoRwZHrSsweaCMPQQ"
+    },
+    "fe694350272ab83448f698cfe8805425f867d1165ed50f70fa7fb88c7d1fedef": {
+      "series": "As Variantes (2022)",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADcmr1NCfsv5N4qgrRyNZzEtOfenqZAAKWCgACbKWoR_zaeGjZfajSPQQ"
+    },
+    "978475ac4d2bc66e0fa775929c2fdfbff1be73ea9b8e47b917eec79e8768b6f2": {
+      "series": "As Variantes (2022)",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADc2r1NKtUsT6FThNPfc2H_pa2oBO0AAKXCgACbKWoR2TxpsPHnlItPQQ"
+    },
+    "6ae73cf7948bd52f43b67860ef033af7c595b1578ccb530cdcbe79fd615d0d56": {
+      "series": "Asgardianos da Galáxia",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADdGr1NLKW4qdnSSRCTzazQ4SGjngRAAKYCgACbKWoRx55wE-_MdQePQQ"
+    },
+    "1b037677f3f6b5f3de1e8740b125ee585595db7d53e9d4b475a42cf2482356c3": {
+      "series": "Asgardianos da Galáxia",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADdWr1NOwsbdRPji5WSGIgajie3aPtAAKZCgACbKWoR0gpjLIv_dwLPQQ"
+    },
+    "670859a98ec4b47a5f0a34eba08cf597095c14bff93dcc1b919987670b114ad7": {
+      "series": "Asgardianos da Galáxia",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADdmr1NTXQ1TdxOWsnIvL2fcRkU1QGAAKaCgACbKWoR_LYOJc0wE5mPQQ"
+    },
+    "5d6434eb10e5fb6548d3bbfa2d410207e5bf07af108057d700c5ac90464a2464": {
+      "series": "Asgardianos da Galáxia",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADd2r1NVljXmBSfYQ_OCjKpc14lqtfAAKbCgACbKWoR7z1dgRMTSrRPQQ"
+    },
+    "341e1f793bf58374ccfe6fb5fbb8d4154561ca9138d020c4dfa231d4589ab749": {
+      "series": "Asgardianos da Galáxia",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADeGr1NWMFAd4Jg8x1odAmj7fqh9lwAAKcCgACbKWoR1A5RxswD2FcPQQ"
+    },
+    "9c06d5a5c0a9f3691b401e136fd056f4480147f8c699731a7c48c9882620b6c2": {
+      "series": "Asgardianos da Galáxia",
+      "chapter": 7.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADeWr1NdyvVxnCg3U2QrD_QDxZaXk6AAKdCgACbKWoR2KsvaUYCuAVPQQ"
+    },
+    "318c157b83eded13dd22b04c54adc441544997eafad31dd047895d0805a17ec9": {
+      "series": "Asgardianos da Galáxia",
+      "chapter": 8.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADemr1Nhd6JZfACVit_uQI5dNczmquAAKeCgACbKWoRx7kfiFsqxraPQQ"
+    },
+    "abcd1e5620a3f0561b86f15786625f7986032a4300196d127970e66c0deff233": {
+      "series": "Atlântida Ataca (2020)",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADe2r1NqPwJ87Gtkal8h1ibrFeplFmAAKgCgACbKWoRyA0ZUduy8hxPQQ"
+    },
+    "f13fc2e22286bcb9dc0837bf575e771e60f5d0a313fd36fc19c9a4d7279b5595": {
+      "series": "Atlântida Ataca (2020)",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADfGr1NrndODJWvQupkH7eFp4Ibi7GAAKhCgACbKWoRxSkNVhDLneQPQQ"
+    },
+    "45e6949a2937f1182d56d038b6b104400d504ac19c075615aaf61775dd08c854": {
+      "series": "Atlântida Ataca (2020)",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADfWr1NzF8urld0P02tedVdHWP3U7BAAKiCgACbKWoRw5_ATZOaXMoPQQ"
+    },
+    "e8c78e43e5c339e33868aa1086685044fe875b53cfd0215c59ee168be03f0be0": {
+      "series": "Atlântida Ataca (2020)",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADfmr1N5NMRlnJrXavokZp_tDExvpGAAKjCgACbKWoRxgXhH-JB3u6PQQ"
+    },
+    "771b91ebf6f9b84f6a8c6f4eb3a6c9b016772dfd06e09d2f3573eb028b1d9719": {
+      "series": "Atlântida Ataca (2020)",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADf2r1OMUqWzN6U_4VS6ZLrfT68C0MAAKpCgACbKWoR06gI_gVOCkzPQQ"
+    },
+    "24b7102f145b5fab9c81ad937c49bb131dee8f1be8874bfc6465ae9f5fcbbbbe": {
+      "series": "Campeões - 2016",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADgGr1OVryr_AY6uQUmeZfOKhmh9Y2AAKsCgACbKWoR6Q0-rRli9W5PQQ"
+    },
+    "dd6fe92de6e32f5578a4e49ee1fe42777d0cfbbbb1d354a9b477e5ce7f709fcc": {
+      "series": "Campeões - 2016",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADgWr1OfyZ2dLvDPJQpKnemG-WYhyBAAKuCgACbKWoRyTReLvC6GMBPQQ"
+    },
+    "4e87652aedb012ebaf8508d8945b0459021867142e0b56d04fc4ca310429d534": {
+      "series": "Campeões - 2016",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADgmr1OgO0l584z0oAAeI1MGBq8rMlNQACrwoAAmylqEdUf741_sn8JT0E"
+    },
+    "c3560e6b9e664c8f072e48aea013fd75654d435fef34c035e7436f1b1b2b5cea": {
+      "series": "Campeões - 2016",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADg2r1OlUk2IQM6OULKyx9LXOWCsfoAAKxCgACbKWoR8G5qF6N994ePQQ"
+    },
+    "9d1c3e6b06f5d43798a0ccaeba118fcc4b0dd456744b7e59361a1868ea236e2a": {
+      "series": "Campeões - 2016",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADhGr1OoEKtbE6hThRQ3nHIOX3iMeJAAKzCgACbKWoRwfhRGykdq1qPQQ"
+    },
+    "ebd729f966efc34e9701ec77a81cda605372616d03e5369ed8a90de8b96726aa": {
+      "series": "Campeões - 2016",
+      "chapter": 6.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADhWr1Osrl1Ktjk0ZY1WJ4YDjIsdXsAAK0CgACbKWoRznURMB5LDO7PQQ"
+    },
+    "f01179e4c44f99dbbb6e945bbf77a661ef26bb7c51d386daac52f4b7f8c85658": {
+      "series": "Campeões - 2016",
+      "chapter": 7.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADhmr1Oysuc2iHofs6Vw-vBooxuTogAAK1CgACbKWoR_9NGljs7bF-PQQ"
+    },
+    "413cd7c9bc03afd0024103c2d25de94e4b32779d81977198d96e8b67ffab050f": {
+      "series": "Campeões - 2016",
+      "chapter": 8.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADh2r1O4Mn8t2kgOnFeKAds_I2ShE7AAK2CgACbKWoR36jbiR0YqRqPQQ"
+    },
+    "114e1fb547ffecc54a7f76b709dbd1512e29572edab577385fc03c71bc3f89ff": {
+      "series": "Campeões - 2016",
+      "chapter": 9.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADiGr1O93-XpClS11VYmNtxIiqeipiAAK3CgACbKWoR_kxWynY5hkCPQQ"
+    },
+    "727af475721a263dd011e7ad3df3deb58fcf3ca1d39494c9109cbd3e6b3b233a": {
+      "series": "Campeões - 2016",
+      "chapter": 10.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADiWr1PD06EnilKHxGt-aoGzU1RIeDAAK4CgACbKWoR5Z0pVs-TNMMPQQ"
+    },
+    "8522c3ef9d2172ab85412cd3c07dae26f00cd1853aa5e60d2b5082a4778625a4": {
+      "series": "Campeões - 2016",
+      "chapter": 11.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADimr1PKExCNTVE-NxNliSLjLeMrSkAAK6CgACbKWoRzn9HvzFOMWOPQQ"
+    },
+    "d07ae0b4267568039d5096c2e537ba86d371273ee027b6ad3a327b8aa6008eb4": {
+      "series": "Campeões - 2016",
+      "chapter": 12.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADi2r1PQG0E9zeonYY1S1ePadoaEnYAAK7CgACbKWoR2gf9ZVeLoi4PQQ"
+    },
+    "4c2a780b7fedc948a4a5a81a168ba2121ffc3bf3ba9efdff2d669b1c24fe0f15": {
+      "series": "Campeões - 2016",
+      "chapter": 13.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADjGr1PYa_VngqCfb8V71xIS7NYUVMAAK8CgACbKWoR6FoYfttKEXcPQQ"
+    },
+    "7c9765d6c5c70e4473dfbd5d2c9ec00cf4864732cfc449aaa8b5ac0ee7a73127": {
+      "series": "Campeões - 2016",
+      "chapter": 14.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADjWr1PfCh38fCnP-NDieoMmfcPPPlAAK9CgACbKWoR2L95XRrdKChPQQ"
+    },
+    "df8ebf532e5b43c8068e9ad7fd3071de7fc470d9d7306b62851c15ead3532a09": {
+      "series": "Campeões - 2016",
+      "chapter": 15.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADjmr1PnJcRgABZgztgUMoi-2NoiczoAACvwoAAmylqEesFDouV0rNaT0E"
+    },
+    "fdd4e12e67fde2e8f6683cd248e452de892335e22881b7761e64539123cfeb46": {
+      "series": "Campeões - 2016",
+      "chapter": 16.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADj2r1PvHmvu7XON-fifxAkVGeHbv2AALACgACbKWoR41SRAF6C_NiPQQ"
+    },
+    "6c11df57bcebbd44b4dcef128bd2d5aff0699f611acd4acdcd38e81dcab2c41d": {
+      "series": "Campeões - 2016",
+      "chapter": 17.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADkGr1P0GAGxaGtvDCCsGsXm86WurPAALBCgACbKWoR6mc-ROohRQxPQQ"
+    },
+    "8134bf9f73fac653469203e5783a1ec60b9d593b968737d67eba7e76fd7bdf26": {
+      "series": "Campeões - 2016",
+      "chapter": 18.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADkWr1P53SuhgS5Sv3ddq8HV5E_3gaAALDCgACbKWoR9BrveHUyCqePQQ"
+    },
+    "b1c7f4a5dd2744867ecd0d68fc160e041eaeb77c31bcf8450411c726536a8da4": {
+      "series": "Campeões - 2016",
+      "chapter": 19.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADkmr1QAms5z3QQLzzxoDnu6oqCAmDAALECgACbKWoRytxi9leX7DMPQQ"
+    },
+    "22893be7ac3420e4779f1e15549813ba169ee1efa59de0cd6d685404933aafd5": {
+      "series": "Campeões - 2016",
+      "chapter": 20.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADk2r1QKHObdSdvCeuIdDJqDZc1a8KAALFCgACbKWoR8uftXCQGWALPQQ"
+    },
+    "49f6c9be4524e099efaaaaec90c2f0d2e1ac4f840ee488bd01b0adfa7c6c29dd": {
+      "series": "Campeões - 2016",
+      "chapter": 21.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADlGr1QL0jYWQLw0ODvg_tg6cp0Ki4AALGCgACbKWoR3oGd7Xq24ftPQQ"
+    },
+    "4a73f9b89c1d025166fdc963978923caf3563ef588239b037895487143645d93": {
+      "series": "Campeões - 2016",
+      "chapter": 22.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADlWr1QNP_q8fK4H_j6Ra1TTvD7nksAALHCgACbKWoR0IODqiWt_W1PQQ"
+    },
+    "6397e9b07bcad796a293a7c63301c658d155c7b922b4b8771cdf542c3562a7aa": {
+      "series": "Campeões - 2016",
+      "chapter": 23.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADlmr1QYFik9dbUSE8_gc3DrpN7lpeAALICgACbKWoRydOy-EDH2LmPQQ"
+    },
+    "7086ce6fade72329c16f5edc77976cb7ad3e5eebb9041ccfb01ff0a7feeb05ba": {
+      "series": "Campeões - 2016",
+      "chapter": 24.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADl2r1QdyH_OVD7OvMwW4PViHfVF-BAALJCgACbKWoR7jvoxXM4nODPQQ"
+    },
+    "20b927e42f59a664d180b970e423fc449ab555ca9a4535694bc843339965974f": {
+      "series": "Campeões - 2016",
+      "chapter": 25.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADmGr1QkVD3OKcWxgPFDHt12Gd4HwJAALLCgACbKWoR_wpjn9WGS-LPQQ"
+    },
+    "d48ddbf6b1480cfd06015a64be109f213848d6f00024eb075e3e8156668646dd": {
+      "series": "Campeões - 2016",
+      "chapter": 26.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADmWr1QqNHJF4i5EDAmgiF240QmwtyAAJoBwACbKWwR82AXGmNFAYwPQQ"
+    },
+    "261c34276e59f137f0e781e08e98987a675f816035972ab684207178f757e2c4": {
+      "series": "Campeões - 2016",
+      "chapter": 27.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADmmr1Q0ffPBQCo8V_jew0r3IJoxwXAAJpBwACbKWwR7HHzn3g-cc3PQQ"
+    },
+    "a8ea881571fb8b4d6cea72ad5dafd6f5351dbf964e5d837aba79440d3a5074c1": {
+      "series": "Campeões - 2019",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADm2r1Q2NJkFrH2hz64RULgmmiJpNaAAJqBwACbKWwR3ev-kz1qEWBPQQ"
+    },
+    "e6f4d8925547fcd00a66b1e48d091dd7022fe9a68014859cf3dfcf9c06c5e8c5": {
+      "series": "Campeões - 2019",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADnGr1Q6fBJuRCWT_uWvhZP78NrblEAAJrBwACbKWwR4EzCgYBIlF-PQQ"
+    },
+    "1c02434191c77ecd1efeaa2f1e4a801824b905b728536f0ed20ac2428d18c478": {
+      "series": "Campeões - 2019",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADnWr1Q-6hGmkkWrwDePb3quiqvB86AAJsBwACbKWwRzv3d-ip-3EZPQQ"
+    },
+    "9b69dd13931509115370bc0cc3b0e66cf7e15cd03a6f7332213d385b961d090d": {
+      "series": "Campeões - 2019",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADnmr1Q_bvMN4_TYlpYHt6jgqIdxahAAJtBwACbKWwR-iVPREUcIQyPQQ"
+    },
+    "b50660600adc9ad13884fe21efc171008a0e7185509069fdae38f00252656705": {
+      "series": "Campeões - 2019",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADn2r1RC51b2JPHimqS9d5oQwAAVtfvQACbgcAAmylsEdNNagXaSmliz0E"
+    },
+    "65494d9d32094375dfb48b1567cb696d26abc5ed71ef91e318ec5f8403e3ec82": {
+      "series": "Campeões - 2019",
+      "chapter": 6.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADoGr1RIHlhcpZORnfKoAYNQrbHDHVAAJvBwACbKWwR01-jVBDAzeXPQQ"
+    },
+    "7c00c565e34057350348ab53396963b2158adab358a32595232d4c7c4132eb29": {
+      "series": "Campeões - 2019",
+      "chapter": 7.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADoWr1RIg4NgbI3D_bjHVbBqPGpY4vAAJwBwACbKWwR4PFOEZbFEdcPQQ"
+    },
+    "e8bebe1d0dee8a7cd0835decca0730c44264ed29537187e0a8439d7d65ccefe4": {
+      "series": "Campeões - 2019",
+      "chapter": 8.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADomr1RM4xV1sFO3NYEynwdPvDdBYhAAJxBwACbKWwR9GNHbQnvP5_PQQ"
+    },
+    "263870e385f7f253e84af69e5c4ff11a86fdd912aa23ee87c23644327bbcada4": {
+      "series": "Campeões - 2019",
+      "chapter": 9.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADo2r1RRXaHQZx6VRh199DRXuww6vEAAJyBwACbKWwRxvoKv6JyOdOPQQ"
+    },
+    "01691409b9d153b6c275bc2d139d9d014ae7d75aaf0e21230720620b7dae16fa": {
+      "series": "Campeões - 2019",
+      "chapter": 10.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADpGr1RUKmz_WSpRK5fHGan76HsQTIAAJ1BwACbKWwR8MD_b03dvhhPQQ"
+    },
+    "9cc4ba7906b3d0a1e12695b6666461540a99d41ad8f85ef09b4596e03bd7301c": {
+      "series": "Campeões - 2021",
+      "chapter": 1.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADpWr1RYBVk2GQljnl4G0LqjlfGnrOAAJ2BwACbKWwRwTWFxdH0TPhPQQ"
     }
   },
   "series": {
@@ -174,6 +909,1331 @@
           "file_id": "BQACAgEAAyEGAAMBA6zTrgADEGr1BywIbp2WdDYxiAXIsHLTOhXQAALhCQACbKWoR2kHn2XgtHpiPQQ",
           "message_id": 16,
           "file_size": 42014063
+        },
+        {
+          "number": 6.0,
+          "title": "Capítulo 6",
+          "file_name": "Capítulo 06.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADEWr1B-JMIiyabbARNtBMbMv6J-oaAALmCQACbKWoR2svv7EPvIFGPQQ",
+          "message_id": 17,
+          "file_size": 40454602
+        }
+      ]
+    },
+    "A Maldição do Homem-Coisa": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADEmr1CIHs2G0Gapw82ZG35tj47U9pAALpCQACbKWoR3XyyMwUdKBvPQQ",
+          "message_id": 18,
+          "file_size": 38893675
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADE2r1CMfkTCsXEMZdp_ISJoBGuSTvAALqCQACbKWoR13MTUynLqZUPQQ",
+          "message_id": 19,
+          "file_size": 9245101
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADFGr1CVJ0zHYOkYyYFHNFl4K2zyNRAALrCQACbKWoRyFeLuAa8eKNPQQ",
+          "message_id": 20,
+          "file_size": 34435987
+        }
+      ]
+    },
+    "A Ordem Negra (2019)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADFWr1CaUrGuwKB2D732-oPgG3QCcJAALsCQACbKWoR27MiGE0tRbiPQQ",
+          "message_id": 21,
+          "file_size": 12199048
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADFmr1CkqaXcfPSkfYv4pTqPi0shIqAALwCQACbKWoR20AAbxKsN0vZj0E",
+          "message_id": 22,
+          "file_size": 22453067
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADF2r1CqEcGMoP0QcepYrVUJaiE20mAALxCQACbKWoR6KIWU0_NfiePQQ",
+          "message_id": 23,
+          "file_size": 21655107
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADGGr1C0AI45qXyXABFFG4HZBXSmOYAALzCQACbKWoR16oZSZNVzSLPQQ",
+          "message_id": 24,
+          "file_size": 23697411
+        }
+      ]
+    },
+    "A União (2021)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADGWr1C-DM2xPb5WAzAyNZDA2jUSckAAL4CQACbKWoR0RnrggwnWNyPQQ",
+          "message_id": 25,
+          "file_size": 33614724
+        }
+      ]
+    },
+    "A Última Aniquilação": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADGmr1DF2TFSCCJgnmQxjVeRYd7CqsAAL5CQACbKWoRw_kFCFLtixNPQQ",
+          "message_id": 26,
+          "file_size": 24792607
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADG2r1DNahmstlO7UnkUeXUZHkt3UDAAL7CQACbKWoR9eJGfDL43FgPQQ",
+          "message_id": 27,
+          "file_size": 24212777
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADHGr1DYD1ZrpS97swx4Wey6uZzjTzAAMKAAJspahHzcVbjShYhHE9BA",
+          "message_id": 28,
+          "file_size": 39425501
+        }
+      ]
+    },
+    "A-FORCE - Volume #1": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADHWr1EOw9RhlmHrY6e_3dQjDO9PpmAAIECgACbKWoR64gSe6EI0g-PQQ",
+          "message_id": 29,
+          "file_size": 20098275
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADHmr1ETB4LLUTUeqxHPLzbq5OlVo7AAIGCgACbKWoRyav4xEPBqn0PQQ",
+          "message_id": 30,
+          "file_size": 17203436
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADH2r1Eah6L4khkcPYBy-V1sW1KNP1AAIICgACbKWoR5iadA_BSnlmPQQ",
+          "message_id": 31,
+          "file_size": 17026373
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADIGr1EhWOgPb46t_gVL0f4BL1QEepAAILCgACbKWoRx_GmcUt7SFEPQQ",
+          "message_id": 32,
+          "file_size": 16365160
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADIWr1Elvj2nZLYgTgk9AtagjKYNGlAAIMCgACbKWoRw8bX87LchrxPQQ",
+          "message_id": 33,
+          "file_size": 15607125
+        }
+      ]
+    },
+    "A-FORCE - Volume #2": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADImr1Et8glPtcjchgjhjKXHtqbF2qAAINCgACbKWoR4dMibrv3x1tPQQ",
+          "message_id": 34,
+          "file_size": 19047202
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADI2r1EuZYZZv_ox7JCBtgYRMwzjLzAAIOCgACbKWoR0KfSe3FKldSPQQ",
+          "message_id": 35,
+          "file_size": 10583708
+        },
+        {
+          "number": 7.0,
+          "title": "Capítulo 7",
+          "file_name": "Capítulo 07.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADJGr1E1hunlbFSdn-7lT-EkXa6Q1UAAITCgACbKWoR9zWvSYkX1xRPQQ",
+          "message_id": 36,
+          "file_size": 27077706
+        }
+      ]
+    },
+    "Abdução (2006)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADJWr1E7lwo3_-xu1OpX9JR6haNOc8AAIUCgACbKWoR74vyMXpmuS1PQQ",
+          "message_id": 37,
+          "file_size": 13057217
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADJmr1E77KqncaHbH4W3TLo4VG7rH3AAIVCgACbKWoRw4cGnuVxL7wPQQ",
+          "message_id": 38,
+          "file_size": 11570752
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADJ2r1FDHLSyW6gtZ9M2Fsi_4Sqet7AAIXCgACbKWoR6yv0O6eIHz0PQQ",
+          "message_id": 39,
+          "file_size": 9906437
+        }
+      ]
+    },
+    "Aero": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADKGr1FKeQ6V71YKZmsbqMUxLAXCheAAIbCgACbKWoRzKqhR34mbTjPQQ",
+          "message_id": 40,
+          "file_size": 29329060
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADKWr1FcncBJ-UAj8C4EhLW6OtYzPgAAIcCgACbKWoR1xoFR1vSx-nPQQ",
+          "message_id": 41,
+          "file_size": 27853454
+        }
+      ]
+    },
+    "Agentes da Atlas - 2006": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADKmr1FhjjZAEl6SAWo6X_KVNGZXF4AAIeCgACbKWoR0TUacb1_W2OPQQ",
+          "message_id": 42,
+          "file_size": 10094578
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADK2r1Fk0gZlTwcvAq5N0Kc2CfeHzTAAIgCgACbKWoR4uboiCtthlAPQQ",
+          "message_id": 43,
+          "file_size": 7263265
+        }
+      ]
+    },
+    "Agentes da Atlas - Guerra dos Reinos: Novos Agentes da Atlas": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADLGr1FtW_uEoylQV_Cgbjxy2NoBJDAAIiCgACbKWoR6t9N7NXmPdCPQQ",
+          "message_id": 44,
+          "file_size": 19278766
+        }
+      ]
+    },
+    "Aniquilação (2006)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "O que aconteceria se a Aniquilação... Tivesse alcançado a Terra.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADLWr1Fx9u9vq8WvZYLFoPJ4PVcI88AAIjCgACbKWoR6Bj6kJM6-JwPQQ",
+          "message_id": 45,
+          "file_size": 13151186
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADLmr1F0Ri9xu7io_-J4AUygyCKcBRAAIkCgACbKWoR8ejIAABZikbLD0E",
+          "message_id": 46,
+          "file_size": 9486316
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADL2r1F3Cqm7GQtthn5qL-kEMuHGREAAIlCgACbKWoR_YQZL0W1e3oPQQ",
+          "message_id": 47,
+          "file_size": 9765375
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADMGr1F4HUsLGpqCNVUNzBpYGYZKlEAAImCgACbKWoR9mWzRyD_dFKPQQ",
+          "message_id": 48,
+          "file_size": 8319944
+        },
+        {
+          "number": 6.0,
+          "title": "Capítulo 6",
+          "file_name": "Capítulo 06.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADMWr1F7DMfrmS2BpQXNutQ2Kg6ZdMAAInCgACbKWoR29aKSn1KYIyPQQ",
+          "message_id": 49,
+          "file_size": 9273506
+        }
+      ]
+    },
+    "Aniquilação (2006) - Drax: O Destruidor": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADMmr1F8OftlQ9XMlInXC9wOXEkGFRAAIoCgACbKWoR7NB8xwtCBIcPQQ",
+          "message_id": 50,
+          "file_size": 10813006
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADM2r1F-0eRiQwy64Y_EZ6SObK02YCAAIpCgACbKWoR3ZGXXtEy8__PQQ",
+          "message_id": 51,
+          "file_size": 10442681
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADNGr1GDI6PuASDhKWe7wM2TTmYqc1AAIrCgACbKWoR64dkfpcb5SzPQQ",
+          "message_id": 52,
+          "file_size": 9375486
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADNWr1GIk5iqCRTtojkGLssaifwl9TAAItCgACbKWoR1HvCmjHYHtaPQQ",
+          "message_id": 53,
+          "file_size": 14324064
+        }
+      ]
+    },
+    "Aniquilação (2006) - Nova": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADNmr1GKtSiIEcvoBVkt38XwG5Gs1AAAIvCgACbKWoR8HU4t9sokmePQQ",
+          "message_id": 54,
+          "file_size": 6848443
+        }
+      ]
+    },
+    "Aniquilação (2006) - Surfista Prateado": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADN2r1GOmmps57UwuhY2SumD5R0Pz7AAIxCgACbKWoR1dGTHx1y3t8PQQ",
+          "message_id": 55,
+          "file_size": 8336212
+        }
+      ]
+    },
+    "Aniquilação Tormenta": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADOGr1GPKx5tUyK0k7xM8txXo2EZRzAAIyCgACbKWoR6A5ikOfL3-sPQQ",
+          "message_id": 56,
+          "file_size": 46551302
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADO2r1G-QY8GkmpKi8v1Df6IHGe1M7AAI6CgACbKWoR-27nBc2GFXAPQQ",
+          "message_id": 59,
+          "file_size": 44545304
+        }
+      ]
+    },
+    "Aranha-Geddon": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADPGr1HCyFm5YK5nn8D_Tg6rNGj_EOAAI7CgACbKWoR8wiyOsKwmicPQQ",
+          "message_id": 60,
+          "file_size": 17562467
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADPWr1HJQ6kRwmeYJuwGoGI3n24rybAAI9CgACbKWoR4sqUAjkuGs3PQQ",
+          "message_id": 61,
+          "file_size": 19373901
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADPmr1HQ89bHW7u2jpWyjWDlQnElM5AAJACgACbKWoR5sTB9b3JA5nPQQ",
+          "message_id": 62,
+          "file_size": 18111740
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADP2r1Hbc7qYI9jRKyJhQz75s4YHfxAAJBCgACbKWoRw17y7qYKuLhPQQ",
+          "message_id": 63,
+          "file_size": 23558311
+        },
+        {
+          "number": 7.0,
+          "title": "Capítulo 7",
+          "file_name": "Capítulo 07.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADQGr1HlXCysaJTAABkr3fmmuu1NxJowACQwoAAmylqEcdL8-0VsUocj0E",
+          "message_id": 64,
+          "file_size": 20155749
+        },
+        {
+          "number": 11.0,
+          "title": "Capítulo 11",
+          "file_name": "Capítulo 11.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADQWr1IHWD9DxEv0ccTCSOkD0YX2LKAAJGCgACbKWoRyWZt7N5Gf5VPQQ",
+          "message_id": 65,
+          "file_size": 37363605
+        },
+        {
+          "number": 12.0,
+          "title": "Capítulo 12",
+          "file_name": "Capítulo 12.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADQmr1IMH2BboMOIbUUe3ed9ujUzhJAAJHCgACbKWoR2HVDwnxXJ9XPQQ",
+          "message_id": 66,
+          "file_size": 18675937
+        },
+        {
+          "number": 14.0,
+          "title": "Capítulo 14",
+          "file_name": "Capítulo 14.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADQ2r1IRtO7jhkICejn7ORCgfO0OZXAAJJCgACbKWoR-XzXnIQeczhPQQ",
+          "message_id": 67,
+          "file_size": 16258721
+        },
+        {
+          "number": 15.0,
+          "title": "Capítulo 15",
+          "file_name": "Capítulo 15.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADRGr1IZOL40rqC-y1cBAZkb50qCW9AAJKCgACbKWoR8j8_3jMhWjrPQQ",
+          "message_id": 68,
+          "file_size": 30415917
+        },
+        {
+          "number": 16.0,
+          "title": "Capítulo 16",
+          "file_name": "Capítulo 16.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADRWr1Ifgg7nFSakxrxgp1h3gOt2XQAAJMCgACbKWoR-ojFuOMwdxTPQQ",
+          "message_id": 69,
+          "file_size": 23468678
+        },
+        {
+          "number": 18.0,
+          "title": "Capítulo 18",
+          "file_name": "Capítulo 18.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADRmr1JLN9xycWMzQPLUV8lJlbDGfTAAJVCgACbKWoRw9r64961y59PQQ",
+          "message_id": 70,
+          "file_size": 26736915
+        }
+      ]
+    },
+    "Aranha-Geddon - Limiar do Aranha-Geddon": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADR2r1JVTbNSgrvqkXPat5seW7Kj06AAJWCgACbKWoR2Sez0LwoR3kPQQ",
+          "message_id": 71,
+          "file_size": 22148861
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADSGr1JacGY0sFy5eZwCA4bs7BKUEGAAJXCgACbKWoR46qenWvj5JUPQQ",
+          "message_id": 72,
+          "file_size": 15880478
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADSWr1JgABjtWXS8NWKWJGJSHWPuFgqwACWgoAAmylqEdyCzUSrXdygj0E",
+          "message_id": 73,
+          "file_size": 17182921
+        },
+        {
+          "number": 6.0,
+          "title": "Capítulo 6",
+          "file_name": "Capítulo 06.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADSmr1JnjGiCPnJYeWbY1T2vvMkgWiAAJbCgACbKWoRx_fU07RP2fwPQQ",
+          "message_id": 74,
+          "file_size": 31002630
+        }
+      ]
+    },
+    "Aranhaverso (2014)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADS2r1JvhFPqBVcVD2vwjxTTUpDYREAAJdCgACbKWoR7aRGZ7UKy5BPQQ",
+          "message_id": 75,
+          "file_size": 26074233
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADTGr1Jv5jpRtWa-eD2oQmaAIVip3fAAJeCgACbKWoRwJxMehV8TP4PQQ",
+          "message_id": 76,
+          "file_size": 12495004
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADTWr1J7_grehFCXj72Ra3BxPpyeMAA2AKAAJspahH3yjBERA8sEU9BA",
+          "message_id": 77,
+          "file_size": 31549551
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADTmr1KCZJ95Q2AkZgP2vXPny5TPf_AAJjCgACbKWoR1AUSigivcuJPQQ",
+          "message_id": 78,
+          "file_size": 17598446
+        },
+        {
+          "number": 6.0,
+          "title": "Capítulo 6",
+          "file_name": "Capítulo 06.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADT2r1KGtgwPZCLCwGi9PTEA0UBNibAAJkCgACbKWoR4hgbUAJ5GqCPQQ",
+          "message_id": 79,
+          "file_size": 17030387
+        },
+        {
+          "number": 7.0,
+          "title": "Capítulo 7",
+          "file_name": "Capítulo 07.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADUGr1KPoCqR-2egdXNr80QTqz20t3AAJlCgACbKWoR93Xhd4tAmhPPQQ",
+          "message_id": 80,
+          "file_size": 19842018
+        },
+        {
+          "number": 9.0,
+          "title": "Capítulo 9",
+          "file_name": "Capítulo 09.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADUWr1KSXXUvZS52D4QsYlX8lNfGbZAAJmCgACbKWoR7NTBO6TwD8NPQQ",
+          "message_id": 81,
+          "file_size": 16903947
+        },
+        {
+          "number": 10.0,
+          "title": "Capítulo 10",
+          "file_name": "Capítulo 10.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADUmr1KWju998tWUXSsFaWswyCssh8AAJnCgACbKWoR_VXxEZAazfUPQQ",
+          "message_id": 82,
+          "file_size": 13957415
+        },
+        {
+          "number": 11.0,
+          "title": "Capítulo 11",
+          "file_name": "Capítulo 11.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADU2r1KcljImqXX5FTnZJc6g2C4yGLAAJpCgACbKWoR7aRhmRzUahiPQQ",
+          "message_id": 83,
+          "file_size": 19173224
+        },
+        {
+          "number": 12.0,
+          "title": "Capítulo 12",
+          "file_name": "Capítulo 12.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADVGr1Kd0weCAGIoM-xVg0RONb6IQbAAJqCgACbKWoR5O71etGEQh0PQQ",
+          "message_id": 84,
+          "file_size": 4436582
+        },
+        {
+          "number": 14.0,
+          "title": "Capítulo 14",
+          "file_name": "Capítulo 14.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADVWr1KfB5oWTchTv2WxHroUeCCyIKAAJrCgACbKWoRwZ01phzdXX_PQQ",
+          "message_id": 85,
+          "file_size": 13980042
+        },
+        {
+          "number": 15.0,
+          "title": "Capítulo 15",
+          "file_name": "Capítulo 15.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADVmr1KkSrVNHkPR1UyqX_MzELhqRaAAJtCgACbKWoRyjrcbXL0N2NPQQ",
+          "message_id": 86,
+          "file_size": 20157745
+        },
+        {
+          "number": 16.0,
+          "title": "Capítulo 16",
+          "file_name": "Capítulo 16.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADV2r1KuMCmYMiSokHm4yOCVN6eePHAAJuCgACbKWoRxlU1Iz7ZJZhPQQ",
+          "message_id": 87,
+          "file_size": 20222038
+        },
+        {
+          "number": 17.0,
+          "title": "Capítulo 17",
+          "file_name": "Capítulo 17.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADWGr1KupQjXRPPCNNSLRe676GYCDCAAJvCgACbKWoR5Xd0wKghGQIPQQ",
+          "message_id": 88,
+          "file_size": 16124091
+        },
+        {
+          "number": 18.0,
+          "title": "Capítulo 18",
+          "file_name": "Capítulo 18.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADWWr1K1_IP5bHF_XrneDSyyuu2tIZAAJyCgACbKWoRw-Z9tVnVSMaPQQ",
+          "message_id": 89,
+          "file_size": 15765058
+        },
+        {
+          "number": 19.0,
+          "title": "Capítulo 19",
+          "file_name": "Capítulo 19.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADWmr1K3LwlYTCYUbV3xWUgHO_qfLTAAJzCgACbKWoR11igj9wtbUzPQQ",
+          "message_id": 90,
+          "file_size": 13262358
+        },
+        {
+          "number": 20.0,
+          "title": "Capítulo 20",
+          "file_name": "Capítulo 20.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADW2r1K4a5OnLpfcXeF00wEZOtwqy9AAJ0CgACbKWoR_SigVR8Q8SsPQQ",
+          "message_id": 91,
+          "file_size": 17793411
+        },
+        {
+          "number": 21.0,
+          "title": "Capítulo 21",
+          "file_name": "Capítulo 21.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADXGr1K_RsT_1RFacuGS-GOD_7d8XSAAJ2CgACbKWoRwRJ-qA-LUrrPQQ",
+          "message_id": 92,
+          "file_size": 16044712
+        }
+      ]
+    },
+    "Aranhaverso (2019)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADXWr1LGQIgpLZEo8c4kOpkleNJ2X-AAJ3CgACbKWoRwrgOE-GPeC9PQQ",
+          "message_id": 93,
+          "file_size": 21903164
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADXmr1LO6qjjRn1WPz6fInCIy6HrqaAAJ4CgACbKWoR65TjXMStdNhPQQ",
+          "message_id": 94,
+          "file_size": 30124631
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADX2r1LYeEwAvzHAMsPuinCcc20Ky4AAJ5CgACbKWoR9VA0AmTaASuPQQ",
+          "message_id": 95,
+          "file_size": 21102532
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADYGr1Ld-pQUNvN4WB0OQO2U_IXqbDAAJ6CgACbKWoR1MY6BrtiO8JPQQ",
+          "message_id": 96,
+          "file_size": 21523887
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADYWr1LeRcPzEPWkgMCUukK5IIegABGQACewoAAmylqEdPFF4V_WwYeD0E",
+          "message_id": 97,
+          "file_size": 10837835
+        },
+        {
+          "number": 6.0,
+          "title": "Capítulo 6",
+          "file_name": "Capítulo 06.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADYmr1LlWwa7CmUMNc113VlcAlMZ7nAAJ8CgACbKWoR7KmW2z0qv17PQQ",
+          "message_id": 98,
+          "file_size": 26066768
+        }
+      ]
+    },
+    "Aranhaverso - No Limiar do Aranhaverso (2014)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADY2r1Los0M60zuTurnMctlGjthFa9AAJ9CgACbKWoR6VMmEmpVv8BPQQ",
+          "message_id": 99,
+          "file_size": 12113360
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADZGr1LwQUSDkyHfdaeHcy-MzTWbHSAAJ_CgACbKWoR-OLqp1UAoCqPQQ",
+          "message_id": 100,
+          "file_size": 16574018
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADZWr1L3MR1qtquwvDqcWhne8E5NApAAKBCgACbKWoR6hUCRROOLXKPQQ",
+          "message_id": 101,
+          "file_size": 21341505
+        },
+        {
+          "number": 6.0,
+          "title": "Capítulo 6",
+          "file_name": "Capítulo 06.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADZmr1L4fUtCHg8fc9lFHYwhvVoJ85AAKDCgACbKWoR-qh9w_iBoXhPQQ",
+          "message_id": 102,
+          "file_size": 19154529
+        },
+        {
+          "number": 7.0,
+          "title": "Capítulo 7",
+          "file_name": "Capítulo 07.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADZ2r1L45GFf7J94t9CcBF2xRBq9LPAAKECgACbKWoRzpLts1KPiDKPQQ",
+          "message_id": 103,
+          "file_size": 19102790
+        },
+        {
+          "number": 8.0,
+          "title": "Capítulo 8",
+          "file_name": "Capítulo 08.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADaGr1MC9jfMmbEktOXeQWtmUbAnMHAAKHCgACbKWoR-TyWSGEJC-VPQQ",
+          "message_id": 104,
+          "file_size": 20575658
+        },
+        {
+          "number": 9.0,
+          "title": "Capítulo 9",
+          "file_name": "Capítulo 09.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADaWr1MH6EeEnsOnuEENaRpHDLgctNAAKICgACbKWoR1b8JNAunNAYPQQ",
+          "message_id": 105,
+          "file_size": 9070794
+        }
+      ]
+    },
+    "Aranhaverso - No Limiar do Aranhaverso (2022)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADamr1MQvqYqcAAZmcmaGv02Yy6frHewACiQoAAmylqEfxkX_l3KFNXT0E",
+          "message_id": 106,
+          "file_size": 35347854
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADa2r1MZo1jykfLYxF1kEoE48XZTvZAAKLCgACbKWoR3qHOXBHyve4PQQ",
+          "message_id": 107,
+          "file_size": 34523880
+        }
+      ]
+    },
+    "Aranhaverso - No Limiar do Aranhaverso (2023)": {
+      "category": "HQ",
+      "chapters": []
+    },
+    "Arcana Mística (2007)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADbGr1Mf--qSAPv5kmq-iUCtTKEbiZAAKNCgACbKWoR4mtfRhL53u6PQQ",
+          "message_id": 108,
+          "file_size": 26927101
+        }
+      ]
+    },
+    "As Poderosas Valquíria": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADbWr1MgZJpl-JtRHZqaWpljG6Xg67AAKOCgACbKWoRzZ0ykTVJzaRPQQ",
+          "message_id": 109,
+          "file_size": 23401484
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADbmr1Ml-ouES3hpxItxh9CVPw6mXhAAKQCgACbKWoR32QbdTte8juPQQ",
+          "message_id": 110,
+          "file_size": 11304457
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADb2r1MoG7v1hun9Mc2m1HS1nZYrhoAAKRCgACbKWoRzetYNzj5XS-PQQ",
+          "message_id": 111,
+          "file_size": 26027086
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADcGr1MvHQRxf99XBNtDvmhJprWna7AAKTCgACbKWoR031CZgrICNtPQQ",
+          "message_id": 112,
+          "file_size": 27058895
+        }
+      ]
+    },
+    "As Variantes (2022)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADcWr1M4AxiPPqcvhXU08_gV503urYAAKUCgACbKWoRwZHrSsweaCMPQQ",
+          "message_id": 113,
+          "file_size": 27080819
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADcmr1NCfsv5N4qgrRyNZzEtOfenqZAAKWCgACbKWoR_zaeGjZfajSPQQ",
+          "message_id": 114,
+          "file_size": 27504806
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADc2r1NKtUsT6FThNPfc2H_pa2oBO0AAKXCgACbKWoR2TxpsPHnlItPQQ",
+          "message_id": 115,
+          "file_size": 28902699
+        }
+      ]
+    },
+    "Asgardianos da Galáxia": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADdGr1NLKW4qdnSSRCTzazQ4SGjngRAAKYCgACbKWoRx55wE-_MdQePQQ",
+          "message_id": 116,
+          "file_size": 15830277
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADdWr1NOwsbdRPji5WSGIgajie3aPtAAKZCgACbKWoR0gpjLIv_dwLPQQ",
+          "message_id": 117,
+          "file_size": 14663444
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADdmr1NTXQ1TdxOWsnIvL2fcRkU1QGAAKaCgACbKWoR_LYOJc0wE5mPQQ",
+          "message_id": 118,
+          "file_size": 16618654
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADd2r1NVljXmBSfYQ_OCjKpc14lqtfAAKbCgACbKWoR7z1dgRMTSrRPQQ",
+          "message_id": 119,
+          "file_size": 16790377
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADeGr1NWMFAd4Jg8x1odAmj7fqh9lwAAKcCgACbKWoR1A5RxswD2FcPQQ",
+          "message_id": 120,
+          "file_size": 18128782
+        },
+        {
+          "number": 7.0,
+          "title": "Capítulo 7",
+          "file_name": "Capítulo 07.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADeWr1NdyvVxnCg3U2QrD_QDxZaXk6AAKdCgACbKWoR2KsvaUYCuAVPQQ",
+          "message_id": 121,
+          "file_size": 15625238
+        },
+        {
+          "number": 8.0,
+          "title": "Capítulo 8",
+          "file_name": "Capítulo 08.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADemr1Nhd6JZfACVit_uQI5dNczmquAAKeCgACbKWoRx7kfiFsqxraPQQ",
+          "message_id": 122,
+          "file_size": 12367698
+        }
+      ]
+    },
+    "Atlântida Ataca (2020)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADe2r1NqPwJ87Gtkal8h1ibrFeplFmAAKgCgACbKWoRyA0ZUduy8hxPQQ",
+          "message_id": 123,
+          "file_size": 28732720
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADfGr1NrndODJWvQupkH7eFp4Ibi7GAAKhCgACbKWoRxSkNVhDLneQPQQ",
+          "message_id": 124,
+          "file_size": 28846678
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADfWr1NzF8urld0P02tedVdHWP3U7BAAKiCgACbKWoRw5_ATZOaXMoPQQ",
+          "message_id": 125,
+          "file_size": 24904052
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADfmr1N5NMRlnJrXavokZp_tDExvpGAAKjCgACbKWoRxgXhH-JB3u6PQQ",
+          "message_id": 126,
+          "file_size": 24120105
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADf2r1OMUqWzN6U_4VS6ZLrfT68C0MAAKpCgACbKWoR06gI_gVOCkzPQQ",
+          "message_id": 127,
+          "file_size": 27476990
+        }
+      ]
+    },
+    "Campeões - 2016": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADgGr1OVryr_AY6uQUmeZfOKhmh9Y2AAKsCgACbKWoR6Q0-rRli9W5PQQ",
+          "message_id": 128,
+          "file_size": 35471456
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADgWr1OfyZ2dLvDPJQpKnemG-WYhyBAAKuCgACbKWoRyTReLvC6GMBPQQ",
+          "message_id": 129,
+          "file_size": 23153811
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capitulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADgmr1OgO0l584z0oAAeI1MGBq8rMlNQACrwoAAmylqEdUf741_sn8JT0E",
+          "message_id": 130,
+          "file_size": 13845940
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADg2r1OlUk2IQM6OULKyx9LXOWCsfoAAKxCgACbKWoR8G5qF6N994ePQQ",
+          "message_id": 131,
+          "file_size": 22443052
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADhGr1OoEKtbE6hThRQ3nHIOX3iMeJAAKzCgACbKWoRwfhRGykdq1qPQQ",
+          "message_id": 132,
+          "file_size": 10913425
+        },
+        {
+          "number": 6.0,
+          "title": "Capítulo 6",
+          "file_name": "Capitulo 06.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADhWr1Osrl1Ktjk0ZY1WJ4YDjIsdXsAAK0CgACbKWoRznURMB5LDO7PQQ",
+          "message_id": 133,
+          "file_size": 10817117
+        },
+        {
+          "number": 7.0,
+          "title": "Capítulo 7",
+          "file_name": "Capítulo 07.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADhmr1Oysuc2iHofs6Vw-vBooxuTogAAK1CgACbKWoR_9NGljs7bF-PQQ",
+          "message_id": 134,
+          "file_size": 22126273
+        },
+        {
+          "number": 8.0,
+          "title": "Capítulo 8",
+          "file_name": "Capítulo 08.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADh2r1O4Mn8t2kgOnFeKAds_I2ShE7AAK2CgACbKWoR36jbiR0YqRqPQQ",
+          "message_id": 135,
+          "file_size": 20951975
+        },
+        {
+          "number": 9.0,
+          "title": "Capítulo 9",
+          "file_name": "Capítulo 09.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADiGr1O93-XpClS11VYmNtxIiqeipiAAK3CgACbKWoR_kxWynY5hkCPQQ",
+          "message_id": 136,
+          "file_size": 21739094
+        },
+        {
+          "number": 10.0,
+          "title": "Capítulo 10",
+          "file_name": "Capítulo 10.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADiWr1PD06EnilKHxGt-aoGzU1RIeDAAK4CgACbKWoR5Z0pVs-TNMMPQQ",
+          "message_id": 137,
+          "file_size": 25047063
+        },
+        {
+          "number": 11.0,
+          "title": "Capítulo 11",
+          "file_name": "Capítulo 11_pdf.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADimr1PKExCNTVE-NxNliSLjLeMrSkAAK6CgACbKWoRzn9HvzFOMWOPQQ",
+          "message_id": 138,
+          "file_size": 24886014
+        },
+        {
+          "number": 12.0,
+          "title": "Capítulo 12",
+          "file_name": "Capítulo 12.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADi2r1PQG0E9zeonYY1S1ePadoaEnYAAK7CgACbKWoR2gf9ZVeLoi4PQQ",
+          "message_id": 139,
+          "file_size": 23814958
+        },
+        {
+          "number": 13.0,
+          "title": "Capítulo 13",
+          "file_name": "Capítulo 13.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADjGr1PYa_VngqCfb8V71xIS7NYUVMAAK8CgACbKWoR6FoYfttKEXcPQQ",
+          "message_id": 140,
+          "file_size": 27991211
+        },
+        {
+          "number": 14.0,
+          "title": "Capítulo 14",
+          "file_name": "Capítulo 14.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADjWr1PfCh38fCnP-NDieoMmfcPPPlAAK9CgACbKWoR2L95XRrdKChPQQ",
+          "message_id": 141,
+          "file_size": 25248702
+        },
+        {
+          "number": 15.0,
+          "title": "Capítulo 15",
+          "file_name": "Capítulo 15.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADjmr1PnJcRgABZgztgUMoi-2NoiczoAACvwoAAmylqEesFDouV0rNaT0E",
+          "message_id": 142,
+          "file_size": 24988154
+        },
+        {
+          "number": 16.0,
+          "title": "Capítulo 16",
+          "file_name": "Capítulo 16.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADj2r1PvHmvu7XON-fifxAkVGeHbv2AALACgACbKWoR41SRAF6C_NiPQQ",
+          "message_id": 143,
+          "file_size": 24040644
+        },
+        {
+          "number": 17.0,
+          "title": "Capítulo 17",
+          "file_name": "Capítulo 17.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADkGr1P0GAGxaGtvDCCsGsXm86WurPAALBCgACbKWoR6mc-ROohRQxPQQ",
+          "message_id": 144,
+          "file_size": 17524689
+        },
+        {
+          "number": 18.0,
+          "title": "Capítulo 18",
+          "file_name": "Capítulo 18.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADkWr1P53SuhgS5Sv3ddq8HV5E_3gaAALDCgACbKWoR9BrveHUyCqePQQ",
+          "message_id": 145,
+          "file_size": 23129155
+        },
+        {
+          "number": 19.0,
+          "title": "Capítulo 19",
+          "file_name": "Capítulo 19.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADkmr1QAms5z3QQLzzxoDnu6oqCAmDAALECgACbKWoRytxi9leX7DMPQQ",
+          "message_id": 146,
+          "file_size": 20593942
+        },
+        {
+          "number": 20.0,
+          "title": "Capítulo 20",
+          "file_name": "Capítulo 20.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADk2r1QKHObdSdvCeuIdDJqDZc1a8KAALFCgACbKWoR8uftXCQGWALPQQ",
+          "message_id": 147,
+          "file_size": 31937575
+        },
+        {
+          "number": 21.0,
+          "title": "Capítulo 21",
+          "file_name": "Capítulo 21.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADlGr1QL0jYWQLw0ODvg_tg6cp0Ki4AALGCgACbKWoR3oGd7Xq24ftPQQ",
+          "message_id": 148,
+          "file_size": 31803181
+        },
+        {
+          "number": 22.0,
+          "title": "Capítulo 22",
+          "file_name": "Capítulo 22.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADlWr1QNP_q8fK4H_j6Ra1TTvD7nksAALHCgACbKWoR0IODqiWt_W1PQQ",
+          "message_id": 149,
+          "file_size": 29592419
+        },
+        {
+          "number": 23.0,
+          "title": "Capítulo 23",
+          "file_name": "Capítulo 23.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADlmr1QYFik9dbUSE8_gc3DrpN7lpeAALICgACbKWoRydOy-EDH2LmPQQ",
+          "message_id": 150,
+          "file_size": 47594419
+        },
+        {
+          "number": 24.0,
+          "title": "Capítulo 24",
+          "file_name": "Capítulo 24.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADl2r1QdyH_OVD7OvMwW4PViHfVF-BAALJCgACbKWoR7jvoxXM4nODPQQ",
+          "message_id": 151,
+          "file_size": 17516027
+        },
+        {
+          "number": 25.0,
+          "title": "Capítulo 25",
+          "file_name": "Capítulo 25.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADmGr1QkVD3OKcWxgPFDHt12Gd4HwJAALLCgACbKWoR_wpjn9WGS-LPQQ",
+          "message_id": 152,
+          "file_size": 29748439
+        },
+        {
+          "number": 26.0,
+          "title": "Capítulo 26",
+          "file_name": "Capítulo 26.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADmWr1QqNHJF4i5EDAmgiF240QmwtyAAJoBwACbKWwR82AXGmNFAYwPQQ",
+          "message_id": 153,
+          "file_size": 21427592
+        },
+        {
+          "number": 27.0,
+          "title": "Capítulo 27",
+          "file_name": "Capítulo 27.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADmmr1Q0ffPBQCo8V_jew0r3IJoxwXAAJpBwACbKWwR7HHzn3g-cc3PQQ",
+          "message_id": 154,
+          "file_size": 40282899
+        }
+      ]
+    },
+    "Campeões - 2019": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADm2r1Q2NJkFrH2hz64RULgmmiJpNaAAJqBwACbKWwR3ev-kz1qEWBPQQ",
+          "message_id": 155,
+          "file_size": 15457872
+        },
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADnGr1Q6fBJuRCWT_uWvhZP78NrblEAAJrBwACbKWwR4EzCgYBIlF-PQQ",
+          "message_id": 156,
+          "file_size": 16647857
+        },
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADnWr1Q-6hGmkkWrwDePb3quiqvB86AAJsBwACbKWwRzv3d-ip-3EZPQQ",
+          "message_id": 157,
+          "file_size": 16443800
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADnmr1Q_bvMN4_TYlpYHt6jgqIdxahAAJtBwACbKWwR-iVPREUcIQyPQQ",
+          "message_id": 158,
+          "file_size": 14588664
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADn2r1RC51b2JPHimqS9d5oQwAAVtfvQACbgcAAmylsEdNNagXaSmliz0E",
+          "message_id": 159,
+          "file_size": 15074616
+        },
+        {
+          "number": 6.0,
+          "title": "Capítulo 6",
+          "file_name": "Capítulo 06.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADoGr1RIHlhcpZORnfKoAYNQrbHDHVAAJvBwACbKWwR01-jVBDAzeXPQQ",
+          "message_id": 160,
+          "file_size": 15253620
+        },
+        {
+          "number": 7.0,
+          "title": "Capítulo 7",
+          "file_name": "Capítulo 07.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADoWr1RIg4NgbI3D_bjHVbBqPGpY4vAAJwBwACbKWwR4PFOEZbFEdcPQQ",
+          "message_id": 161,
+          "file_size": 14884518
+        },
+        {
+          "number": 8.0,
+          "title": "Capítulo 8",
+          "file_name": "Capítulo 08.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADomr1RM4xV1sFO3NYEynwdPvDdBYhAAJxBwACbKWwR9GNHbQnvP5_PQQ",
+          "message_id": 162,
+          "file_size": 17032809
+        },
+        {
+          "number": 9.0,
+          "title": "Capítulo 9",
+          "file_name": "Capítulo 09.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADo2r1RRXaHQZx6VRh199DRXuww6vEAAJyBwACbKWwRxvoKv6JyOdOPQQ",
+          "message_id": 163,
+          "file_size": 16828282
+        },
+        {
+          "number": 10.0,
+          "title": "Capítulo 10",
+          "file_name": "Capítulo 10.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADpGr1RUKmz_WSpRK5fHGan76HsQTIAAJ1BwACbKWwR8MD_b03dvhhPQQ",
+          "message_id": 164,
+          "file_size": 10788040
+        }
+      ]
+    },
+    "Campeões - 2021": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 1.0,
+          "title": "Capítulo 1",
+          "file_name": "Capítulo 01.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADpWr1RYBVk2GQljnl4G0LqjlfGnrOAAJ2BwACbKWwRwTWFxdH0TPhPQQ",
+          "message_id": 165,
+          "file_size": 15494804
         }
       ]
     }

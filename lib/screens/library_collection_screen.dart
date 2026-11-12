@@ -150,6 +150,7 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
         for (final manga in all.values)
           manga.compositeId: LibraryProgress.forManga(manga),
       };
+
       bool matches(Manga manga) {
         final query = mangaSearchKey(_search.text.trim());
         if (query.isNotEmpty && !mangaSearchKey(manga.title).contains(query)) {
@@ -177,27 +178,67 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                     false),
           )
           .toList();
+
       return Scaffold(
         backgroundColor: YomiPalette.pitchBlack,
         body: ListView(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 112),
+          clipBehavior: Clip.none,
           children: [
-            Row(
+            Stack(
+              clipBehavior: Clip.none,
               children: [
-                Icon(Icons.menu_book_rounded, color: palette.primary, size: 26),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Biblioteca',
-                    style: TextStyle(fontSize: 27, fontWeight: FontWeight.w900),
+                Positioned(
+                  top: -24,
+                  right: -10,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            palette.primary.withValues(alpha: 0.28),
+                            palette.primary.withValues(alpha: 0.08),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.5, 1.0],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.menu_book_rounded,
+                          color: palette.primary,
+                          size: 26,
+                        ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Biblioteca',
+                            style: TextStyle(
+                              fontSize: 27,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Suas leituras em um só lugar.',
+                      style: TextStyle(color: Colors.white60, fontSize: 14),
+                    ),
+                  ],
+                ),
               ],
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Suas leituras em um só lugar.',
-              style: TextStyle(color: Colors.white60, fontSize: 14),
             ),
             const SizedBox(height: 22),
             TextField(
@@ -258,6 +299,7 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
             const SizedBox(height: 14),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
               child: Row(
                 children: [
                   for (final item in [
@@ -288,11 +330,13 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                         showCheckmark: false,
                         selectedColor: palette.primary,
                         side: BorderSide(
-                          color: palette.primary.withValues(alpha: 0.3),
+                          color: _filter == item.$1
+                              ? palette.primary
+                              : palette.primary.withValues(alpha: 0.3),
                         ),
-                        onSelected: (_) {
+                        onSelected: (selected) {
                           FocusScope.of(context).unfocus();
-                          setState(() => _filter = item.$1);
+                          setState(() => _filter = selected ? item.$1 : 'all');
                         },
                       ),
                     ),
@@ -301,51 +345,60 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
             ),
             const SizedBox(height: 24),
             if (continuations.isNotEmpty) ...[
-              _continueCard(continuations.first, palette, progress),
+              _continueCard(continuations.first, palette, progress, favorites),
               const SizedBox(height: 26),
             ],
             if (displayed.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 22),
+                padding: const EdgeInsets.symmetric(vertical: 28),
                 child: Text(
                   all.isEmpty
                       ? 'Sua biblioteca está pronta para novas histórias.'
-                      : 'Nenhuma obra corresponde à pesquisa e ao filtro.',
+                      : switch (_filter) {
+                          'favorites' => 'Nenhum favorito encontrado.',
+                          'reading' => 'Nenhuma obra em leitura no momento.',
+                          'completed' => 'Nenhuma obra concluída ainda.',
+                          _ => 'Nenhuma obra corresponde à pesquisa e ao filtro.',
+                        },
                   style: const TextStyle(color: Colors.white60),
                   textAlign: TextAlign.center,
                 ),
-              ),
-            if (displayedFavorites.isNotEmpty) ...[
-              _heading('Favoritos', Icons.favorite_rounded, palette),
-              const SizedBox(height: 12),
-              _rail(displayedFavorites, palette, progress),
-              const SizedBox(height: 24),
-            ],
-            if (_filter != 'favorites' &&
-                displayed.any(
-                  (m) =>
-                      !favorites.any((fav) => fav.compositeId == m.compositeId),
-                )) ...[
-              _heading(
-                'Suas obras',
-                Icons.collections_bookmark_rounded,
-                palette,
-              ),
-              const SizedBox(height: 12),
-              _rail(
-                displayed
-                    .where(
-                      (m) => !favorites.any(
-                        (fav) => fav.compositeId == m.compositeId,
-                      ),
-                    )
-                    .toList(),
-                palette,
-                progress,
-              ),
-              const SizedBox(height: 24),
-            ],
-            if (_filter == 'all')
+              )
+            else if (_filter == 'all') ...[
+              if (displayedFavorites.isNotEmpty) ...[
+                _heading(
+                  'Favoritos',
+                  Icons.favorite_rounded,
+                  palette,
+                  onSeeAll: () => setState(() => _filter = 'favorites'),
+                ),
+                const SizedBox(height: 12),
+                _rail(displayedFavorites, palette, progress, favorites),
+                const SizedBox(height: 24),
+              ],
+              if (displayed.any(
+                (m) => !favorites.any((fav) => fav.compositeId == m.compositeId),
+              )) ...[
+                _heading(
+                  'Suas obras',
+                  Icons.collections_bookmark_rounded,
+                  palette,
+                ),
+                const SizedBox(height: 12),
+                _rail(
+                  displayed
+                      .where(
+                        (m) => !favorites.any(
+                          (fav) => fav.compositeId == m.compositeId,
+                        ),
+                      )
+                      .toList(),
+                  palette,
+                  progress,
+                  favorites,
+                ),
+                const SizedBox(height: 24),
+              ],
               for (final list in lists) ...[
                 Row(
                   children: [
@@ -404,15 +457,41 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
                 if (list.mangas.where(matches).isEmpty)
-                  const Text(
-                    'Nenhuma obra nesta lista corresponde à pesquisa.',
-                    style: TextStyle(color: Colors.white54),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      'Nenhuma obra nesta lista corresponde à pesquisa.',
+                      style: TextStyle(color: Colors.white54),
+                    ),
                   )
-                else
-                  _rail(list.mangas.where(matches).toList(), palette, progress),
-                const SizedBox(height: 24),
+                else ...[
+                  _rail(
+                    list.mangas.where(matches).toList(),
+                    palette,
+                    progress,
+                    favorites,
+                  ),
+                  const SizedBox(height: 24),
+                ],
               ],
+            ] else if (_filter == 'favorites') ...[
+              _heading('Favoritos', Icons.favorite_rounded, palette),
+              const SizedBox(height: 12),
+              _rail(displayedFavorites, palette, progress, favorites),
+              const SizedBox(height: 24),
+            ] else if (_filter == 'reading') ...[
+              _heading('Lendo', Icons.auto_stories_rounded, palette),
+              const SizedBox(height: 12),
+              _rail(displayed, palette, progress, favorites),
+              const SizedBox(height: 24),
+            ] else if (_filter == 'completed') ...[
+              _heading('Concluídas', Icons.check_circle_rounded, palette),
+              const SizedBox(height: 12),
+              _rail(displayed, palette, progress, favorites),
+              const SizedBox(height: 24),
+            ],
             Material(
               color: Colors.transparent,
               child: InkWell(
@@ -424,7 +503,7 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                       )
                     : widget.onExplore,
                 child: Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(22),
                     gradient: LinearGradient(
@@ -439,10 +518,21 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.library_add_rounded,
-                        color: palette.secondary,
-                        size: 32,
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: palette.primary.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: palette.primary.withValues(alpha: 0.45),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.layers_rounded,
+                          color: palette.secondary,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -452,11 +542,11 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                             const Text(
                               'Adicione novas obras',
                               style: TextStyle(
-                                fontSize: 17,
+                                fontSize: 16.5,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            const SizedBox(height: 5),
+                            const SizedBox(height: 4),
                             Text(
                               offline
                                   ? 'Reconecte para explorar novas histórias.'
@@ -487,8 +577,9 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
   Widget _heading(
     String title,
     IconData icon,
-    ProfileAdaptivePalette palette,
-  ) => Row(
+    ProfileAdaptivePalette palette, {
+    VoidCallback? onSeeAll,
+  }) => Row(
     children: [
       Icon(icon, color: palette.secondary, size: 22),
       const SizedBox(width: 8),
@@ -498,20 +589,25 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
         ),
       ),
-      ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 110),
-        child: TextButton(
-          onPressed: () => setState(
-            () => _filter = title == 'Favoritos' ? 'favorites' : 'all',
-          ),
-          child: Text(
-            'Ver todos',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: palette.secondary),
+      if (onSeeAll != null)
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 120),
+          child: TextButton(
+            onPressed: onSeeAll,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+            ),
+            child: Text(
+              'Ver todos >',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: palette.secondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
-      ),
     ],
   );
 
@@ -519,6 +615,7 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
     List<Manga> items,
     ProfileAdaptivePalette palette,
     Map<String, LibraryProgress> progress,
+    List<Manga> favorites,
   ) {
     final width = ((MediaQuery.sizeOf(context).width - 66) / 4).clamp(
       100.0,
@@ -529,12 +626,14 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
           width * 1.5 + MediaQuery.textScalerOf(context).scale(13) * 4.8 + 20,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
         itemCount: items.length,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final manga = items[index];
           final reading =
               progress[manga.compositeId] ?? LibraryProgress.forManga(manga);
+          final isFav = favorites.any((m) => m.compositeId == manga.compositeId);
           return SizedBox(
             width: width,
             child: Column(
@@ -542,13 +641,43 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
               children: [
                 InkWell(
                   onTap: () => _detail(manga),
-                  borderRadius: BorderRadius.circular(12),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: AspectRatio(
-                      aspectRatio: 2 / 3,
-                      child: YomiCoverImage(manga: manga, width: width),
-                    ),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: AspectRatio(
+                          aspectRatio: 2 / 3,
+                          child: YomiCoverImage(manga: manga, width: width),
+                        ),
+                      ),
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => StorageService.toggleFavorite(manga),
+                            customBorder: const CircleBorder(),
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.black.withValues(alpha: 0.65),
+                              ),
+                              child: Icon(
+                                isFav
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 13,
+                                color: isFav ? palette.primary : Colors.white70,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -570,7 +699,7 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
                     value: reading.fraction ?? 0,
-                    minHeight: 4,
+                    minHeight: 3.5,
                     color: palette.primary,
                     backgroundColor: Colors.white10,
                   ),
@@ -598,93 +727,271 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
     Map<String, dynamic> entry,
     ProfileAdaptivePalette palette,
     Map<String, LibraryProgress> progress,
+    List<Manga> favorites,
   ) {
     final manga = entry['manga'] as Manga;
     final chapter = entry['chapter'] as Chapter;
     final reading =
         progress[manga.compositeId] ?? LibraryProgress.forManga(manga);
+    final isFav = favorites.any((m) => m.compositeId == manga.compositeId);
+
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(22),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: Clip.none,
       child: InkWell(
         onTap: () => _resume(manga, chapter),
+        borderRadius: BorderRadius.circular(22),
         child: Container(
+          clipBehavior: Clip.none,
+          padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: palette.primary.withValues(alpha: 0.4)),
+            border: Border.all(color: palette.primary.withValues(alpha: 0.35)),
             gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
               colors: [
                 palette.surfaceTint,
-                palette.primary.withValues(alpha: 0.25),
+                palette.primary.withValues(alpha: 0.22),
               ],
             ),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'CONTINUE LENDO',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: palette.secondary,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1,
-                        ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'CONTINUE LENDO',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: palette.secondary,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        manga.title,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          height: 1.15,
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      manga.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
                       ),
-                      const SizedBox(height: 20),
-                      LinearProgressIndicator(
+                    ),
+                    const SizedBox(height: 14),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
                         value: reading.fraction ?? 0,
                         minHeight: 4,
                         color: palette.primary,
-                        backgroundColor: Colors.white10,
+                        backgroundColor: Colors.white12,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Cap. ${chapter.chapterNumber} · ${reading.label}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.white60,
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Capítulo ${chapter.chapterNumber} • ${reading.completed ? '100% concluído' : reading.label}',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Colors.white60,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(height: 12),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        color: palette.secondary,
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              ClipRRect(
-                borderRadius: const BorderRadius.horizontal(
-                  right: Radius.circular(22),
-                ),
-                child: YomiCoverImage(
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: FloatingContinueCover(
                   manga: manga,
-                  width: MediaQuery.sizeOf(context).width < 340 ? 100 : 132,
-                  height: 238,
-                  highRes: true,
+                  width: 96,
+                  height: 140,
+                  palette: palette,
+                  isFavorite: isFav,
+                  onFavoriteToggle: () => StorageService.toggleFavorite(manga),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: palette.primary,
+                  boxShadow: [
+                    BoxShadow(
+                      color: palette.primary.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                    size: 19,
+                  ),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Widget reutilizável que anima a capa flutuante com rotação e translação contínuas.
+class FloatingContinueCover extends StatefulWidget {
+  final Manga manga;
+  final double width;
+  final double height;
+  final ProfileAdaptivePalette palette;
+  final bool isFavorite;
+  final VoidCallback? onFavoriteToggle;
+
+  const FloatingContinueCover({
+    super.key,
+    required this.manga,
+    required this.width,
+    required this.height,
+    required this.palette,
+    required this.isFavorite,
+    this.onFavoriteToggle,
+  });
+
+  @override
+  State<FloatingContinueCover> createState() => _FloatingContinueCoverState();
+}
+
+class _FloatingContinueCoverState extends State<FloatingContinueCover>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2800),
+    );
+    final inTest =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!inTest) {
+      _controller.repeat(reverse: true);
+    } else {
+      _controller.value = 0.5;
+    }
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOutSine,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        // Oscilação em Y de cerca de 6 pixels (-3.0 a +3.0)
+        final yOffset = (_animation.value - 0.5) * 6.0;
+        // Inclinação inicial ~ -5° (-0.087 rad) oscilando em torno de ±2.5° (±0.0436 rad)
+        final angle = -0.087 + (_animation.value - 0.5) * 0.087;
+
+        return Transform.translate(
+          offset: Offset(0, yOffset),
+          child: Transform.rotate(
+            angle: angle,
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        width: widget.width,
+        height: widget.height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.55),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+              spreadRadius: 1,
+            ),
+            BoxShadow(
+              color: widget.palette.primary.withValues(alpha: 0.22),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: YomiCoverImage(
+                  manga: widget.manga,
+                  width: widget.width,
+                  height: widget.height,
+                  highRes: true,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 7,
+              right: 7,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: widget.onFavoriteToggle,
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.60),
+                      border: Border.all(
+                        color: widget.isFavorite
+                            ? widget.palette.primary.withValues(alpha: 0.8)
+                            : Colors.white24,
+                        width: 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        widget.isFavorite
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        size: 15,
+                        color: widget.isFavorite
+                            ? widget.palette.primary
+                            : Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -216,7 +216,7 @@ void main() {
   }
 
   testWidgets(
-    'popular billboard saves favorites and hints horizontal scrolling',
+    'popular billboard saves to read later and hints horizontal scrolling',
     (tester) async {
       await http.runWithClient(() async {
         await home(tester);
@@ -230,14 +230,20 @@ void main() {
         });
 
         await tester.pumpAndSettle();
-        expect(StorageService.getFavorites(), hasLength(1));
+        expect(
+          StorageService.isMangaInReadLater('11111111-1111-1111-1111-111111111110'),
+          isTrue,
+        );
         expect(find.text('Na Minha Lista'), findsOneWidget);
         await tester.runAsync(() async {
           await tester.tap(find.text('Na Minha Lista'));
           await Future<void>.delayed(const Duration(milliseconds: 100));
         });
         await tester.pumpAndSettle();
-        expect(StorageService.getFavorites(), isEmpty);
+        expect(
+          StorageService.isMangaInReadLater('11111111-1111-1111-1111-111111111110'),
+          isFalse,
+        );
 
         final first = tester.getRect(find.text(title(0)).last);
         final fourth = tester.getRect(find.text(title(3)).last);

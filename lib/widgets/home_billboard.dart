@@ -36,11 +36,12 @@ class HomeBillboard extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: [0, 0.3, 0.62, 1],
+                stops: [0, 0.25, 0.55, 0.8, 1],
                 colors: [
-                  Color(0x77070709),
-                  Color(0x11070709),
-                  Color(0xDD070709),
+                  Color(0x99070709),
+                  Color(0x33070709),
+                  Color(0xCC070709),
+                  Color(0xF5070709),
                   background,
                 ],
               ),
@@ -52,7 +53,7 @@ class HomeBillboard extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xEE070709), Color(0x33070709)],
+                  colors: [Color(0xF0070709), Color(0x66070709)],
                 ),
               ),
             ),
@@ -67,13 +68,27 @@ class HomeBillboard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'DESTAQUE NO YOMI',
-                    style: TextStyle(
-                      color: accent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xCC070709),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: accent.withValues(alpha: 0.35),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      'DESTAQUE NO YOMI',
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -87,6 +102,18 @@ class HomeBillboard extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                       height: 1.04,
                       letterSpacing: -1.4,
+                      shadows: const [
+                        Shadow(
+                          color: Color(0xDD000000),
+                          offset: Offset(0, 3),
+                          blurRadius: 16,
+                        ),
+                        Shadow(
+                          color: Color(0xFF070709),
+                          offset: Offset(0, 1),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -99,6 +126,13 @@ class HomeBillboard extends StatelessWidget {
                         color: Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
+                        shadows: [
+                          Shadow(
+                            color: Color(0xEE000000),
+                            offset: Offset(0, 1),
+                            blurRadius: 8,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -112,9 +146,16 @@ class HomeBillboard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white70,
+                      color: Color(0xDDFFFFFF),
                       fontSize: 14,
                       height: 1.5,
+                      shadows: [
+                        Shadow(
+                          color: Color(0xFF000000),
+                          offset: Offset(0, 1),
+                          blurRadius: 8,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20),

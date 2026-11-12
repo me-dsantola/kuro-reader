@@ -437,12 +437,24 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
               manga: manga,
               artwork: YomiCoverImage(manga: manga, highRes: true),
               accent: palette.primary,
-              inList: StorageService.isFavorite(manga.id),
+              inList: StorageService.isMangaInReadLater(manga.id),
               opening: _openingFeatured,
               onRead: () => _readFeatured(manga),
               onToggleList: () async {
                 try {
-                  await StorageService.toggleFavorite(manga);
+                  final added = await StorageService.toggleReadLater(manga);
+                  if (context.mounted) {
+                    AppFeedback.show(
+                      context,
+                      SnackBar(
+                        content: Text(
+                          added
+                              ? '"${manga.title}" adicionado à lista Ler mais tarde.'
+                              : '"${manga.title}" removido de Ler mais tarde.',
+                        ),
+                      ),
+                    );
+                  }
                 } catch (_) {
                   if (context.mounted) {
                     AppFeedback.show(
