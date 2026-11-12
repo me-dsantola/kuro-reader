@@ -2,9 +2,10 @@
 Script de Upload e Catalogação Automática de HQs para o Telegram (YOMI)
 ======================================================================
 - Varre pastas de quadrinhos (PDF, CBZ, CBR, ZIP)
-- Detecta automaticamente o Título da Obra (nome da pasta) e o Capítulo
+- Detecta automaticamente o Título da Obra preservando hierarquias (Ex: Aranhaverso - 2014)
 - Previne DUPLICATAS por hash SHA-256 e por numeração de capítulo
 - Salva o histórico de envios em 'uploaded_hqs_ledger.json' para poder pausar e continuar
+- Gera lista detalhada 'hqs_acima_de_50mb.txt' para os poucos arquivos maiores que 50MB
 - Gera o catálogo 'yomi_hqs_catalog.json' pronto para consumo no aplicativo YOMI!
 """
 
@@ -24,17 +25,46 @@ BOT_TOKEN = "9226471608:AAGR6VQL6i7zLHLK4c2F9k69efPE6kfyGfw"
 CHANNEL_ID = "-1004356625326"  # Canal: Acervo YOMI HQs
 LEDGER_FILE = "uploaded_hqs_ledger.json"
 CATALOG_FILE = "yomi_hqs_catalog.json"
+OVERSIZED_REPORT_FILE = "hqs_acima_de_50mb.txt"
 
-SUPPORTED_EXTENSIONS = {".pdf", ".cbz", ".cbr", ".zip"}
+SUPPORTED_EXTENSIONS = {".pdf", ".cbz", ".cbr", ".zip", ".cbt"}
 TELEGRAM_MAX_BYTES = 50 * 1024 * 1024  # 50 MB limite do Bot API padrão
 
 
-def clean_title(raw_name: str) -> str:
+def clean_title(s: str) -> str:
     """Higieniza o nome da obra removendo tags de scan, anos ou ruídos comuns."""
-    cleaned = re.sub(r"\[.*?\]|\(.*?\)", "", raw_name)
-    cleaned = re.sub(r"[-_]+", " ", cleaned)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    return cleaned if cleaned else raw_name.strip()
+    s = re.sub(r"\[.*?\]", "", s)
+    s = s.replace("_", ": ")
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def resolve_series_title(file_path: Path, base_dir: Path) -> str:
+    """Extrai o título limpo da série preservando a hierarquia da pasta."""
+    try:
+        rel = file_path.parent.relative_to(base_dir)
+        parts = rel.parts
+    except Exception:
+        parts = (file_path.parent.name,)
+
+    # Ignora prefixos genéricos como 'MARVEL DRIVE', 'Downloads', 'HQs'
+    meaningful_parts = [
+        p for p in parts
+        if p.lower() not in {"marvel drive", "drive", "hqs", "comics", "downloads", "download", "pdf", "pdfs"}
+    ]
+
+    if not meaningful_parts:
+        return clean_title(file_path.parent.name)
+
+    if len(meaningful_parts) == 1:
+        return clean_title(meaningful_parts[0])
+
+    main_cat = clean_title(meaningful_parts[0])
+    sub_cat = clean_title(meaningful_parts[1])
+
+    if main_cat.lower() == sub_cat.lower() or sub_cat.lower().startswith(main_cat.lower()):
+        return sub_cat
+    return f"{main_cat} - {sub_cat}"
 
 
 def extract_chapter_number(file_name: str) -> float:
@@ -64,7 +94,6 @@ def calculate_sha256(file_path: Path) -> str:
     """Calcula hash rápido SHA-256 do arquivo para evitar duplicatas idênticas."""
     hasher = hashlib.sha256()
     with open(file_path, "rb") as f:
-        # Lê os primeiros 2MB e os últimos 2MB para velocidade em arquivos grandes
         chunk = f.read(2 * 1024 * 1024)
         hasher.update(chunk)
         if file_path.stat().st_size > 4 * 1024 * 1024:
@@ -93,18 +122,13 @@ def send_telegram_document(file_path: Path, caption: str) -> dict:
     boundary = "----YomiTelegramBoundary" + hashlib.md5(str(time.time()).encode()).hexdigest()
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument"
 
-    # Constrói o corpo multipart
     body = bytearray()
-
-    # Campo chat_id
     body.extend(f"--{boundary}\r\n".encode("utf-8"))
     body.extend(f'Content-Disposition: form-data; name="chat_id"\r\n\r\n{CHANNEL_ID}\r\n'.encode("utf-8"))
 
-    # Campo caption
     body.extend(f"--{boundary}\r\n".encode("utf-8"))
     body.extend(f'Content-Disposition: form-data; name="caption"\r\n\r\n{caption}\r\n'.encode("utf-8"))
 
-    # Campo document
     file_name = file_path.name
     body.extend(f"--{boundary}\r\n".encode("utf-8"))
     body.extend(
@@ -125,7 +149,7 @@ def send_telegram_document(file_path: Path, caption: str) -> dict:
 
     for attempt in range(4):
         try:
-            with urllib.request.urlopen(req, timeout=120) as response:
+            with urllib.request.urlopen(req, timeout=180) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 if res_data.get("ok"):
                     return res_data["result"]
@@ -152,7 +176,6 @@ def generate_catalog_from_ledger(ledger: dict):
     catalog = []
     for series_name, series_data in ledger.get("series", {}).items():
         chapters = series_data.get("chapters", [])
-        # Ordena capítulos por número
         chapters.sort(key=lambda c: c.get("number", 0))
 
         catalog.append({
@@ -167,7 +190,7 @@ def generate_catalog_from_ledger(ledger: dict):
     with open(CATALOG_FILE, "w", encoding="utf-8") as f:
         json.dump({"total_series": len(catalog), "items": catalog}, f, indent=2, ensure_ascii=False)
 
-    print(f"\n✅ Catálogo YOMI atualizado com sucesso em '{CATALOG_FILE}'! ({len(catalog)} obras)")
+    print(f"\n✅ Catálogo YOMI atualizado com sucesso em '{CATALOG_FILE}'! ({len(catalog)} obras catalogadas)")
 
 
 def main():
@@ -175,12 +198,16 @@ def main():
     print("   🚀 YOMI VAULT - UPLOADER AUTOMÁTICO DE HQs PARA O TELEGRAM")
     print("=" * 70)
 
+    default_path = r"C:\Users\santi\Desktop\MARVEL DRIVE-20261111T182302Z-1-011"
     if len(sys.argv) > 1:
         root_dir = Path(sys.argv[1])
+    elif Path(default_path).exists():
+        print(f"\n📂 Pasta padrão detectada no Desktop: {default_path}")
+        user_choice = input("Pressione ENTER para usar esta pasta ou digite outro caminho: ").strip()
+        root_dir = Path(user_choice.strip("\"'")) if user_choice else Path(default_path)
     else:
         user_input = input("\n📂 Digite ou cole o caminho da pasta onde estão suas HQs: ").strip()
-        user_input = user_input.strip("\"'")
-        root_dir = Path(user_input)
+        root_dir = Path(user_input.strip("\"'"))
 
     if not root_dir.exists() or not root_dir.is_dir():
         print(f"❌ Erro: O diretório '{root_dir}' não existe.")
@@ -192,8 +219,9 @@ def main():
 
     print(f"\n🔍 Escaneando diretórios a partir de: {root_dir}")
 
-    # Coleta todos os arquivos válidos
     candidates = []
+    oversized_files = []
+
     for root, dirs, files in os.walk(root_dir):
         current_path = Path(root)
         for f in files:
@@ -205,34 +233,26 @@ def main():
     print(f"📦 Total de arquivos de quadrinhos encontrados: {len(candidates)}")
 
     if not candidates:
-        print("Nenhum arquivo .pdf, .cbz ou .zip encontrado.")
+        print("Nenhum arquivo de quadrinho encontrado.")
         return
 
-    # Agrupa por série baseada no nome da pasta
+    # Agrupa por série preservando hierarquia de sagas/volumes
     series_batches = {}
     for path in candidates:
-        # Se os arquivos estiverem em uma subpasta (ex: Marvel / X-Men / Cap 01.pdf)
-        # O nome da história é a pasta pai imediata
-        parent_name = path.parent.name
-        # Se a pasta pai for genérica (ex: 'PDFs' ou 'Downloads'), usa o avô
-        if parent_name.lower() in {"pdf", "pdfs", "download", "downloads", "hqs", "comics"} and path.parent != root_dir:
-            series_title = clean_title(path.parent.parent.name)
-        else:
-            series_title = clean_title(parent_name)
-
+        series_title = resolve_series_title(path, root_dir)
         series_batches.setdefault(series_title, []).append(path)
 
     print(f"📚 Obras distintas identificadas: {len(series_batches)}")
 
     uploaded_count = 0
     skipped_count = 0
+    oversized_count = 0
 
-    for series_name, files in series_batches.items():
+    for series_name, files in sorted(series_batches.items()):
         print(f"\n📖 [Obra]: {series_name} ({len(files)} arquivos)")
         series_entry = series_map.setdefault(series_name, {"category": "HQ", "chapters": []})
         existing_chapter_numbers = {c["number"] for c in series_entry["chapters"]}
 
-        # Ordena os arquivos pelo número do capítulo
         files.sort(key=lambda p: extract_chapter_number(p.name))
 
         for file_path in files:
@@ -243,36 +263,36 @@ def main():
                 continue
 
             if size_bytes > TELEGRAM_MAX_BYTES:
-                print(f"   ⚠️ Arquivo maior que 50MB (limite do Bot Telegram): {file_path.name} ({size_bytes / (1024*1024):.1f} MB)")
-                skipped_count += 1
+                size_mb = size_bytes / (1024 * 1024)
+                print(f"   ⚠️ Maior que 50MB ({size_mb:.1f} MB): {file_path.name} -> Registrado para envio manual!")
+                oversized_files.append((series_name, file_path, size_mb))
+                oversized_count += 1
                 continue
 
             ch_num = extract_chapter_number(file_path.name)
 
-            # Prevenção 1: Checa se o capítulo já foi cadastrado para essa obra
             if ch_num in existing_chapter_numbers:
-                print(f"   🔁 Capítulo {ch_num:g} já existe para '{series_name}'. Pulando repetição ({file_path.name})...")
+                print(f"   🔁 Capítulo {ch_num:g} já cadastrado para '{series_name}'. Pulando repetição ({file_path.name})...")
                 skipped_count += 1
                 continue
 
-            # Prevenção 2: Checa se o arquivo exato (por hash) já foi enviado
             file_hash = calculate_sha256(file_path)
             if file_hash in uploaded_hashes:
                 print(f"   🔁 Conteúdo idêntico detectado (hash {file_hash[:8]}). Pulando ({file_path.name})...")
                 skipped_count += 1
                 continue
 
-            # Prepara legenda padronizada
-            caption = f"#{re.sub(r'[^a-zA-Z0-9]', '', series_name)} | {series_name} - Cap. {ch_num:g}"
+            safe_tag = re.sub(r"[^a-zA-Z0-9]", "", series_name)[:25]
+            caption = f"#{safe_tag} | {series_name} - Cap. {ch_num:g}"
 
-            print(f"   ⬆️ Enviando Cap. {ch_num:g}: {file_path.name} ({size_bytes / (1024*1024):.1f} MB)...", end="", flush=True)
+            size_mb = size_bytes / (1024 * 1024)
+            print(f"   ⬆️ Enviando Cap. {ch_num:g}: {file_path.name} ({size_mb:.1f} MB)...", end="", flush=True)
 
             try:
                 result = send_telegram_document(file_path, caption)
                 doc = result.get("document", {})
                 file_id = doc.get("file_id")
 
-                # Registra no ledger
                 series_entry["chapters"].append({
                     "number": ch_num,
                     "title": f"Capítulo {ch_num:g}",
@@ -291,20 +311,26 @@ def main():
                 uploaded_count += 1
                 print(" [OK]")
 
-                # Intervalo suave para respeitar os limites do Telegram
                 time.sleep(1.8)
 
             except Exception as e:
                 print(f" [ERRO: {e}]")
                 time.sleep(3)
 
+    if oversized_files:
+        with open(OVERSIZED_REPORT_FILE, "w", encoding="utf-8") as f:
+            f.write("# RELATÓRIO DE ARQUIVOS MAIORES QUE 50MB (Para envio manual pelo Telegram Desktop)\n\n")
+            for s_name, f_path, sz in oversized_files:
+                f.write(f"[{s_name}] ({sz:.1f} MB): {f_path}\n")
+        print(f"\n⚠️ Foi gerado o relatório '{OVERSIZED_REPORT_FILE}' com {len(oversized_files)} arquivos que passaram de 50MB.")
+
     print("\n" + "=" * 70)
     print(f"🎉 Processo concluído!")
-    print(f"   ⬆️ Arquivos enviados com sucesso: {uploaded_count}")
+    print(f"   ⬆️ Arquivos enviados com sucesso pelo bot: {uploaded_count}")
     print(f"   🔁 Repetições e duplicatas evitadas: {skipped_count}")
+    print(f"   📦 Arquivos acima de 50MB (para arrastar no app): {oversized_count}")
     print("=" * 70)
 
-    # Gera o catálogo final
     generate_catalog_from_ledger(ledger)
 
 
