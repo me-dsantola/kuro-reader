@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../models/manga_models.dart';
 import '../models/content_rating.dart';
 import 'storage_service.dart';
+import 'telegram_vault_service.dart';
 
 class PaginatedSourceResponse {
   final List<Manga> items;
@@ -695,6 +696,21 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
     // Preserve the original metadata rather than inventing publisher labels
     // or chapter counts from a matching title keyword.
     final items = <Manga>[];
+
+    // Inclui as obras enviadas para o Telegram Vault
+    if (cursor == 0) {
+      final vaultItems = await TelegramVaultService.loadCatalog();
+      if (q.isEmpty) {
+        items.addAll(vaultItems);
+      } else {
+        items.addAll(
+          vaultItems.where(
+            (m) => m.title.toLowerCase().contains(q.toLowerCase()),
+          ),
+        );
+      }
+    }
+
     for (final entry in list) {
       if (entry is! Map) continue;
       final base = Manga.fromJson(
@@ -791,6 +807,21 @@ class AdultVaultAdapter implements IMangaSourceAdapter {
         .toSet();
 
     final items = <Manga>[];
+
+    // Inclui as obras enviadas para o Telegram Vault
+    if (cursor == 0) {
+      final vaultItems = await TelegramVaultService.loadCatalog();
+      if (q.isEmpty) {
+        items.addAll(vaultItems);
+      } else {
+        items.addAll(
+          vaultItems.where(
+            (m) => m.title.toLowerCase().contains(q.toLowerCase()),
+          ),
+        );
+      }
+    }
+
     for (final entry in list) {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);

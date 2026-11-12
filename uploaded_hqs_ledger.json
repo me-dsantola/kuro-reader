@@ -1,5 +1,36 @@
 {
-  "uploaded_hashes": {},
+  "uploaded_hashes": {
+    "775b7137dd77c7649dfa3e0d40530864e466ca7322764ecfa8ad2079daf3ac80": {
+      "series": "A Canção da Fênix Eco",
+      "chapter": 2.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADC2r1AAEi80CqO2pcrVQbWuKrwFjOVAACywkAAmylqEeY2YvZd5LD0z0E"
+    },
+    "bac394cfa4e99cde20f4b9da9b0945dab1798e0957c6d367d05ff46ed957bb9a": {
+      "series": "A Canção da Fênix: Eco",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADDGr1BEg5BEXSjD2jalQKdQ6az3P2AALYCQACbKWoR28aH1A_DNOHPQQ"
+    },
+    "0772ef5daf8f092edc22bf8c299593c9a4caf7733d0154cf1bcb46afafbd5a6b": {
+      "series": "A Guerra dos Reinos",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADDWr1BPZWgu84gM_YaEpw3AIg-J9bAALcCQACbKWoR-maQn7JaSWoPQQ"
+    },
+    "7c53c1753775580e642039a71df1cf4321469602e98b84f4f3cdf4a194dfc82a": {
+      "series": "A História do Universo Marvel (Volume 2)",
+      "chapter": 3.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADDmr1BmgdNZk1W9s9hfOlelRZVk4ZAALfCQACbKWoRyQKRHuYO1nDPQQ"
+    },
+    "fa09388c805a8f0b7bbb7508ecd71fee2f12cc4202f4eb63fac544fcf4994796": {
+      "series": "A História do Universo Marvel (Volume 2)",
+      "chapter": 4.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADD2r1Bn_saYKC40hQJMi-ej40OBQ2AALgCQACbKWoR3iooYAjln4qPQQ"
+    },
+    "687ad561738ad54df3db62b7f7e143de7e7be7257571a5c15a4a6fffdf989120": {
+      "series": "A História do Universo Marvel (Volume 2)",
+      "chapter": 5.0,
+      "file_id": "BQACAgEAAyEGAAMBA6zTrgADEGr1BywIbp2WdDYxiAXIsHLTOhXQAALhCQACbKWoR2kHn2XgtHpiPQQ"
+    }
+  },
   "series": {
     "Vingadores Costa Oeste": {
       "category": "HQ",
@@ -75,6 +106,74 @@
           "file_id": "BQACAgEAAyEFAAMBA6zTrgADBWr0wJcPwd_LrMAU4REnfrw-S7UQAAIdCQACbKWoRx1wrUVj8LhGPQQ",
           "message_id": 5,
           "file_size": 12626614
+        }
+      ]
+    },
+    "A Canção da Fênix Eco": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 2.0,
+          "title": "Capítulo 2",
+          "file_name": "Capítulo 02.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADC2r1AAEi80CqO2pcrVQbWuKrwFjOVAACywkAAmylqEeY2YvZd5LD0z0E",
+          "message_id": 11,
+          "file_size": 33868555
+        }
+      ]
+    },
+    "A Canção da Fênix: Eco": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADDGr1BEg5BEXSjD2jalQKdQ6az3P2AALYCQACbKWoR28aH1A_DNOHPQQ",
+          "message_id": 12,
+          "file_size": 38542413
+        }
+      ]
+    },
+    "A Guerra dos Reinos": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADDWr1BPZWgu84gM_YaEpw3AIg-J9bAALcCQACbKWoR-maQn7JaSWoPQQ",
+          "message_id": 13,
+          "file_size": 42225820
+        }
+      ]
+    },
+    "A História do Universo Marvel (Volume 2)": {
+      "category": "HQ",
+      "chapters": [
+        {
+          "number": 3.0,
+          "title": "Capítulo 3",
+          "file_name": "Capítulo 03.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADDmr1BmgdNZk1W9s9hfOlelRZVk4ZAALfCQACbKWoRyQKRHuYO1nDPQQ",
+          "message_id": 14,
+          "file_size": 47845416
+        },
+        {
+          "number": 4.0,
+          "title": "Capítulo 4",
+          "file_name": "Capítulo 04.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADD2r1Bn_saYKC40hQJMi-ej40OBQ2AALgCQACbKWoR3iooYAjln4qPQQ",
+          "message_id": 15,
+          "file_size": 47695471
+        },
+        {
+          "number": 5.0,
+          "title": "Capítulo 5",
+          "file_name": "Capítulo 05.pdf",
+          "file_id": "BQACAgEAAyEGAAMBA6zTrgADEGr1BywIbp2WdDYxiAXIsHLTOhXQAALhCQACbKWoR2kHn2XgtHpiPQQ",
+          "message_id": 16,
+          "file_size": 42014063
         }
       ]
     }
