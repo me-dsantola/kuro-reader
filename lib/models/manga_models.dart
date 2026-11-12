@@ -886,6 +886,7 @@ class UserProfile {
   final double? blobatarHue;
   final String blobatarBackground;
   final bool blobatarAnimated;
+  final bool blobatarInteractive;
   final int? customAccentColor;
 
   const UserProfile({
@@ -905,6 +906,7 @@ class UserProfile {
     this.blobatarHue,
     this.blobatarBackground = 'circle',
     this.blobatarAnimated = true,
+    this.blobatarInteractive = true,
     this.customAccentColor,
   });
 
@@ -945,6 +947,7 @@ class UserProfile {
     bool clearBlobatarHue = false,
     String? blobatarBackground,
     bool? blobatarAnimated,
+    bool? blobatarInteractive,
     int? customAccentColor,
     bool clearCustomAccentColor = false,
   }) {
@@ -956,19 +959,21 @@ class UserProfile {
       openOnProfileByDefault:
           openOnProfileByDefault ?? this.openOnProfileByDefault,
       isConfigured: isConfigured ?? this.isConfigured,
-      avatarImagePath:
-          clearAvatarImage ? null : (avatarImagePath ?? this.avatarImagePath),
-      bannerImagePath:
-          clearBannerImage ? null : (bannerImagePath ?? this.bannerImagePath),
+      avatarImagePath: clearAvatarImage
+          ? null
+          : (avatarImagePath ?? this.avatarImagePath),
+      bannerImagePath: clearBannerImage
+          ? null
+          : (bannerImagePath ?? this.bannerImagePath),
       useBlobatarAsAvatar: useBlobatarAsAvatar ?? this.useBlobatarAsAvatar,
       blobatarName: blobatarName ?? this.blobatarName,
       blobatarSeed: blobatarSeed ?? this.blobatarSeed,
       blobatarShape: blobatarShape ?? this.blobatarShape,
       blobatarExpression: blobatarExpression ?? this.blobatarExpression,
-      blobatarHue:
-          clearBlobatarHue ? null : (blobatarHue ?? this.blobatarHue),
+      blobatarHue: clearBlobatarHue ? null : (blobatarHue ?? this.blobatarHue),
       blobatarBackground: blobatarBackground ?? this.blobatarBackground,
       blobatarAnimated: blobatarAnimated ?? this.blobatarAnimated,
+      blobatarInteractive: blobatarInteractive ?? this.blobatarInteractive,
       customAccentColor: clearCustomAccentColor
           ? null
           : (customAccentColor ?? this.customAccentColor),
@@ -992,6 +997,7 @@ class UserProfile {
     if (blobatarHue != null) 'blobatarHue': blobatarHue,
     'blobatarBackground': blobatarBackground,
     'blobatarAnimated': blobatarAnimated,
+    'blobatarInteractive': blobatarInteractive,
     if (customAccentColor != null) 'customAccentColor': customAccentColor,
   };
 
@@ -1008,30 +1014,34 @@ class UserProfile {
     // in the reading-focused Home screen.
     openOnProfileByDefault: map['openOnProfileByDefault'] == true,
     isConfigured: map['isConfigured'] != false,
-    avatarImagePath: map['avatarImagePath'] is String &&
+    avatarImagePath:
+        map['avatarImagePath'] is String &&
             (map['avatarImagePath'] as String).trim().isNotEmpty
         ? (map['avatarImagePath'] as String).trim()
         : null,
-    bannerImagePath: map['bannerImagePath'] is String &&
+    bannerImagePath:
+        map['bannerImagePath'] is String &&
             (map['bannerImagePath'] as String).trim().isNotEmpty
         ? (map['bannerImagePath'] as String).trim()
         : null,
     useBlobatarAsAvatar: map['useBlobatarAsAvatar'] is bool
         ? map['useBlobatarAsAvatar'] as bool
         : true,
-    blobatarName: map['blobatarName'] is String &&
+    blobatarName:
+        map['blobatarName'] is String &&
             (map['blobatarName'] as String).trim().isNotEmpty
         ? (map['blobatarName'] as String).trim()
         : 'Kuro',
     blobatarSeed: (map['blobatarSeed'] ?? '').toString(),
     blobatarShape: (map['blobatarShape'] ?? 'auto').toString(),
     blobatarExpression: (map['blobatarExpression'] ?? 'happy').toString(),
-    blobatarHue: map['blobatarHue'] is num &&
-            (map['blobatarHue'] as num).isFinite
+    blobatarHue:
+        map['blobatarHue'] is num && (map['blobatarHue'] as num).isFinite
         ? (map['blobatarHue'] as num).toDouble()
         : null,
     blobatarBackground: (map['blobatarBackground'] ?? 'circle').toString(),
     blobatarAnimated: map['blobatarAnimated'] != false,
+    blobatarInteractive: map['blobatarInteractive'] != false,
     customAccentColor: map['customAccentColor'] is int
         ? map['customAccentColor'] as int
         : null,

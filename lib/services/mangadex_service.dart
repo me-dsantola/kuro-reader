@@ -1,3 +1,4 @@
+import 'device_state_service.dart';
 import 'observed_http.dart';
 import '../models/catalog_sort.dart';
 import 'dart:convert';
@@ -292,8 +293,9 @@ class AniListGraphQLAdapter implements IMangaSourceAdapter {
       // AniList may omit chapter totals; unknown is not a fabricated count.
       final statusStr = (m['status'] ?? 'RELEASING').toString().toUpperCase();
       final rawCh = (m['chapters'] as num?)?.toInt();
-      final fallbackCh =
-          (rawCh == 0 || statusStr == 'NOT_YET_RELEASED') ? 0 : -1;
+      final fallbackCh = (rawCh == 0 || statusStr == 'NOT_YET_RELEASED')
+          ? 0
+          : -1;
       final itemId = 'ani_title_${Uri.encodeComponent(title)}';
       final int chCount = StorageService.getKnownChaptersCount(
         itemId,
@@ -399,11 +401,11 @@ class JikanMalAdapter implements IMangaSourceAdapter {
       final String largeImgUrl = (jpgMap['large_image_url'] ?? imgUrl)
           .toString();
       // Jikan returns null when the chapter total is unknown.
-      final statusStr =
-          (entry['status'] ?? 'Publishing').toString().toUpperCase();
+      final statusStr = (entry['status'] ?? 'Publishing')
+          .toString()
+          .toUpperCase();
       final rawCh = (entry['chapters'] as num?)?.toInt();
-      final fallbackCh =
-          (rawCh == 0 || statusStr.contains('NOT YET')) ? 0 : -1;
+      final fallbackCh = (rawCh == 0 || statusStr.contains('NOT YET')) ? 0 : -1;
       final itemId = 'mal_title_${Uri.encodeComponent(title)}';
       final int chCount = StorageService.getKnownChaptersCount(
         itemId,
@@ -520,10 +522,12 @@ class ComicKPlusAdapter implements IMangaSourceAdapter {
             final String coverLarge =
                 (poster['large'] ?? poster['original'] ?? coverSmall)
                     .toString();
-            final statusStr =
-                (attr['status'] ?? 'current').toString().toUpperCase();
+            final statusStr = (attr['status'] ?? 'current')
+                .toString()
+                .toUpperCase();
             final rawCh = (attr['chapterCount'] as num?)?.toInt();
-            final fallbackCh = (rawCh == 0 ||
+            final fallbackCh =
+                (rawCh == 0 ||
                     statusStr == 'UNRELEASED' ||
                     statusStr == 'UPCOMING')
                 ? 0
@@ -688,28 +692,29 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
       '${filter.sort.mangaDexOrder}',
     );
 
-    final response = await MangaDexService.safeHttpGet(buf.toString());
-    final data = jsonDecode(response.body);
-    final List list = data['data'] ?? [];
-
-    // These are MangaDex search results, not verified publisher releases.
-    // Preserve the original metadata rather than inventing publisher labels
-    // or chapter counts from a matching title keyword.
     final items = <Manga>[];
-
-    // Inclui as obras enviadas para o Telegram Vault na busca de HQs
     if (cursor == 0) {
       final vaultItems = await TelegramVaultService.loadCatalog();
-      if (q.isEmpty) {
-        items.addAll(vaultItems);
-      } else {
-        items.addAll(
-          vaultItems.where(
-            (m) => m.title.toLowerCase().contains(q.toLowerCase()),
-          ),
-        );
-      }
+      items.addAll(
+        vaultItems.where(
+          (m) => q.isEmpty || m.title.toLowerCase().contains(q.toLowerCase()),
+        ),
+      );
     }
+
+    Map<String, dynamic> data;
+    try {
+      final response = await MangaDexService.safeHttpGet(buf.toString());
+      data = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      if (items.isEmpty) rethrow;
+      return PaginatedSourceResponse(
+        items: items,
+        nextCursor: cursor,
+        hasMore: false,
+      );
+    }
+    final List list = data['data'] ?? [];
 
     for (final entry in list) {
       if (entry is! Map) continue;
@@ -1195,6 +1200,31 @@ class MangaDexService {
     int offset = 0,
   }) async {
     final Map<MangaSourceType, List<Chapter>> sourceChaptersMap = {};
+    if (DeviceStateService.instance.isOffline) {
+      _olderChapterPages[manga.id] = false;
+      return {
+        manga.source: StorageService.getOfflineOrCachedChapters(manga.id),
+      };
+    }
+
+    // HQs do Vault não possuem UUID do MangaDex. A tela de detalhes usa
+    // este método diretamente, sem passar por fetchChapters.
+    if (manga.source == MangaSourceType.comicsHq &&
+        manga.id.startsWith('tg_')) {
+      final catalog = await TelegramVaultService.loadCatalog();
+      final matches = catalog.where((item) => item.id == manga.id);
+      final chapters = matches.isNotEmpty
+          ? matches.first.preloadedChapters ?? <Chapter>[]
+          : manga.preloadedChapters ??
+                StorageService.getCachedMangaChapters(manga.id);
+      _olderChapterPages[manga.id] = false;
+      await StorageService.cacheMangaChapters(
+        manga.id,
+        chapters,
+        titleKey: manga.normalizedTitleKey,
+      );
+      return {manga.source: offset == 0 ? chapters : <Chapter>[]};
+    }
 
     // Only MangaDex IDs (including legacy MangaDex-backed entries) may be
     // used directly in the MangaDex chapter endpoint. AniList, MAL and Kitsu
@@ -1280,30 +1310,35 @@ class MangaDexService {
     // Para obras com muitos capítulos (ex: One Piece, Bleach, Detective Conan),
     // carrega páginas adicionais do feed em paralelo até cobrir todo o catálogo inicial.
     if (offset == 0) {
-      final extraFetches = <Future<({List<Chapter> chapters, int total})>>[];
+      final extraPt = <Future<({List<Chapter> chapters, int total})>>[];
+      final extraEn = <Future<({List<Chapter> chapters, int total})>>[];
       if (ptResult.total > pageSize) {
         for (
           int nextOff = pageSize;
           nextOff < ptResult.total && nextOff < 1500;
           nextOff += pageSize
         ) {
-          extraFetches.add(fetchFeed('pt-br', reqOffset: nextOff));
+          extraPt.add(fetchFeed('pt-br', reqOffset: nextOff));
         }
       }
-      if (allPtChapters.isEmpty && enResult.total > pageSize) {
+      if (enResult.total > pageSize) {
         for (
           int nextOff = pageSize;
           nextOff < enResult.total && nextOff < 1500;
           nextOff += pageSize
         ) {
-          extraFetches.add(fetchFeed('en', reqOffset: nextOff));
+          extraEn.add(fetchFeed('en', reqOffset: nextOff));
         }
       }
-      if (extraFetches.isNotEmpty) {
-        final extraResults = await Future.wait(extraFetches);
-        for (final res in extraResults) {
-          allPtChapters.addAll(res.chapters);
-        }
+      final extraResults = await Future.wait([
+        Future.wait(extraPt),
+        Future.wait(extraEn),
+      ]);
+      for (final res in extraResults[0]) {
+        allPtChapters.addAll(res.chapters);
+      }
+      for (final res in extraResults[1]) {
+        allEnChapters.addAll(res.chapters);
       }
     }
 
@@ -1350,20 +1385,19 @@ class MangaDexService {
     if (offset == 0) {
       final cached = StorageService.getCachedMangaChapters(manga.id);
       final seen = completeList.map((ch) => ch.id).toSet();
-      await StorageService.cacheMangaChapters(
-        manga.id,
-        [
-          ...completeList,
-          ...cached.where((ch) => seen.add(ch.id)),
-        ],
-        titleKey: manga.normalizedTitleKey,
-      );
+      await StorageService.cacheMangaChapters(manga.id, [
+        ...completeList,
+        ...cached.where((ch) => seen.add(ch.id)),
+      ], titleKey: manga.normalizedTitleKey);
     }
 
     return sourceChaptersMap;
   }
 
   static Future<List<Chapter>> fetchChapters(Manga manga) async {
+    if (DeviceStateService.instance.isOffline) {
+      return StorageService.getDownloadedChaptersForManga(manga.id);
+    }
     if (manga.preloadedChapters != null &&
         manga.preloadedChapters!.isNotEmpty) {
       await StorageService.cacheMangaChapters(
@@ -1379,6 +1413,12 @@ class MangaDexService {
   }
 
   static Future<ChapterPagesData> fetchChapterPages(Chapter chapter) async {
+    if (chapter.source == MangaSourceType.comicsHq &&
+        chapter.id.startsWith('tg_ch_')) {
+      throw UnsupportedError(
+        'A leitura deste formato de HQ ainda não está disponível.',
+      );
+    }
     if (chapter.directPageUrls != null && chapter.directPageUrls!.isNotEmpty) {
       return ChapterPagesData(
         baseUrl: '',

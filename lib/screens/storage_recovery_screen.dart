@@ -1,3 +1,4 @@
+import '../widgets/app_feedback.dart';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 
@@ -21,7 +22,8 @@ class _StorageRecoveryScreenState extends State<StorageRecoveryScreen> {
       if (mounted) widget.onRecovered();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        AppFeedback.show(
+          context,
           const SnackBar(
             content: Text(
               'Não foi possível acessar os dados. Confira o espaço livre no aparelho e tente novamente.',

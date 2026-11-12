@@ -1,3 +1,4 @@
+import 'app_feedback.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../blobatar/flutter.dart' as blob;
@@ -52,7 +53,25 @@ const List<BlobatarExpressionOption> kBlobatarExpressions = [
   BlobatarExpressionOption('sick', 'Enjoado', blob.sick),
 ];
 
-const List<double> kBlobatarHues = [12, 40, 78, 140, 190, 225, 275, 320];
+const List<double> kBlobatarHues = [
+  0,
+  12,
+  28,
+  40,
+  60,
+  78,
+  110,
+  140,
+  165,
+  190,
+  210,
+  225,
+  250,
+  275,
+  300,
+  320,
+  340,
+];
 
 BlobatarShapeOption blobatarShapeById(String id) => kBlobatarShapes.firstWhere(
   (s) => s.id == id,
@@ -166,7 +185,9 @@ class _YomiProfileBlobatarState extends State<YomiProfileBlobatar> {
     final isTestBinding = WidgetsBinding.instance.runtimeType
         .toString()
         .contains('Test');
-    final child = widget.profile.blobatarAnimated
+    final child =
+        widget.profile.blobatarAnimated &&
+            !MediaQuery.disableAnimationsOf(context)
         ? blob.AnimatedBlobatar(
             name: seed.isEmpty ? 'kuroyomi' : seed,
             size: widget.size,
@@ -184,7 +205,9 @@ class _YomiProfileBlobatarState extends State<YomiProfileBlobatar> {
                 'Mascote ${widget.profile.effectiveBlobatarName} de ${widget.profile.name}',
           );
 
-    if (!widget.interactiveCycleOnTap) return child;
+    if (!widget.interactiveCycleOnTap || !widget.profile.blobatarInteractive) {
+      return child;
+    }
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _cycleExpression,
@@ -534,8 +557,7 @@ class YomiToriiHorizonBannerPainter extends CustomPainter {
       toriiPaint,
     );
 
-    final sakuraPaint = Paint()
-      ..color = secondaryColor.withValues(alpha: 0.62);
+    final sakuraPaint = Paint()..color = secondaryColor.withValues(alpha: 0.62);
     final petals = [
       Offset(size.width * 0.12, size.height * 0.28),
       Offset(size.width * 0.28, size.height * 0.50),
@@ -590,14 +612,8 @@ class _SeinenMangaPanelsBannerPainter extends CustomPainter {
       size.width * 0.34,
       size.height - 24,
     );
-    canvas.drawRect(
-      leftRect,
-      Paint()..color = const Color(0xFF14141C),
-    );
-    canvas.drawRect(
-      rightRect,
-      Paint()..color = const Color(0xFF101018),
-    );
+    canvas.drawRect(leftRect, Paint()..color = const Color(0xFF14141C));
+    canvas.drawRect(rightRect, Paint()..color = const Color(0xFF101018));
     canvas.drawRect(leftRect, panelBorder);
     canvas.drawRect(rightRect, panelBorder);
 
@@ -615,11 +631,7 @@ class _SeinenMangaPanelsBannerPainter extends CustomPainter {
       11,
       Paint()..color = accentColor.withValues(alpha: 0.85),
     );
-    canvas.drawCircle(
-      eyeCenter,
-      4.5,
-      Paint()..color = const Color(0xFF050507),
-    );
+    canvas.drawCircle(eyeCenter, 4.5, Paint()..color = const Color(0xFF050507));
     canvas.drawCircle(
       eyeCenter.translate(-3, -3),
       2,
@@ -680,15 +692,16 @@ class YomiMoonlitLibraryBackdropPainter extends CustomPainter {
       moonCenter,
       moonRadius * 1.9,
       Paint()
-        ..shader = RadialGradient(
-          colors: [
-            accentColor.withValues(alpha: 0.42 * opacity),
-            accentColor.withValues(alpha: 0.12 * opacity),
-            Colors.transparent,
-          ],
-        ).createShader(
-          Rect.fromCircle(center: moonCenter, radius: moonRadius * 1.9),
-        ),
+        ..shader =
+            RadialGradient(
+              colors: [
+                accentColor.withValues(alpha: 0.42 * opacity),
+                accentColor.withValues(alpha: 0.12 * opacity),
+                Colors.transparent,
+              ],
+            ).createShader(
+              Rect.fromCircle(center: moonCenter, radius: moonRadius * 1.9),
+            ),
     );
     canvas.drawCircle(
       moonCenter,
@@ -881,6 +894,7 @@ class _ProfileAndBlobatarEditorSheetState
   late double? _blobatarHue;
   late String _blobatarBackground;
   late bool _blobatarAnimated;
+  late bool _blobatarInteractive;
   late int? _customAccentColor;
   ProfileAdaptivePalette _livePalette = const ProfileAdaptivePalette();
 
@@ -910,6 +924,14 @@ class _ProfileAndBlobatarEditorSheetState
     0xFFF59E0B, // Amber
     0xFFEC4899, // Magenta
     0xFFEF4444, // Crimson
+    0xFF14B8A6, // Teal
+    0xFF84CC16, // Lime
+    0xFFFB923C, // Tangerine
+    0xFF6366F1, // Indigo
+    0xFFA78BFA, // Lavender
+    0xFF22D3EE, // Aqua
+    0xFFFBBF24, // Gold
+    0xFF94A3B8, // Slate
   ];
 
   @override
@@ -936,6 +958,7 @@ class _ProfileAndBlobatarEditorSheetState
     _blobatarHue = c.blobatarHue;
     _blobatarBackground = c.blobatarBackground;
     _blobatarAnimated = c.blobatarAnimated;
+    _blobatarInteractive = c.blobatarInteractive;
     _customAccentColor = c.customAccentColor;
     _refreshLivePalette();
   }
@@ -983,16 +1006,29 @@ class _ProfileAndBlobatarEditorSheetState
       clearBlobatarHue: _blobatarHue == null,
       blobatarBackground: _blobatarBackground,
       blobatarAnimated: _blobatarAnimated,
+      blobatarInteractive: _blobatarInteractive,
       customAccentColor: _customAccentColor,
       clearCustomAccentColor: _customAccentColor == null,
       isConfigured: true,
     );
   }
 
-  Future<void> _autoPersistDraft() async {
+  Future<void> _saveTail = Future<void>.value();
+  Future<void> _autoPersistDraft() {
     final draft = _buildDraft();
-    await StorageService.updateUserProfile(draft);
-    await _refreshLivePalette();
+    final operation = _saveTail.then((_) async {
+      await StorageService.updateUserProfile(draft);
+      await _refreshLivePalette();
+    });
+    _saveTail = operation.catchError((Object _) {});
+    return operation.catchError((Object _) {
+      if (mounted) {
+        AppFeedback.message(
+          context,
+          'Não foi possível salvar a personalização. Tente novamente.',
+        );
+      }
+    });
   }
 
   Future<void> _refreshLivePalette() async {
@@ -1050,7 +1086,8 @@ class _ProfileAndBlobatarEditorSheetState
     );
     if (!mounted) return;
     if (picked == null || picked.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      AppFeedback.show(
+        context,
         const SnackBar(
           content: Text(
             'Nenhuma imagem selecionada do dispositivo. Você também pode escolher um tema artístico ou capa abaixo.',
@@ -1069,7 +1106,8 @@ class _ProfileAndBlobatarEditorSheetState
     });
     await _autoPersistDraft();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      AppFeedback.show(
+        context,
         SnackBar(
           content: Text(
             isBanner
@@ -1150,8 +1188,18 @@ class _ProfileAndBlobatarEditorSheetState
                     ),
                   ),
                   onPressed: () async {
-                    await StorageService.updateUserProfile(_buildDraft());
-                    if (context.mounted) Navigator.pop(context);
+                    try {
+                      await _saveTail;
+                      await StorageService.updateUserProfile(_buildDraft());
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (_) {
+                      if (context.mounted) {
+                        AppFeedback.message(
+                          context,
+                          'Não foi possível salvar a personalização. Tente novamente.',
+                        );
+                      }
+                    }
                   },
                   icon: const Icon(Icons.check_rounded, size: 18),
                   label: const Text(
@@ -1530,6 +1578,30 @@ class _ProfileAndBlobatarEditorSheetState
         ),
         const SizedBox(height: 22),
 
+        Text(
+          'Matiz personalizada: ${(_blobatarHue ?? _livePalette.hue).clamp(0, 360).round()}°',
+        ),
+        Slider(
+          min: 0,
+          max: 360,
+          divisions: 360,
+          label: '${(_blobatarHue ?? _livePalette.hue).clamp(0, 360).round()}°',
+          value: (_blobatarHue ?? _livePalette.hue).clamp(0, 360).toDouble(),
+          activeColor: accent,
+          onChanged: (value) => setState(() => _blobatarHue = value),
+          onChangeEnd: (_) => _autoPersistDraft(),
+        ),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Reagir ao toque'),
+          subtitle: const Text('Alternar as expressões ao tocar no mascote.'),
+          activeThumbColor: accent,
+          value: _blobatarInteractive,
+          onChanged: (value) {
+            setState(() => _blobatarInteractive = value);
+            _autoPersistDraft();
+          },
+        ),
         // Backdrop & Motion
         const Text(
           'Moldura de Fundo do Mascote',
@@ -1776,7 +1848,8 @@ class _ProfileAndBlobatarEditorSheetState
           },
           decoration: InputDecoration(
             labelText: 'URL ou Caminho do Banner',
-            hintText: 'Cole um link https://... ou caminho de arquivo de imagem',
+            hintText:
+                'Cole um link https://... ou caminho de arquivo de imagem',
             prefixIcon: Icon(Icons.panorama_outlined, color: accent),
             suffixIcon: _bannerUrlCtrl.text.isNotEmpty
                 ? IconButton(
@@ -1929,7 +2002,11 @@ class _ProfileAndBlobatarEditorSheetState
                               ),
                             ),
                           ),
-                          Container(width: 1, height: 24, color: Colors.white12),
+                          Container(
+                            width: 1,
+                            height: 24,
+                            color: Colors.white12,
+                          ),
                           Expanded(
                             child: InkWell(
                               onTap: () {

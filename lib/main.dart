@@ -1,12 +1,15 @@
+import 'widgets/app_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/home_overview_screen.dart';
+import 'screens/storage_recovery_screen.dart';
 import 'screens/home_tabs.dart';
 import 'services/appearance_controller.dart';
 import 'services/device_state_service.dart';
 import 'services/profile_palette_service.dart';
 import 'services/scroll_chrome_controller.dart';
 import 'services/storage_service.dart';
+import 'services/mangadex_service.dart';
 import 'widgets/adaptive_app_shell.dart';
 import 'widgets/frosted_surface.dart';
 import 'widgets/privacy_shield.dart';
@@ -35,9 +38,28 @@ void main() async {
   runApp(YomiApp(storageReady: storageReady));
 }
 
-class YomiApp extends StatelessWidget {
+class YomiApp extends StatefulWidget {
   final bool storageReady;
   const YomiApp({super.key, this.storageReady = true});
+
+  @override
+  State<YomiApp> createState() => _YomiAppState();
+}
+
+class _YomiAppState extends State<YomiApp> {
+  late bool _storageReady;
+
+  @override
+  void initState() {
+    super.initState();
+    _storageReady = widget.storageReady;
+  }
+
+  void _onStorageRecovered() {
+    AppearanceController.instance.start();
+    ProfilePaletteService.bindToProfileNotifier(StorageService.profileNotifier);
+    setState(() => _storageReady = true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,53 +116,11 @@ class YomiApp extends StatelessWidget {
               ),
             ),
           ),
-          home: storageReady
+          home: _storageReady
               ? const MainNavigationShell()
-              : const _StorageRecoveryScreen(),
+              : StorageRecoveryScreen(onRecovered: _onStorageRecovered),
         );
       },
-    );
-  }
-}
-
-class _StorageRecoveryScreen extends StatelessWidget {
-  const _StorageRecoveryScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: YomiPalette.pitchBlack,
-      body: Center(
-        child: Padding(
-          padding: EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.warning_amber_rounded,
-                size: 56,
-                color: YomiPalette.ensoRed,
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Não foi possível abrir seus dados',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Feche e reabra o aplicativo ou verifique o armazenamento disponível no dispositivo.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -152,20 +132,67 @@ class MainNavigationShell extends StatefulWidget {
   State<MainNavigationShell> createState() => _MainNavigationShellState();
 }
 
-class _MainNavigationShellState extends State<MainNavigationShell> {
+class _MainNavigationShellState extends State<MainNavigationShell>
+    with SingleTickerProviderStateMixin {
   late int _currentIndex;
   final _visitedTabs = <int>{};
   final _chrome = ScrollChromeController();
+  late final AnimationController _transition;
+  late InternetState _lastInternet;
+  int _refreshGeneration = 0;
+  bool get _offline => DeviceStateService.instance.isOffline;
+
+  void _syncNetwork() {
+    final current = DeviceStateService.instance.value.internet;
+    if (current == _lastInternet) return;
+    final reconnected =
+        _lastInternet == InternetState.offline &&
+        current == InternetState.online;
+    _lastInternet = current;
+    setState(() {
+      if (_offline) {
+        if (_currentIndex != 3) _currentIndex = 1;
+        _visitedTabs.removeWhere((index) => index != 1 && index != 3);
+        _visitedTabs.add(_currentIndex);
+      } else if (reconnected) {
+        _refreshGeneration++;
+        _visitedTabs.add(0);
+        MangaDexService.resetAggregator();
+      }
+    });
+    _chrome.show();
+    if (reconnected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          AppFeedback.message(
+            context,
+            'Conexão restabelecida. Atualizando catálogos; todos os menus disponíveis.',
+          );
+        }
+      });
+    }
+  }
+
+  List<_FloatingNavItem> get _navigationItems => _primaryNavItems
+      .where((item) => !_offline || item.tabIndex == 1 || item.tabIndex == 3)
+      .toList();
 
   @override
   void initState() {
     super.initState();
+    _transition = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 180),
+      value: 1,
+    );
+    _lastInternet = DeviceStateService.instance.value.internet;
+    DeviceStateService.instance.addListener(_syncNetwork);
     ProfilePaletteService.bindToProfileNotifier(StorageService.profileNotifier);
     // Tab indices matching the YOMI bottom bar:
-    // 0: Início, 1: Biblioteca, 2: Explorar, 3: Perfil, 4: Offline, 5: Ajustes
+    // 0: Início, 1: Biblioteca, 2: Explorar, 3: Perfil, 4: Ajustes
     final openOnProfile =
         StorageService.userProfile.openOnProfileByDefault == true;
-    _currentIndex = openOnProfile ? 3 : 0;
+    _currentIndex = openOnProfile ? 3 : (_offline ? 1 : 0);
     _visitedTabs.add(_currentIndex);
     AppearanceController.instance.addListener(_syncChrome);
   }
@@ -180,11 +207,16 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   @override
   void dispose() {
     AppearanceController.instance.removeListener(_syncChrome);
+    DeviceStateService.instance.removeListener(_syncNetwork);
+    _transition.dispose();
     _chrome.dispose();
     super.dispose();
   }
 
   void _switchTab(int index) {
+    if (_offline && index != 1 && index != 3) return;
+    if (index == _currentIndex) return;
+    _transition.forward(from: 0);
     _chrome.show();
     setState(() {
       _visitedTabs.add(index);
@@ -217,12 +249,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       icon: Icons.person_outline_rounded,
       selectedIcon: Icons.person_rounded,
     ),
-    _FloatingNavItem(
-      tabIndex: 4,
-      label: 'Offline',
-      icon: Icons.download_for_offline_outlined,
-      selectedIcon: Icons.download_for_offline_rounded,
-    ),
   ];
 
   @override
@@ -241,17 +267,17 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         final palette = ProfilePaletteService.paletteNotifier.value;
         final pages = [
           HomeOverviewScreen(
+            key: ValueKey('home_$_refreshGeneration'),
             onExplore: () => _switchTab(2),
             onLibrary: () => _switchTab(1),
             onProfile: () => _switchTab(3),
           ),
-          const LibraryScreen(),
-          const ExploreScreen(),
+          LibraryScreen(key: ValueKey('library_$_refreshGeneration')),
+          ExploreScreen(key: ValueKey('explore_$_refreshGeneration')),
           ProfileDashboardScreen(
-            onGoToExplore: () => _switchTab(2),
-            onGoToSettings: () => _switchTab(5),
+            onGoToExplore: _offline ? null : () => _switchTab(2),
+            onGoToSettings: _offline ? null : () => _switchTab(4),
           ),
-          const DownloadsScreen(),
           const SettingsScreen(),
         ];
 
@@ -263,13 +289,69 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 AppearanceController.instance.value.autoHideMenus
                 ? _chrome.onScroll(notification)
                 : false,
-            child: IndexedStack(
-              index: _currentIndex,
+            child: Column(
               children: [
-                for (var i = 0; i < pages.length; i++)
-                  _visitedTabs.contains(i)
-                      ? TickerMode(enabled: i == _currentIndex, child: pages[i])
-                      : const SizedBox.shrink(),
+                if (_offline)
+                  SafeArea(
+                    bottom: false,
+                    child: Material(
+                      color: palette.primary.withValues(alpha: 0.16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.wifi_off_rounded,
+                              color: palette.secondary,
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Modo offline · funcionalidades reduzidas\nPerfil, Biblioteca e capítulos baixados disponíveis.',
+                                style: TextStyle(fontSize: 12, height: 1.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: FadeTransition(
+                    opacity:
+                        disableAnimations ||
+                            !AppearanceController.instance.value.tabTransitions
+                        ? const AlwaysStoppedAnimation(1.0)
+                        : _transition,
+                    child: SlideTransition(
+                      position:
+                          disableAnimations ||
+                              !AppearanceController
+                                  .instance
+                                  .value
+                                  .tabTransitions
+                          ? const AlwaysStoppedAnimation(Offset.zero)
+                          : Tween<Offset>(
+                                  begin: const Offset(0, 0.025),
+                                  end: Offset.zero,
+                                )
+                                .chain(CurveTween(curve: Curves.easeOutCubic))
+                                .animate(_transition),
+                      child: IndexedStack(
+                        index: _currentIndex,
+                        children: [
+                          for (var i = 0; i < pages.length; i++)
+                            _visitedTabs.contains(i)
+                                ? TickerMode(
+                                    enabled: i == _currentIndex,
+                                    child: pages[i],
+                                  )
+                                : const SizedBox.shrink(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -314,8 +396,8 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   }
 
   int get _activeVisualSlot {
-    final mappedTab = _currentIndex == 5 ? 3 : _currentIndex;
-    final idx = _primaryNavItems.indexWhere((e) => e.tabIndex == mappedTab);
+    final mappedTab = _currentIndex == 4 ? 3 : _currentIndex;
+    final idx = _navigationItems.indexWhere((e) => e.tabIndex == mappedTab);
     return idx >= 0 ? idx : 0;
   }
 
@@ -324,7 +406,8 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     required bool disableAnimations,
   }) {
     final activeSlot = _activeVisualSlot;
-    final count = _primaryNavItems.length;
+    final items = _navigationItems;
+    final count = items.length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -336,7 +419,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           onHorizontalDragUpdate: (details) {
             final dx = details.localPosition.dx.clamp(0.0, totalWidth - 1);
             final slot = (dx ~/ slotWidth).clamp(0, count - 1);
-            final targetTab = _primaryNavItems[slot].tabIndex;
+            final targetTab = items[slot].tabIndex;
             if (targetTab != _currentIndex) {
               _switchTab(targetTab);
             }
@@ -427,7 +510,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                       for (var i = 0; i < count; i++)
                         Expanded(
                           child: _buildDockItem(
-                            item: _primaryNavItems[i],
+                            item: items[i],
                             selected: i == activeSlot,
                             palette: palette,
                             disableAnimations: disableAnimations,

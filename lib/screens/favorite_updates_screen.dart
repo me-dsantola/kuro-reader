@@ -1,3 +1,4 @@
+import '../widgets/app_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
@@ -43,7 +44,8 @@ class _FavoriteUpdatesScreenState extends State<FavoriteUpdatesScreen> {
       final found = await FavoriteUpdatesService.checkAllFavorites(favorites);
       if (!mounted) return;
       if (found > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        AppFeedback.show(
+          context,
           SnackBar(
             content: Text(
               '$found novo(s) capítulo(s) encontrado(s) nos seus favoritos!',

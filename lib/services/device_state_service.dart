@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 enum InternetState { unknown, online, offline }
 
@@ -26,7 +28,8 @@ class DeviceStatus {
 }
 
 /// Android reports connectivity and battery. Slow requests never imply offline.
-class DeviceStateService extends ValueNotifier<DeviceStatus> {
+class DeviceStateService extends ValueNotifier<DeviceStatus>
+    with WidgetsBindingObserver {
   static final instance = DeviceStateService();
   static const _events = EventChannel('yomi/device_state');
   StreamSubscription<dynamic>? _subscription;
@@ -34,13 +37,60 @@ class DeviceStateService extends ValueNotifier<DeviceStatus> {
   final List<bool> _recent = [];
   int _nextRequest = 0;
   bool _disposed = false;
+  bool _started = false;
+  StreamSubscription<List<ConnectivityResult>>? _networkSubscription;
 
   DeviceStateService() : super(const DeviceStatus());
+  bool get isOffline => value.internet == InternetState.offline;
+
+  @visibleForTesting
+  void applyConnectivity(List<ConnectivityResult> results) {
+    if (_disposed) return;
+    final connected = results.any(
+      (result) => result != ConnectivityResult.none,
+    );
+    applyNativeState({
+      'internet': connected ? 'online' : 'offline',
+      'batteryPercent': value.batteryPercent,
+      'charging': value.charging,
+      'powerSaving': value.powerSaving,
+    });
+  }
+
+  Future<void> _refreshPlatform() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      await _refreshNative();
+    } else {
+      try {
+        applyConnectivity(await Connectivity().checkConnectivity());
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _refreshNative() async {
+    try {
+      final state = await const MethodChannel(
+        'yomi/device_state_query',
+      ).invokeMapMethod<String, dynamic>('getState');
+      if (!_disposed && state != null) applyNativeState(state);
+    } catch (_) {}
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshPlatform();
+  }
 
   void start() {
-    if (kIsWeb ||
-        defaultTargetPlatform != TargetPlatform.android ||
-        _subscription != null) {
+    if (_started || _disposed) return;
+    _started = true;
+    WidgetsBinding.instance.addObserver(this);
+    _refreshPlatform();
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      _networkSubscription = Connectivity().onConnectivityChanged.listen(
+        applyConnectivity,
+        onError: (Object _) {},
+      );
       return;
     }
     _subscription = _events.receiveBroadcastStream().listen(
@@ -117,7 +167,9 @@ class DeviceStateService extends ValueNotifier<DeviceStatus> {
   @override
   void dispose() {
     _disposed = true;
+    if (_started) WidgetsBinding.instance.removeObserver(this);
     _subscription?.cancel();
+    _networkSubscription?.cancel();
     super.dispose();
   }
 }

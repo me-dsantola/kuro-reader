@@ -1,12 +1,12 @@
 # YOMI — Kuro Reader
 
 Leitor pessoal de mangás, manhwas e quadrinhos feito em Flutter.
-A linha **1.2.0 (build de origem 8)** prepara a distribuição estável Android.
+A versão do checkout está definida no `pubspec.yaml`.
 A versão efetivamente publicada aparece em [Releases](../../releases).
 
 ## Experiência
 
-- Início com leituras recentes, posição salva e atalhos;
+- Início com destaque, capas populares em rolagem horizontal, favoritos e leitura recente;
 - Logo centralizada em Explorar, com busca, filtros e ordenação no mesmo bloco;
 - Ordenação por recentes, populares ou título, preservando a busca;
 - Filtros por categoria, com inclusão/exclusão e aplicação explícita;
@@ -15,6 +15,12 @@ A versão efetivamente publicada aparece em [Releases](../../releases).
 - Downloads verificados para leitura offline, com retomada e confirmação de exclusão;
 - Feedback de bateria, ausência de internet e respostas lentas no Android;
 - Aparência AMOLED clássica ou vidro suave, com recolhimento de menus configurável.
+- Modo offline automático com aviso persistente, acesso à Biblioteca e Perfil;
+- Downloads em **Biblioteca → Baixados**, com verificação das páginas locais;
+- Reconexão com atualização do catálogo e restauração dos demais menus;
+- Transições rápidas de fade/deslizamento e menu do leitor com cores da obra;
+- Mais cores de perfil/Blobatar, ajuste contínuo de matiz e reação ao toque;
+- Avisos e erros em pop-ups com contraste e botão para fechar.
 
 Em **Perfil → Configurações → Aparência e movimento**, personalize o vidro
 suave e o recolhimento de menus. Ao descer, os controles liberam espaço; ao
@@ -24,7 +30,11 @@ de redução de movimento do aparelho desativa as transições animadas.
 
 MangaDex é a fonte efetiva de páginas. AniList, Jikan/MAL e Kitsu fornecem
 metadados e descoberta. O adaptador legado chamado ComicK usa Kitsu/MangaDex;
-não há integração direta com ComicK. HQ e 18+ são consultas do MangaDex.
+não há integração direta com ComicK. A categoria HQ combina consultas do
+MangaDex com o catálogo local Telegram Vault. O catálogo acompanha o APK;
+uploads posteriores exigem atualizar o catálogo distribuído. A listagem de
+documentos do Vault está disponível, mas a leitura/download de PDF/CBR/ZIP
+ainda não está integrada. A categoria 18+ consulta o MangaDex.
 A disponibilidade depende das fontes e dos idiomas oferecidos por elas.
 
 ## Instalar a versão estável
@@ -59,10 +69,14 @@ python3 -m unittest discover -s scripts/tests -v
 flutter run
 ```
 
-Os testes cobrem navegação/ordenação/filtros, leitura e geometria, troca de
+Os testes cobrem home/favoritos/rolagem, navegação/ordenação/filtros, leitura e geometria, troca de
 modo, recuperação de páginas, caches, downloads, backup, privacidade e
 estados de bateria/rede. A revisão detalhada está em
 [docs/stable_review.md](docs/stable_review.md).
+O confronto das promessas das releases 1.2.0–1.2.5 com o código atual está em
+[docs/auditoria-2026-11-12.md](docs/auditoria-2026-11-12.md), incluindo pendências.
+O comportamento do modo offline e das novas preferências está em
+[docs/offline-e-personalizacao.md](docs/offline-e-personalizacao.md).
 
 A fluidez, os provedores externos e os sensores reais precisam ser conferidos
 em aparelho físico; testes com fontes simuladas não substituem essa verificação.
@@ -96,8 +110,12 @@ imagens baixadas. É JSON codificado em Base64, **sem criptografia**. A
 importação valida todas as seções antes de gravar e mantém um diário de
 recuperação para reverter gravações interrompidas. Não compartilhe seu backup.
 
-O backup automático Android e o tráfego HTTP sem criptografia estão
-desabilitados. Conteúdo sem classificação confirmada fica oculto no modo
+O backup automático Android está habilitado com agente próprio e cópia local;
+a recuperação após reinstalação depende do sistema e do acesso ao arquivo.
+Exporte uma cópia manual antes de desinstalar. No desktop há cópia no perfil
+do usuário; a versão web não oferece esse mesmo backup de arquivos.
+O tráfego HTTP sem criptografia está desabilitado.
+Conteúdo sem classificação confirmada fica oculto no modo
 seguro. Não há sincronização em nuvem, notificações automáticas de capítulos
 ou fila avançada de downloads com política de Wi-Fi.
 

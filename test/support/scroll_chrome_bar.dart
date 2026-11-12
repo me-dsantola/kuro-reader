@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Test fixture for exercising the scroll controller independently of the shell.
 class ScrollChromeBar extends StatelessWidget {
   final bool visible;
   final Widget child;

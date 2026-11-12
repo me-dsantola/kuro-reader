@@ -9,11 +9,13 @@ import '../services/profile_palette_service.dart';
 /// or high-contrast / reduced-motion accessibility mode.
 class FrostedSurface extends StatelessWidget {
   final Widget child;
+  final ProfileAdaptivePalette? palette;
   final BorderRadius? borderRadius;
 
   const FrostedSurface({
     super.key,
     required this.child,
+    this.palette,
     this.borderRadius,
   });
 
@@ -28,7 +30,8 @@ class FrostedSurface extends StatelessWidget {
       builder: (context, _) {
         final preferences = AppearanceController.instance.value;
         final deviceState = DeviceStateService.instance.value;
-        final palette = ProfilePaletteService.paletteNotifier.value;
+        final palette =
+            this.palette ?? ProfilePaletteService.paletteNotifier.value;
         final powerSavingOrContrast =
             deviceState.reduceEffects ||
             MediaQuery.highContrastOf(context) ||

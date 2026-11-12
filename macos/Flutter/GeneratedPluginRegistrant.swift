@@ -5,8 +5,8 @@
 import FlutterMacOS
 import Foundation
 
-import sqflite_darwin
+import connectivity_plus
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
-  SqflitePlugin.register(with: registry.registrar(forPlugin: "SqflitePlugin"))
+  ConnectivityPlusPlugin.register(with: registry.registrar(forPlugin: "ConnectivityPlusPlugin"))
 }

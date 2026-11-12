@@ -68,6 +68,7 @@ class BackupCodec {
         'isConfigured',
         'useBlobatarAsAvatar',
         'blobatarAnimated',
+        'blobatarInteractive',
       ]) {
         _optional(profile, key, (v) => v is bool);
       }
@@ -79,6 +80,8 @@ class BackupCodec {
         'hide_zero_chapters',
         'data_saver_mode',
         'auto_hide_menus',
+        'tab_transitions',
+        'reactive_reader',
         'privacy_protection_enabled',
       ]) {
         _optional(settings, key, (v) => v is bool);

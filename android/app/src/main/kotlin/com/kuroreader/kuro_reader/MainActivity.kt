@@ -5,10 +5,13 @@ import android.app.backup.BackupManager
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
+import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Network
+import android.net.NetworkRequest
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
@@ -18,10 +21,64 @@ import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
 import java.io.File
 import java.io.FileOutputStream
 
 class MainActivity : FlutterActivity() {
+    private var deviceEvents: EventChannel.EventSink? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var batteryReceiver: BroadcastReceiver? = null
+
+    private fun publishDeviceState() {
+        runOnUiThread { deviceEvents?.success(readDeviceState()) }
+    }
+
+    private fun stopDeviceEvents() {
+        val manager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        networkCallback?.let { callback -> runCatching { manager?.unregisterNetworkCallback(callback) } }
+        batteryReceiver?.let { receiver -> runCatching { unregisterReceiver(receiver) } }
+        networkCallback = null
+        batteryReceiver = null
+        deviceEvents = null
+    }
+
+    private fun startDeviceEvents(events: EventChannel.EventSink) {
+        stopDeviceEvents()
+        deviceEvents = events
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) = publishDeviceState()
+            override fun onLost(network: Network) = publishDeviceState()
+            override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = publishDeviceState()
+        }
+        val manager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            manager?.registerDefaultNetworkCallback(callback)
+        } else {
+            manager?.registerNetworkCallback(NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), callback)
+        }
+        networkCallback = callback
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) = publishDeviceState()
+        }
+        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED).apply {
+            addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(receiver, filter)
+        }
+        batteryReceiver = receiver
+        publishDeviceState()
+    }
+
+    override fun onDestroy() {
+        stopDeviceEvents()
+        super.onDestroy()
+    }
     private var pendingImageResult: MethodChannel.Result? = null
     private val pickImageRequestCode = 9401
     private val autoBackupPrefsName = "yomi_auto_backup_prefs"
@@ -29,9 +86,14 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "yomi/device_state")
+            .setStreamHandler(object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink) = startDeviceEvents(events)
+                override fun onCancel(arguments: Any?) = stopDeviceEvents()
+            })
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            "yomi/device_state",
+            "yomi/device_state_query",
         ).setMethodCallHandler { call, result ->
             if (call.method == "getState") {
                 result.success(readDeviceState())

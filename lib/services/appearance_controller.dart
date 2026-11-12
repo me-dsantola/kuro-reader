@@ -9,9 +9,13 @@ enum InterfaceStyle { enso, glass }
 class AppearancePreferences {
   final InterfaceStyle style;
   final bool autoHideMenus;
+  final bool tabTransitions;
+  final bool reactiveReader;
   const AppearancePreferences({
     this.style = InterfaceStyle.glass,
     this.autoHideMenus = true,
+    this.tabTransitions = true,
+    this.reactiveReader = true,
   });
 }
 
@@ -23,7 +27,12 @@ class AppearanceController extends ValueNotifier<AppearancePreferences> {
   void start() {
     refresh();
     _subscription ??= StorageService.settingsBox.watch().listen((event) {
-      if (event.key == 'interface_style' || event.key == 'auto_hide_menus') {
+      if ([
+        'interface_style',
+        'auto_hide_menus',
+        'tab_transitions',
+        'reactive_reader',
+      ].contains(event.key)) {
         refresh();
       }
     });
@@ -37,8 +46,18 @@ class AppearanceController extends ValueNotifier<AppearancePreferences> {
         ? InterfaceStyle.enso
         : InterfaceStyle.glass;
     final autoHide = box.get('auto_hide_menus', defaultValue: true) != false;
-    if (value.style != style || value.autoHideMenus != autoHide) {
-      value = AppearancePreferences(style: style, autoHideMenus: autoHide);
+    final transitions = box.get('tab_transitions', defaultValue: true) != false;
+    final reactive = box.get('reactive_reader', defaultValue: true) != false;
+    if (value.style != style ||
+        value.autoHideMenus != autoHide ||
+        value.tabTransitions != transitions ||
+        value.reactiveReader != reactive) {
+      value = AppearancePreferences(
+        style: style,
+        autoHideMenus: autoHide,
+        tabTransitions: transitions,
+        reactiveReader: reactive,
+      );
     }
   }
 
@@ -49,6 +68,16 @@ class AppearanceController extends ValueNotifier<AppearancePreferences> {
 
   Future<void> setAutoHide(bool enabled) async {
     await StorageService.settingsBox.put('auto_hide_menus', enabled);
+    refresh();
+  }
+
+  Future<void> setTabTransitions(bool enabled) async {
+    await StorageService.settingsBox.put('tab_transitions', enabled);
+    refresh();
+  }
+
+  Future<void> setReactiveReader(bool enabled) async {
+    await StorageService.settingsBox.put('reactive_reader', enabled);
     refresh();
   }
 

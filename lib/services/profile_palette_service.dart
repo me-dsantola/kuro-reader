@@ -1,3 +1,4 @@
+import 'device_state_service.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -146,14 +147,8 @@ class ProfileAdaptivePalette {
           other.hue == hue;
 
   @override
-  int get hashCode => Object.hash(
-    primary,
-    secondary,
-    soft,
-    surfaceTint,
-    bannerDark,
-    hue,
-  );
+  int get hashCode =>
+      Object.hash(primary, secondary, soft, surfaceTint, bannerDark, hue);
 }
 
 class ProfilePaletteService {
@@ -214,6 +209,7 @@ class ProfilePaletteService {
     }
 
     if (src.startsWith('http://') || src.startsWith('https://')) {
+      if (DeviceStateService.instance.isOffline) return null;
       final safeUrl = yomiSafeImageUrl(src);
       if (safeUrl.isEmpty) return null;
       return NetworkImage(safeUrl);
@@ -287,7 +283,9 @@ class ProfilePaletteService {
 
     // 1. Try extracting dominant vibrant color from the profile photo first.
     final avatarSrc = profile.avatarImagePath?.trim();
-    if (avatarSrc != null && avatarSrc.isNotEmpty && !profile.useBlobatarAsAvatar) {
+    if (avatarSrc != null &&
+        avatarSrc.isNotEmpty &&
+        !profile.useBlobatarAsAvatar) {
       final fromAvatar = await _extractFromSource(
         avatarSrc,
         allowLowSaturation: false,
@@ -309,7 +307,9 @@ class ProfilePaletteService {
     }
 
     // 3. Re-try avatar allowing subtle tints if banner wasn't an image.
-    if (avatarSrc != null && avatarSrc.isNotEmpty && !profile.useBlobatarAsAvatar) {
+    if (avatarSrc != null &&
+        avatarSrc.isNotEmpty &&
+        !profile.useBlobatarAsAvatar) {
       final subtleAvatar = await _extractFromSource(
         avatarSrc,
         allowLowSaturation: true,
@@ -345,16 +345,16 @@ class ProfilePaletteService {
       return _cache[mangaCacheKey]!;
     }
 
+    if (DeviceStateService.instance.isOffline) {
+      return synchronousFallbackForManga(manga);
+    }
     final candidates = manga
         .getAllCandidateCoverUrls(highRes: false)
         .take(3)
         .toList();
 
     for (final url in candidates) {
-      final vibrant = await _extractFromSource(
-        url,
-        allowLowSaturation: false,
-      );
+      final vibrant = await _extractFromSource(url, allowLowSaturation: false);
       if (vibrant != null) {
         _cache[mangaCacheKey] = vibrant;
         return vibrant;
@@ -362,10 +362,7 @@ class ProfilePaletteService {
     }
 
     for (final url in candidates) {
-      final subtle = await _extractFromSource(
-        url,
-        allowLowSaturation: true,
-      );
+      final subtle = await _extractFromSource(url, allowLowSaturation: true);
       if (subtle != null) {
         _cache[mangaCacheKey] = subtle;
         return subtle;

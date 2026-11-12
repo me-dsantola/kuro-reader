@@ -1,3 +1,4 @@
+import 'app_feedback.dart';
 import 'package:flutter/material.dart';
 import '../services/appearance_controller.dart';
 import '../services/profile_palette_service.dart';
@@ -10,7 +11,8 @@ class AppearanceSettings extends StatelessWidget {
       await operation;
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        AppFeedback.show(
+          context,
           const SnackBar(
             content: Text(
               'Não foi possível salvar a preferência. Tente novamente.',
@@ -54,21 +56,42 @@ class AppearanceSettings extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                ListTile(
-                  leading: Icon(
-                    Icons.blur_on_rounded,
-                    color: palette.primary,
+                SwitchListTile.adaptive(
+                  title: const Text('Efeito de vidro flutuante'),
+                  subtitle: const Text(
+                    'Desative para uma interface AMOLED opaca. Economia de energia e alto contraste reduzem os efeitos.',
                   ),
-                  title: const Text(
-                    'Efeito de vidro flutuante (Padrão)',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
+                  activeThumbColor: palette.primary,
+                  value: preferences.style == InterfaceStyle.glass,
+                  onChanged: (enabled) => _save(
+                    context,
+                    AppearanceController.instance.setStyle(
+                      enabled ? InterfaceStyle.glass : InterfaceStyle.enso,
                     ),
                   ),
+                ),
+                SwitchListTile.adaptive(
+                  title: const Text('Transições rápidas entre menus'),
                   subtitle: const Text(
-                    'Ativo automaticamente em todo o aplicativo e desativado apenas enquanto o aparelho estiver em modo de economia de energia.',
-                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                    'Fade e deslizamento suave; respeita a redução de movimento.',
+                  ),
+                  activeThumbColor: palette.primary,
+                  value: preferences.tabTransitions,
+                  onChanged: (enabled) => _save(
+                    context,
+                    AppearanceController.instance.setTabTransitions(enabled),
+                  ),
+                ),
+                SwitchListTile.adaptive(
+                  title: const Text('Cores do leitor pela obra'),
+                  subtitle: const Text(
+                    'O menu de leitura acompanha a capa. Desative para usar as cores do perfil.',
+                  ),
+                  activeThumbColor: palette.primary,
+                  value: preferences.reactiveReader,
+                  onChanged: (enabled) => _save(
+                    context,
+                    AppearanceController.instance.setReactiveReader(enabled),
                   ),
                 ),
                 const Divider(height: 1, color: Colors.white10),

@@ -1,3 +1,5 @@
+import '../services/device_state_service.dart';
+import '../widgets/app_feedback.dart';
 import '../services/appearance_controller.dart';
 import '../services/scroll_chrome_controller.dart';
 import 'package:flutter/foundation.dart';
@@ -45,7 +47,30 @@ class _ReaderScreenState extends State<ReaderScreen> {
   ChapterPagesData? _onlinePagesData;
   late List<Chapter> _chapters;
   bool _isOfflineMode = false;
+  ProfileAdaptivePalette? _readerPalette;
+  late InternetState _lastInternet;
+
+  void _onDeviceChanged() {
+    final internet = DeviceStateService.instance.value.internet;
+    if (internet == _lastInternet || !mounted) return;
+    _lastInternet = internet;
+    setState(() {});
+    if (internet == InternetState.online &&
+        !_isOfflineMode &&
+        !_isLoading &&
+        _onlinePagesData == null) {
+      setState(() => _isLoading = true);
+      _initReaderSource();
+    } else if (internet == InternetState.offline && !_isOfflineMode) {
+      AppFeedback.message(
+        context,
+        'Modo offline: apenas páginas já carregadas ou capítulos baixados estão disponíveis.',
+      );
+    }
+  }
+
   bool _isLoading = true;
+  String? _sourceError;
   bool _isWebtoonMode = true;
   bool _showHud = true;
   final _chrome = ScrollChromeController();
@@ -252,6 +277,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void initState() {
     super.initState();
+    _lastInternet = DeviceStateService.instance.value.internet;
+    DeviceStateService.instance.addListener(_onDeviceChanged);
+    _readerPalette = ProfilePaletteService.synchronousFallbackForManga(
+      widget.manga,
+    );
     _chapters = _mergeAndSortChapters(const []);
     _chrome.addListener(_syncChrome);
     AppearanceController.instance.addListener(_onAppearanceChanged);
@@ -272,12 +302,16 @@ class _ReaderScreenState extends State<ReaderScreen> {
       ),
     )..addListener(_onWebtoonScroll);
     StorageService.recordChapterOpened(widget.manga, widget.chapter);
+    ProfilePaletteService.resolveForManga(widget.manga).then((palette) {
+      if (mounted) setState(() => _readerPalette = palette);
+    });
     _initReaderSource();
     _ensureChapterListLoaded();
   }
 
   @override
   void dispose() {
+    DeviceStateService.instance.removeListener(_onDeviceChanged);
     _webtoonProgressTimer?.cancel();
     AppearanceController.instance.removeListener(_onAppearanceChanged);
     _chrome.dispose();
@@ -345,7 +379,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   Future<void> _markCurrentChapterFinished() async {
     await StorageService.markChapterAsRead(widget.manga, widget.chapter);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    AppFeedback.show(
+      context,
       const SnackBar(content: Text('Capítulo marcado como concluído')),
     );
   }
@@ -366,6 +401,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   Future<void> _initReaderSource() async {
+    _sourceError = null;
     if (!kIsWeb && StorageService.isChapterDownloaded(widget.chapter.id)) {
       if (await DownloadManager.hasCompleteDownload(widget.chapter.id)) {
         final localPaths = StorageService.getDownloadedChapterPaths(
@@ -388,6 +424,19 @@ class _ReaderScreenState extends State<ReaderScreen> {
       await StorageService.downloadsBox.delete(widget.chapter.id);
     }
 
+    if (DeviceStateService.instance.isOffline) {
+      if (mounted) {
+        setState(() {
+          _sourceError =
+              'Este capítulo não foi baixado por completo. Reconecte para baixá-lo em Biblioteca → Baixados.';
+          _isLoading = false;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) AppFeedback.message(context, _sourceError!);
+        });
+      }
+      return;
+    }
     try {
       final data = await MangaDexService.fetchChapterPages(widget.chapter);
       if (mounted) {
@@ -412,8 +461,19 @@ class _ReaderScreenState extends State<ReaderScreen> {
           data.getUrls(useDataSaver: StorageService.dataSaverEnabled),
         );
       }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _sourceError = error is UnsupportedError
+              ? error.message?.toString()
+              : 'Não foi possível carregar o capítulo. Verifique sua conexão e tente novamente.';
+        });
+        AppFeedback.message(
+          context,
+          _sourceError ?? 'Não foi possível abrir este capítulo.',
+        );
+      }
     }
   }
 
@@ -459,8 +519,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       color: YomiPalette.ensoRed,
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Não foi possível carregar as páginas deste capítulo ou você está sem conexão.',
+                    Text(
+                      _sourceError ??
+                          'Não foi possível carregar as páginas deste capítulo ou você está sem conexão.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.white70),
                     ),
@@ -502,9 +563,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       onTap: _toggleHud,
                       footer: _buildEndOfChapterFooter(nextCh, prevCh),
                       pageBuilder: (context, index, onRatio) => ReaderPageImage(
-                        key: ValueKey(
-                          '$index-${_imageAttempts[index] ?? 0}',
-                        ),
+                        key: ValueKey('$index-${_imageAttempts[index] ?? 0}'),
                         image: _providerFor(index),
                         pageNumber: index + 1,
                         onRatio: onRatio,
@@ -539,11 +598,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
                         child: ValueListenableBuilder<int>(
                           valueListenable: _visiblePage,
                           builder: (context, page, _) => ReaderToolbar(
+                            palette: _readerPalette,
                             title: widget.manga.title,
                             chapter: widget.chapter.chapterNumber,
                             page: page,
                             total: totalPages,
-                            offline: _isOfflineMode,
+                            offline:
+                                _isOfflineMode ||
+                                DeviceStateService.instance.isOffline,
                             webtoon: _isWebtoonMode,
                             onBack: () => Navigator.pop(context),
                             onMode: _toggleMode,
@@ -602,7 +664,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
       ]),
       builder: (context, _) {
         final profile = StorageService.profileNotifier.value;
-        final palette = ProfilePaletteService.paletteNotifier.value;
+        final palette = AppearanceController.instance.value.reactiveReader
+            ? _readerPalette ?? ProfilePaletteService.paletteNotifier.value
+            : ProfilePaletteService.paletteNotifier.value;
         final mascotName = profile.effectiveBlobatarName;
 
         return Container(

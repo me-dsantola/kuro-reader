@@ -1,5 +1,7 @@
+import '../widgets/app_feedback.dart';
 import '../widgets/appearance_settings.dart';
 import '../services/appearance_controller.dart';
+import '../services/device_state_service.dart';
 import '../models/catalog_sort.dart';
 import '../widgets/catalog_sort_control.dart';
 import 'favorite_updates_screen.dart';
@@ -129,7 +131,10 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_exhausted || _candidates.isEmpty || _index >= _candidates.length) {
+    if (DeviceStateService.instance.isOffline ||
+        _exhausted ||
+        _candidates.isEmpty ||
+        _index >= _candidates.length) {
       return Container(
         width: widget.width,
         height: widget.height,
@@ -139,7 +144,9 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final icon = Icon(
-              _triedTitleRecovery && _exhausted
+              DeviceStateService.instance.isOffline
+                  ? Icons.offline_pin_rounded
+                  : _triedTitleRecovery && _exhausted
                   ? Icons.auto_stories_rounded
                   : Icons.sync_rounded,
               color: YomiPalette.ensoRed,
@@ -392,11 +399,7 @@ class _ToriiSakuraBannerPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final darkTint = Color.lerp(
-      const Color(0xFF070709),
-      accentColor,
-      0.22,
-    )!;
+    final darkTint = Color.lerp(const Color(0xFF070709), accentColor, 0.22)!;
     final bgPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
@@ -411,8 +414,7 @@ class _ToriiSakuraBannerPainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 24);
     canvas.drawCircle(sunCenter, 58, haloPaint);
 
-    final sunPaint = Paint()
-      ..color = accentColor.withValues(alpha: 0.88);
+    final sunPaint = Paint()..color = accentColor.withValues(alpha: 0.88);
     canvas.drawCircle(sunCenter, 42, sunPaint);
 
     final mountainPaint = Paint()..color = const Color(0xFF0B0810);
@@ -456,8 +458,7 @@ class _ToriiSakuraBannerPainter extends CustomPainter {
       toriiPaint,
     );
 
-    final sakuraPaint = Paint()
-      ..color = secondaryColor.withValues(alpha: 0.62);
+    final sakuraPaint = Paint()..color = secondaryColor.withValues(alpha: 0.62);
     final petals = [
       Offset(size.width * 0.12, size.height * 0.28),
       Offset(size.width * 0.28, size.height * 0.50),
@@ -484,8 +485,8 @@ class _ToriiSakuraBannerPainter extends CustomPainter {
 // ABA 0: PERFIL (BANNER + MASCOTE BLOBATAR + RECENTES, LISTAS EM ROLL & FAVORITOS)
 // ============================================================================
 class ProfileDashboardScreen extends StatefulWidget {
-  final VoidCallback onGoToExplore;
-  final VoidCallback onGoToSettings;
+  final VoidCallback? onGoToExplore;
+  final VoidCallback? onGoToSettings;
 
   const ProfileDashboardScreen({
     super.key,
@@ -555,9 +556,8 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                           StorageService.getContinueReadingList();
                       final favorites = StorageService.getFavorites();
                       final readingLists = StorageService.getReadingLists();
-                      final pendingUpdatesCount = FavoriteUpdatesService
-                          .allPending(favorites)
-                          .length;
+                      final pendingUpdatesCount =
+                          FavoriteUpdatesService.allPending(favorites).length;
                       final genreTags = profile.genreTags;
 
                       return ListView(
@@ -1302,10 +1302,7 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
-                                YomiCoverImage(
-                                  manga: manga,
-                                  highRes: false,
-                                ),
+                                YomiCoverImage(manga: manga, highRes: false),
                                 Positioned(
                                   left: 6,
                                   bottom: 6,
@@ -1593,10 +1590,7 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                 'Obras favoritas',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                ),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
               ),
             ),
           ],
@@ -1612,28 +1606,18 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
             ),
             child: Column(
               children: [
-                Icon(
-                  Icons.favorite_border_rounded,
-                  color: accent,
-                  size: 32,
-                ),
+                Icon(Icons.favorite_border_rounded, color: accent, size: 32),
                 const SizedBox(height: 10),
                 const Text(
                   'Sua vitrine de Obras Favoritas está vazia',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                 ),
                 const SizedBox(height: 6),
                 const Text(
                   'Toque no ícone de coração em qualquer Mangá, Manhwa ou Webtoon para destacá-lo no seu perfil.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 12.5,
-                  ),
+                  style: TextStyle(color: Colors.white60, fontSize: 12.5),
                 ),
                 const SizedBox(height: 14),
                 FilledButton.tonalIcon(
@@ -2170,7 +2154,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
-                      color: excluded ? palette.secondary : YomiPalette.pureWhite,
+                      color: excluded
+                          ? palette.secondary
+                          : YomiPalette.pureWhite,
                       decoration: excluded ? TextDecoration.lineThrough : null,
                     ),
                   ),
@@ -2363,10 +2349,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     scrolledUnderElevation: 0,
                     flexibleSpace: catalogAppBar.flexibleSpace,
                     bottom: catalogAppBar.bottom,
-                    floating:
-                        AppearanceController.instance.value.autoHideMenus,
-                    pinned:
-                        !AppearanceController.instance.value.autoHideMenus,
+                    floating: AppearanceController.instance.value.autoHideMenus,
+                    pinned: !AppearanceController.instance.value.autoHideMenus,
                     snap:
                         AppearanceController.instance.value.autoHideMenus &&
                         !MediaQuery.disableAnimationsOf(context),
@@ -2396,7 +2380,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               ),
                               const SizedBox(height: 12),
                               const Text(
-                                'Não foi possível consultar os catálogos. Tente novamente ou leia pela aba Offline.',
+                                'Não foi possível consultar os catálogos. Tente novamente ou leia em Biblioteca → Baixados.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(color: Colors.white70),
                               ),
@@ -2460,14 +2444,47 @@ class _ExploreScreenState extends State<ExploreScreen> {
 // ============================================================================
 // ABA 2: MINHA BIBLIOTECA (IDENTIDADE VISUAL LUAR + FAVORITOS + LISTAS)
 // ============================================================================
-class LibraryScreen extends StatefulWidget {
+class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
 
   @override
-  State<LibraryScreen> createState() => _LibraryScreenState();
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: DeviceStateService.instance,
+    builder: (context, status, _) => DefaultTabController(
+      key: ValueKey(status.internet == InternetState.offline),
+      length: 2,
+      initialIndex: status.internet == InternetState.offline ? 1 : 0,
+      child: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: TabBar(
+              indicatorColor: Theme.of(context).colorScheme.primary,
+              labelColor: Theme.of(context).colorScheme.primary,
+              tabs: const [
+                Tab(text: 'Minha Biblioteca'),
+                Tab(icon: Icon(Icons.offline_pin_rounded), text: 'Baixados'),
+              ],
+            ),
+          ),
+          const Expanded(
+            child: TabBarView(
+              children: [_LibraryCollectionScreen(), DownloadsScreen()],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
-class _LibraryScreenState extends State<LibraryScreen> {
+class _LibraryCollectionScreen extends StatefulWidget {
+  const _LibraryCollectionScreen();
+  @override
+  State<_LibraryCollectionScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends State<_LibraryCollectionScreen> {
   bool _checkingUpdates = false;
   bool _downloadingLibraryOffline = false;
   bool _searching = false;
@@ -2535,8 +2552,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     if (confirmed != true || !mounted) return;
     setState(() => _downloadingLibraryOffline = true);
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
+
+    AppFeedback.show(
+      context,
       SnackBar(
         content: Text(
           'Iniciando download offline de ${titles.length} obra(s) da Biblioteca...',
@@ -2574,7 +2592,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     } finally {
       if (mounted) {
         setState(() => _downloadingLibraryOffline = false);
-        messenger.showSnackBar(
+        AppFeedback.show(
+          context,
           SnackBar(
             content: Text(
               'Biblioteca disponível offline ($totalDownloadedChapters capítulos baixados)!',
@@ -2602,7 +2621,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
     if (!mounted) return;
     setState(() => _checkingUpdates = false);
-    ScaffoldMessenger.of(context).showSnackBar(
+    AppFeedback.show(
+      context,
       SnackBar(
         content: Text(
           failures > 0
@@ -2834,11 +2854,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                     14,
                                     6,
                                   ),
-                                  child: Row(
+                                  child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(
+                                      SizedBox(
+                                        width: double.infinity,
                                         child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
@@ -2851,13 +2872,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                                   size: 22,
                                                 ),
                                                 const SizedBox(width: 8),
-                                                const Text(
-                                                  'Biblioteca',
-                                                  style: TextStyle(
-                                                    fontSize: 24,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: Colors.white,
-                                                    letterSpacing: -0.4,
+                                                const Flexible(
+                                                  child: Text(
+                                                    'Biblioteca',
+                                                    style: TextStyle(
+                                                      fontSize: 24,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      color: Colors.white,
+                                                      letterSpacing: -0.4,
+                                                    ),
                                                   ),
                                                 ),
                                               ],
@@ -2875,111 +2899,129 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                           ],
                                         ),
                                       ),
-                                      IconButton(
-                                        tooltip: 'Buscar na biblioteca',
-                                        icon: Icon(
-                                          _searching
-                                              ? Icons.close_rounded
-                                              : Icons.search_rounded,
-                                          color: Colors.white,
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _searching = !_searching;
-                                            if (!_searching) {
-                                              _searchCtrl.clear();
-                                              _searchQuery = '';
-                                            }
-                                          });
-                                        },
-                                      ),
-                                      IconButton(
-                                        tooltip: 'Criar nova lista de leitura',
-                                        icon: Icon(
-                                          Icons.playlist_add_rounded,
-                                          color: palette.secondary,
-                                        ),
-                                        onPressed: () =>
-                                            showCreateOrEditReadingListDialog(
-                                              context,
+                                      Wrap(
+                                        alignment: WrapAlignment.end,
+                                        children: [
+                                          IconButton(
+                                            tooltip: 'Buscar na biblioteca',
+                                            icon: Icon(
+                                              _searching
+                                                  ? Icons.close_rounded
+                                                  : Icons.search_rounded,
+                                              color: Colors.white,
                                             ),
-                                      ),
-                                      IconButton(
-                                        tooltip:
-                                            'Baixar Biblioteca para ler offline',
-                                        onPressed:
-                                            _downloadingLibraryOffline ||
-                                                (allFavorites.isEmpty &&
-                                                    readingLists.isEmpty)
-                                            ? null
-                                            : () {
-                                                final uniqueTitles =
-                                                    <String, Manga>{
-                                                      for (final m
-                                                          in allFavorites)
-                                                        m.id: m,
-                                                      for (final l
-                                                          in readingLists)
-                                                        for (final m
-                                                            in l.mangas)
-                                                          m.id: m,
-                                                    }.values.toList();
-                                                _confirmAndDownloadLibraryOffline(
-                                                  uniqueTitles,
-                                                  palette,
-                                                );
-                                              },
-                                        icon: _downloadingLibraryOffline
-                                            ? SizedBox(
-                                                width: 18,
-                                                height: 18,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color: palette.primary,
-                                                    ),
-                                              )
-                                            : Icon(
-                                                Icons.downloading_rounded,
-                                                color: palette.primary,
+                                            onPressed: () {
+                                              setState(() {
+                                                _searching = !_searching;
+                                                if (!_searching) {
+                                                  _searchCtrl.clear();
+                                                  _searchQuery = '';
+                                                }
+                                              });
+                                            },
+                                          ),
+                                          IconButton(
+                                            tooltip:
+                                                'Criar nova lista de leitura',
+                                            icon: Icon(
+                                              Icons.playlist_add_rounded,
+                                              color: palette.secondary,
+                                            ),
+                                            onPressed: () =>
+                                                showCreateOrEditReadingListDialog(
+                                                  context,
+                                                ),
+                                          ),
+                                          IconButton(
+                                            tooltip:
+                                                'Baixar Biblioteca para ler offline',
+                                            onPressed:
+                                                DeviceStateService
+                                                        .instance
+                                                        .isOffline ||
+                                                    _downloadingLibraryOffline ||
+                                                    (allFavorites.isEmpty &&
+                                                        readingLists.isEmpty)
+                                                ? null
+                                                : () {
+                                                    final uniqueTitles =
+                                                        <String, Manga>{
+                                                          for (final m
+                                                              in allFavorites)
+                                                            m.id: m,
+                                                          for (final l
+                                                              in readingLists)
+                                                            for (final m
+                                                                in l.mangas)
+                                                              m.id: m,
+                                                        }.values.toList();
+                                                    _confirmAndDownloadLibraryOffline(
+                                                      uniqueTitles,
+                                                      palette,
+                                                    );
+                                                  },
+                                            icon: _downloadingLibraryOffline
+                                                ? SizedBox(
+                                                    width: 18,
+                                                    height: 18,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color:
+                                                              palette.primary,
+                                                        ),
+                                                  )
+                                                : Icon(
+                                                    Icons.downloading_rounded,
+                                                    color: palette.primary,
+                                                  ),
+                                          ),
+                                          IconButton(
+                                            tooltip: 'Central de atualizações',
+                                            icon: Badge(
+                                              isLabelVisible:
+                                                  FavoriteUpdatesService.allPending(
+                                                    allFavorites,
+                                                  ).isNotEmpty,
+                                              backgroundColor: palette.primary,
+                                              child: const Icon(
+                                                Icons.notifications_outlined,
                                               ),
-                                      ),
-                                      IconButton(
-                                        tooltip: 'Central de atualizações',
-                                        icon: Badge(
-                                          isLabelVisible: FavoriteUpdatesService
-                                              .allPending(allFavorites)
-                                              .isNotEmpty,
-                                          backgroundColor: palette.primary,
-                                          child: const Icon(
-                                            Icons.notifications_outlined,
+                                            ),
+                                            onPressed: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const FavoriteUpdatesScreen(),
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                        onPressed: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const FavoriteUpdatesScreen(),
+                                          IconButton(
+                                            tooltip:
+                                                'Verificar novos capítulos dos favoritos',
+                                            onPressed:
+                                                DeviceStateService
+                                                        .instance
+                                                        .isOffline ||
+                                                    _checkingUpdates
+                                                ? null
+                                                : _checkUpdates,
+                                            icon: _checkingUpdates
+                                                ? SizedBox(
+                                                    width: 18,
+                                                    height: 18,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color:
+                                                              palette.primary,
+                                                        ),
+                                                  )
+                                                : const Icon(
+                                                    Icons.sync_rounded,
+                                                  ),
                                           ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        tooltip:
-                                            'Verificar novos capítulos dos favoritos',
-                                        onPressed: _checkingUpdates
-                                            ? null
-                                            : _checkUpdates,
-                                        icon: _checkingUpdates
-                                            ? SizedBox(
-                                                width: 18,
-                                                height: 18,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color: palette.primary,
-                                                    ),
-                                              )
-                                            : const Icon(Icons.sync_rounded),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -3480,14 +3522,16 @@ class DownloadsScreen extends StatelessWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
+
     try {
       if (all) {
         await DownloadManager.deleteAllDownloads();
       } else {
         await DownloadManager.deleteChapter(chapter.id);
       }
-      messenger.showSnackBar(
+      if (!context.mounted) return;
+      AppFeedback.show(
+        context,
         SnackBar(
           content: Text(
             all ? 'Armazenamento offline limpo.' : 'Download removido.',
@@ -3495,7 +3539,9 @@ class DownloadsScreen extends StatelessWidget {
         ),
       );
     } catch (_) {
-      messenger.showSnackBar(
+      if (!context.mounted) return;
+      AppFeedback.show(
+        context,
         const SnackBar(
           content: Text(
             'Não foi possível apagar. Aguarde os downloads e tente novamente.',
@@ -3519,7 +3565,13 @@ class DownloadsScreen extends StatelessWidget {
                   color: palette.primary,
                 ),
                 const SizedBox(width: 10),
-                const Text('Capítulos Offline'),
+                const Expanded(
+                  child: Text(
+                    'Capítulos salvos',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             actions: [
@@ -3741,9 +3793,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ctrl.text,
                   );
                   if (!ctx.mounted) return;
-                  final messenger = ScaffoldMessenger.of(ctx);
-                  if (ok) Navigator.pop(ctx);
-                  messenger.showSnackBar(
+                  AppFeedback.show(
+                    ctx,
                     SnackBar(
                       content: Text(
                         ok
@@ -3752,6 +3803,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   );
+                  if (ok) Navigator.pop(ctx);
                 },
                 icon: const Icon(Icons.restore_rounded),
                 label: const Text('Restaurar Agora'),
@@ -4005,12 +4057,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       foregroundColor: Colors.white,
                                     ),
                                     onPressed: () async {
-                                      final messenger = ScaffoldMessenger.of(
-                                        context,
-                                      );
                                       final ok =
                                           await StorageService.syncAutoBackupNow();
-                                      messenger.showSnackBar(
+                                      if (!context.mounted) return;
+                                      AppFeedback.show(
+                                        context,
                                         SnackBar(
                                           content: Text(
                                             ok
@@ -4031,12 +4082,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 Expanded(
                                   child: OutlinedButton.icon(
                                     onPressed: () async {
-                                      final messenger = ScaffoldMessenger.of(
-                                        context,
-                                      );
                                       final restored =
                                           await StorageService.tryRestoreFromDeviceAutoBackup();
-                                      messenger.showSnackBar(
+                                      if (!context.mounted) return;
+                                      AppFeedback.show(
+                                        context,
                                         SnackBar(
                                           content: Text(
                                             restored
@@ -4081,15 +4131,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 Expanded(
                                   child: OutlinedButton.icon(
                                     onPressed: () async {
-                                      final messenger = ScaffoldMessenger.of(
-                                        context,
-                                      );
                                       final code =
                                           StorageService.exportFullBackupJson();
                                       await Clipboard.setData(
                                         ClipboardData(text: code),
                                       );
-                                      messenger.showSnackBar(
+                                      if (!context.mounted) return;
+                                      AppFeedback.show(
+                                        context,
                                         const SnackBar(
                                           content: Text(
                                             'Código de Backup copiado para a área de transferência!',
@@ -4153,10 +4202,26 @@ class _MangaGridCardState extends State<MangaGridCard> {
   bool _peekUnblurred = false;
 
   static const ColorFilter _grayscaleFilter = ColorFilter.matrix(<double>[
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0, 0, 0, 1, 0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ]);
 
   @override

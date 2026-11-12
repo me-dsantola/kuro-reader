@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kuro_reader/services/scroll_chrome_controller.dart';
-import 'package:kuro_reader/widgets/scroll_chrome_bar.dart';
+import 'support/scroll_chrome_bar.dart';
 
 void main() {
   testWidgets(

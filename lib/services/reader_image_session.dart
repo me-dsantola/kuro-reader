@@ -230,6 +230,11 @@ class ReaderImageSession {
   Future<Uint8List> _readOnline(String rawUrl) async {
     for (final url in yomiCandidateImageUrls(rawUrl)) {
       if (_closed) throw StateError('Leitor encerrado');
+      if (DeviceStateService.instance.isOffline) {
+        throw StateError(
+          'Modo offline: esta página não está salva no aparelho.',
+        );
+      }
       try {
         final response = await DeviceStateService.instance.observe(
           () => _client
@@ -269,7 +274,9 @@ class ReaderImageSession {
   }
 
   Future<void> _refreshUrls() async {
-    if (reloadUrls == null || _closed) return;
+    if (reloadUrls == null || _closed || DeviceStateService.instance.isOffline) {
+      return;
+    }
     final task = _refreshing ??= () async {
       final updated = await reloadUrls!();
       if (!_closed && updated.length == _urls.length) {

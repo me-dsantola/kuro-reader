@@ -1,3 +1,4 @@
+import '../widgets/app_feedback.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -38,10 +39,26 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   bool _sortAscending = false;
 
   static const ColorFilter _grayscaleFilter = ColorFilter.matrix(<double>[
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0, 0, 0, 1, 0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ]);
 
   @override
@@ -184,7 +201,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _loadingOlderChapters = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      AppFeedback.show(
+        context,
         const SnackBar(
           content: Text(
             'Não foi possível buscar os capítulos antigos. Tente novamente.',
@@ -248,8 +266,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     );
 
     if (confirmed != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
+
+    AppFeedback.show(
+      context,
       SnackBar(
         content: Text(
           '"${widget.manga.title}" adicionado à Biblioteca. Iniciando download de ${uniqueToDownload.length} capítulos...',
@@ -264,7 +283,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     );
 
     if (!mounted) return;
-    messenger.showSnackBar(
+    AppFeedback.show(
+      context,
       SnackBar(
         content: Text(
           'Download concluído: $count de ${uniqueToDownload.length} capítulos salvos offline na sua Biblioteca!',
@@ -399,10 +419,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         Icons.playlist_add_rounded,
                         color: Colors.white,
                       ),
-                      onPressed: () => showAddMangaToReadingListSheet(
-                        context,
-                        widget.manga,
-                      ),
+                      onPressed: () =>
+                          showAddMangaToReadingListSheet(context, widget.manga),
                     ),
                     const SizedBox(width: 6),
                     ValueListenableBuilder(
@@ -827,11 +845,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                                       StorageService.countDownloadedChaptersForManga(
                                         widget.manga.id,
                                       );
-                                  final uniqueCount = DownloadManager
-                                      .deduplicateForBatchDownload(
+                                  final uniqueCount =
+                                      DownloadManager.deduplicateForBatchDownload(
                                         filteredChapters,
-                                      )
-                                      .length;
+                                      ).length;
                                   final allDownloaded =
                                       uniqueCount > 0 &&
                                       downloadedCount >= uniqueCount;
@@ -1192,7 +1209,6 @@ class ChapterDownloadButton extends StatelessWidget {
                 color: Colors.white54,
               ),
               onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
                 try {
                   await DownloadManager.downloadChapter(
                     manga: manga,
@@ -1200,7 +1216,9 @@ class ChapterDownloadButton extends StatelessWidget {
                     useDataSaver: StorageService.dataSaverEnabled,
                   );
                 } catch (e) {
-                  messenger.showSnackBar(
+                  if (!context.mounted) return;
+                  AppFeedback.show(
+                    context,
                     SnackBar(content: Text('Erro no download: $e')),
                   );
                 }

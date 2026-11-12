@@ -21,8 +21,8 @@ import urllib.request
 from pathlib import Path
 
 # Configurações do Bot e Canal Telegram
-BOT_TOKEN = "9226471608:AAGR6VQL6i7zLHLK4c2F9k69efPE6kfyGfw"
-CHANNEL_ID = "-1004356625326"  # Canal: Acervo YOMI HQs
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "")
 LEDGER_FILE = "uploaded_hqs_ledger.json"
 CATALOG_FILE = "yomi_hqs_catalog.json"
 OVERSIZED_REPORT_FILE = "hqs_acima_de_50mb.txt"
@@ -194,6 +194,9 @@ def generate_catalog_from_ledger(ledger: dict):
 
 
 def main():
+    if not BOT_TOKEN or not CHANNEL_ID:
+        print("Configure TELEGRAM_BOT_TOKEN e TELEGRAM_CHANNEL_ID antes de enviar arquivos.")
+        return
     print("=" * 70)
     print("   🚀 YOMI VAULT - UPLOADER AUTOMÁTICO DE HQs PARA O TELEGRAM")
     print("=" * 70)

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'device_state_service.dart';
 import 'dart:io';
 import 'backup_codec.dart';
 import 'package:flutter/foundation.dart';
@@ -176,11 +177,10 @@ class StorageService {
     await settingsBox.put('data_saver_mode', value);
   }
 
-  static bool get privacyProtectionEnabled =>
-      Hive.isBoxOpen(settingsBoxName)
-          ? settingsBox.get('privacy_protection_enabled', defaultValue: true) !=
-                false
-          : privacyProtectionNotifier.value;
+  static bool get privacyProtectionEnabled => Hive.isBoxOpen(settingsBoxName)
+      ? settingsBox.get('privacy_protection_enabled', defaultValue: true) !=
+            false
+      : privacyProtectionNotifier.value;
 
   static Future<void> setPrivacyProtectionEnabled(bool value) async {
     privacyProtectionNotifier.value = value;
@@ -223,9 +223,7 @@ class StorageService {
     return _rawReadingLists()
         .map(
           (list) => list.copyWith(
-            mangas: list.mangas
-                .where((m) => allowNsfw || !m.isNsfw)
-                .toList(),
+            mangas: list.mangas.where((m) => allowNsfw || !m.isNsfw).toList(),
           ),
         )
         .toList();
@@ -236,9 +234,7 @@ class StorageService {
     String description = '',
     List<Manga> initialMangas = const [],
   }) async {
-    final cleanName = name.trim().isEmpty
-        ? 'Minha Lista'
-        : name.trim();
+    final cleanName = name.trim().isEmpty ? 'Minha Lista' : name.trim();
     final newList = UserReadingList(
       id: 'list_${DateTime.now().microsecondsSinceEpoch}',
       name: cleanName,
@@ -687,6 +683,14 @@ class StorageService {
           'auto_hide_menus',
           defaultValue: true,
         ),
+        'tab_transitions': settingsBox.get(
+          'tab_transitions',
+          defaultValue: true,
+        ),
+        'reactive_reader': settingsBox.get(
+          'reactive_reader',
+          defaultValue: true,
+        ),
         if (settingsBox.get(readingListsKey) is List)
           readingListsKey: settingsBox.get(readingListsKey),
       },
@@ -729,6 +733,8 @@ class StorageService {
         'hide_zero_chapters',
         'data_saver_mode',
         'auto_hide_menus',
+        'tab_transitions',
+        'reactive_reader',
         'privacy_protection_enabled',
       ]) {
         final value = settings[key];
@@ -870,6 +876,7 @@ class StorageService {
   /// garantindo que a página do mangá funcione 100% offline na Biblioteca.
   static List<Chapter> getOfflineOrCachedChapters(String mangaId) {
     final downloaded = getDownloadedChaptersForManga(mangaId);
+    if (DeviceStateService.instance.isOffline) return downloaded;
     final cached = Hive.isBoxOpen(historyBoxName)
         ? getCachedMangaChapters(mangaId)
         : const <Chapter>[];

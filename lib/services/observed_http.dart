@@ -8,18 +8,30 @@ class ObservedHttp {
     Uri url, {
     Map<String, String>? headers,
     Duration timeout = const Duration(seconds: 12),
-  }) => DeviceStateService.instance.observe(
-    () => http.get(url, headers: headers).timeout(timeout),
-  );
+  }) => DeviceStateService.instance.observe(() {
+    if (DeviceStateService.instance.isOffline) {
+      throw http.ClientException(
+        'Modo offline: recurso disponível após reconectar.',
+        url,
+      );
+    }
+    return http.get(url, headers: headers).timeout(timeout);
+  });
 
   static Future<http.Response> post(
     Uri url, {
     Map<String, String>? headers,
     Object? body,
     Encoding? encoding,
-  }) => DeviceStateService.instance.observe(
-    () => http
+  }) => DeviceStateService.instance.observe(() {
+    if (DeviceStateService.instance.isOffline) {
+      throw http.ClientException(
+        'Modo offline: recurso disponível após reconectar.',
+        url,
+      );
+    }
+    return http
         .post(url, headers: headers, body: body, encoding: encoding)
-        .timeout(const Duration(seconds: 12)),
-  );
+        .timeout(const Duration(seconds: 12));
+  });
 }
