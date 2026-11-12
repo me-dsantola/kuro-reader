@@ -6,7 +6,7 @@ A versão efetivamente publicada aparece em [Releases](../../releases).
 
 ## Experiência
 
-- Início com destaque, capas populares em rolagem horizontal, favoritos e leitura recente;
+- Início com destaque rotativo, paleta por obra, capas populares e leitura recente;
 - Logo centralizada em Explorar, com busca, filtros e ordenação no mesmo bloco;
 - Ordenação por recentes, populares ou título, preservando a busca;
 - Filtros por categoria, com inclusão/exclusão e aplicação explícita;
@@ -21,6 +21,8 @@ A versão efetivamente publicada aparece em [Releases](../../releases).
 - Transições rápidas de fade/deslizamento e menu do leitor com cores da obra;
 - Mais cores de perfil/Blobatar, ajuste contínuo de matiz e reação ao toque;
 - Avisos e erros em pop-ups com contraste e botão para fechar.
+- Biblioteca com busca, chips de leitura, continuação e progresso por obra;
+- Banners de perfil: Horizonte distante, Lua vermelha e Portal da noite.
 
 Em **Perfil → Configurações → Aparência e movimento**, personalize o vidro
 suave e o recolhimento de menus. Ao descer, os controles liberam espaço; ao
@@ -77,6 +79,8 @@ O confronto das promessas das releases 1.2.0–1.2.5 com o código atual está e
 [docs/auditoria-2026-11-12.md](docs/auditoria-2026-11-12.md), incluindo pendências.
 O comportamento do modo offline e das novas preferências está em
 [docs/offline-e-personalizacao.md](docs/offline-e-personalizacao.md).
+Os detalhes da Biblioteca reformulada, dos banners e da busca estão em
+[docs/biblioteca-banners-e-busca.md](docs/biblioteca-banners-e-busca.md).
 
 A fluidez, os provedores externos e os sensores reais precisam ser conferidos
 em aparelho físico; testes com fontes simuladas não substituem essa verificação.

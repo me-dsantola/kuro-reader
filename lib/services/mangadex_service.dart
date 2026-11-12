@@ -697,7 +697,8 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
       final vaultItems = await TelegramVaultService.loadCatalog();
       items.addAll(
         vaultItems.where(
-          (m) => q.isEmpty || m.title.toLowerCase().contains(q.toLowerCase()),
+          (m) =>
+              q.isEmpty || mangaSearchKey(m.title).contains(mangaSearchKey(q)),
         ),
       );
     }
@@ -970,9 +971,11 @@ class MangaDexService {
 
   // Invalidates in-flight catalog requests when search or filters change.
   static int _catalogGeneration = 0;
+  static String? _activeQuery;
 
   static void resetAggregator() {
     _catalogGeneration++;
+    _activeQuery = null;
     _lookaheadBuffer.clear();
     _seenIds.clear();
     sourceStatusBanner.value = null;
@@ -1001,7 +1004,11 @@ class MangaDexService {
     bool reset = false,
     int pageSize = 24,
   }) async {
-    if (reset) resetAggregator();
+    final query = filter.query.trim();
+    if (reset || query != _activeQuery) {
+      resetAggregator();
+      _activeQuery = query;
+    }
     final generation = _catalogGeneration;
 
     final eligible = _adapters.where((a) {
@@ -1015,7 +1022,16 @@ class MangaDexService {
           !(_breakers[a.sourceType]?.isOpen ?? false);
     }).toList();
 
+    if (eligible.isEmpty &&
+        _lookaheadBuffer.isEmpty &&
+        filter.enabledSources.any(
+          (source) => _breakers[source]?.isOpen ?? false,
+        )) {
+      sourceStatusBanner.value =
+          'As fontes estão temporariamente indisponíveis. Aguarde e tente novamente.';
+    }
     if (eligible.isNotEmpty) {
+      var successful = 0;
       final futures = eligible.map((adapter) async {
         final type = adapter.sourceType;
         final cursor = _cursors[type] ?? 0;
@@ -1031,6 +1047,7 @@ class MangaDexService {
               ? await request
               : await request.timeout(const Duration(seconds: 5));
           if (generation != _catalogGeneration) return <Manga>[];
+          successful++;
           breaker.recordSuccess();
           _cursors[type] = res.nextCursor;
           _hasMore[type] = res.hasMore;
@@ -1045,6 +1062,9 @@ class MangaDexService {
 
       final results = await Future.wait(futures);
       if (generation != _catalogGeneration) return <Manga>[];
+      sourceStatusBanner.value = successful == 0
+          ? 'Não foi possível consultar as fontes. Verifique sua conexão e tente novamente.'
+          : null;
       // Interleave provider rankings; chapter count is not popularity.
       final maxLength = results.fold<int>(
         0,

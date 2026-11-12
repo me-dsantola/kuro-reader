@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../widgets/app_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -18,12 +19,16 @@ class HomeOverviewScreen extends StatefulWidget {
   final VoidCallback onExplore;
   final VoidCallback onLibrary;
   final VoidCallback? onProfile;
+  final Duration featuredInterval;
+  final Future<ProfileAdaptivePalette> Function(Manga)? paletteResolver;
 
   const HomeOverviewScreen({
     super.key,
     required this.onExplore,
     required this.onLibrary,
     this.onProfile,
+    this.featuredInterval = const Duration(seconds: 8),
+    this.paletteResolver,
   });
 
   static List<Chapter> buildSortedChapterList(Manga manga, Chapter current) {
@@ -56,16 +61,69 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
   bool _loadingPopular = false;
   bool _openingFeatured = false;
   int _popularGeneration = 0;
+  int _featuredIndex = 0;
+  int _paletteGeneration = 0;
+  Timer? _featuredTimer;
+  ProfileAdaptivePalette? _featuredPalette;
+
+  List<Manga> get _featuredItems => _visiblePopular.take(5).toList();
+
+  void _selectFeatured(int index) {
+    final items = _featuredItems;
+    if (items.isEmpty) return;
+    final selected = index % items.length;
+    final manga = items[selected];
+    final generation = ++_paletteGeneration;
+    final fallback = ProfilePaletteService.synchronousFallbackForManga(manga);
+    final profile = ProfilePaletteService.paletteNotifier.value;
+    final hue =
+        manga.title.runes.fold<int>(
+          0,
+          (hash, c) => (hash * 31 + c) & 0x7fffffff,
+        ) %
+        360;
+    setState(() {
+      _featuredIndex = selected;
+      _featuredPalette = identical(fallback, profile)
+          ? ProfileAdaptivePalette.fromColor(
+              HSVColor.fromAHSV(1, hue.toDouble(), 0.65, 0.85).toColor(),
+            )
+          : fallback;
+    });
+    (widget.paletteResolver ?? ProfilePaletteService.resolveForManga)(
+      manga,
+    ).then((palette) {
+      if (mounted &&
+          generation == _paletteGeneration &&
+          !identical(palette, ProfilePaletteService.paletteNotifier.value)) {
+        setState(() => _featuredPalette = palette);
+      }
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     _loadPopularMangas();
+    _featuredTimer = Timer.periodic(widget.featuredInterval, (_) {
+      if (!mounted ||
+          _openingFeatured ||
+          _featuredItems.length < 2 ||
+          !TickerMode.of(context) ||
+          MediaQuery.disableAnimationsOf(context) ||
+          ModalRoute.of(context)?.isCurrent == false) {
+        return;
+      }
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
+      _selectFeatured(_featuredIndex + 1);
+    });
     StorageService.nsfwModeNotifier.addListener(_loadPopularMangas);
   }
 
   @override
   void dispose() {
+    _featuredTimer?.cancel();
     StorageService.nsfwModeNotifier.removeListener(_loadPopularMangas);
     super.dispose();
   }
@@ -79,7 +137,11 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
         includeNsfw: StorageService.nsfwMode.allowNsfwFetch,
       );
       if (mounted && generation == _popularGeneration) {
-        setState(() => _popularMangas = fetched);
+        setState(() {
+          _popularMangas = fetched;
+          _featuredIndex = 0;
+        });
+        _selectFeatured(0);
       }
     } catch (_) {
       // Keep actual previously fetched titles on temporary failures.
@@ -121,7 +183,8 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
       StorageService.nsfwModeNotifier,
     ]),
     builder: (context, _) {
-      final palette = ProfilePaletteService.paletteNotifier.value;
+      final palette =
+          _featuredPalette ?? ProfilePaletteService.paletteNotifier.value;
       final profile = StorageService.profileNotifier.value;
 
       return Scaffold(
@@ -330,7 +393,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
   }
 
   Widget _featured(BuildContext context, ProfileAdaptivePalette palette) {
-    final popular = _visiblePopular;
+    final popular = _featuredItems;
     if (popular.isEmpty) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 108, 20, 28),
@@ -360,32 +423,77 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
         ),
       );
     }
-    final manga = popular.first;
+    final manga = popular[_featuredIndex % popular.length];
     return ValueListenableBuilder(
       valueListenable: StorageService.favBox.listenable(),
-      builder: (context, Box box, _) => HomeBillboard(
-        manga: manga,
-        artwork: YomiCoverImage(manga: manga, highRes: true),
-        accent: palette.primary,
-        inList: StorageService.isFavorite(manga.id),
-        opening: _openingFeatured,
-        onRead: () => _readFeatured(manga),
-        onToggleList: () async {
-          try {
-            await StorageService.toggleFavorite(manga);
-          } catch (_) {
-            if (context.mounted) {
-              AppFeedback.show(
-                context,
-                const SnackBar(
-                  content: Text(
-                    'Não foi possível atualizar sua lista. Tente novamente.',
+      builder: (context, Box box, _) => Column(
+        children: [
+          AnimatedSwitcher(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 280),
+            child: HomeBillboard(
+              key: ValueKey(manga.compositeId),
+              manga: manga,
+              artwork: YomiCoverImage(manga: manga, highRes: true),
+              accent: palette.primary,
+              inList: StorageService.isFavorite(manga.id),
+              opening: _openingFeatured,
+              onRead: () => _readFeatured(manga),
+              onToggleList: () async {
+                try {
+                  await StorageService.toggleFavorite(manga);
+                } catch (_) {
+                  if (context.mounted) {
+                    AppFeedback.show(
+                      context,
+                      const SnackBar(
+                        content: Text(
+                          'Não foi possível atualizar sua lista. Tente novamente.',
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+          ),
+          if (popular.length > 1)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var index = 0; index < popular.length; index++)
+                  Semantics(
+                    button: true,
+                    selected: index == _featuredIndex,
+                    label: 'Destaque ${index + 1} de ${popular.length}',
+                    child: InkWell(
+                      onTap: () => _selectFeatured(index),
+                      borderRadius: BorderRadius.circular(24),
+                      child: SizedBox(
+                        width: 40,
+                        height: 36,
+                        child: Center(
+                          child: AnimatedContainer(
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : const Duration(milliseconds: 180),
+                            height: 5,
+                            width: index == _featuredIndex ? 23 : 6,
+                            decoration: BoxDecoration(
+                              color: index == _featuredIndex
+                                  ? palette.primary
+                                  : Colors.white24,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              );
-            }
-          }
-        },
+              ],
+            ),
+        ],
       ),
     );
   }

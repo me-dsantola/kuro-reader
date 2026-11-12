@@ -418,6 +418,26 @@ class YomiSearchFilter {
 String normalizeMangaTitle(String title) =>
     title.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]', unicode: true), '');
 
+/// Search matching is forgiving; saved title identity remains exact.
+String mangaSearchKey(String title) {
+  var value = title.toLowerCase();
+  const letters = {
+    'a': 'áàâãäå',
+    'e': 'éèêë',
+    'i': 'íìîï',
+    'o': 'óòôõö',
+    'u': 'úùûü',
+    'c': 'ç',
+    'n': 'ñ',
+  };
+  letters.forEach((replacement, accented) {
+    for (final rune in accented.runes) {
+      value = value.replaceAll(String.fromCharCode(rune), replacement);
+    }
+  });
+  return normalizeMangaTitle(value);
+}
+
 class Manga {
   final String id;
   final MangaSourceType source;

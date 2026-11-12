@@ -18,6 +18,7 @@ class YomiBannerPreset {
   final String subtitle;
   final Color seedColor;
   final Color secondaryColor;
+  final String? assetPath;
 
   const YomiBannerPreset({
     required this.id,
@@ -25,10 +26,35 @@ class YomiBannerPreset {
     required this.subtitle,
     required this.seedColor,
     required this.secondaryColor,
+    this.assetPath,
   });
 }
 
 const List<YomiBannerPreset> kYomiBannerPresets = [
+  YomiBannerPreset(
+    id: 'preset:horizonte_distante',
+    title: 'Horizonte distante',
+    subtitle: 'Um viajante sob o luar carmesim',
+    seedColor: Color(0xFFB91C3C),
+    secondaryColor: Color(0xFFFB7185),
+    assetPath: 'assets/banners/horizonte_distante.png',
+  ),
+  YomiBannerPreset(
+    id: 'preset:lua_vermelha',
+    title: 'Lua vermelha',
+    subtitle: 'Templos e montanhas sob a lua',
+    seedColor: Color(0xFFDC264C),
+    secondaryColor: Color(0xFFFDA4AF),
+    assetPath: 'assets/banners/lua_vermelha.png',
+  ),
+  YomiBannerPreset(
+    id: 'preset:portal_da_noite',
+    title: 'Portal da noite',
+    subtitle: 'Um caminho iluminado entre portais',
+    seedColor: Color(0xFFE11D48),
+    secondaryColor: Color(0xFFFB7185),
+    assetPath: 'assets/banners/portal_da_noite.png',
+  ),
   YomiBannerPreset(
     id: 'preset:torii_crimson',
     title: 'Torii Carmesim',

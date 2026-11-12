@@ -21,6 +21,7 @@ import '../services/profile_palette_service.dart';
 import '../widgets/frosted_surface.dart';
 import '../widgets/yomi_blobatar_studio.dart';
 import 'home_overview_screen.dart';
+import 'library_collection_screen.dart';
 import 'manga_detail_screen.dart';
 import 'reader_screen.dart';
 
@@ -1669,7 +1670,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Timer? _searchDebounce;
 
   void _scheduleTitleSearch(String value) {
-    setState(() {}); // Keep the clear-search button in sync.
+    _catalogRequests.beginSearch();
+    MangaDexService.resetAggregator();
+    setState(() {
+      _mangas = [];
+      _isLoading = true;
+      _isEnrichingCatalog = false;
+      _error = null;
+    });
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 450), () {
       if (mounted) _loadMangas(reset: true);
@@ -1732,7 +1740,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   YomiSearchFilter get _currentFilter => YomiSearchFilter(
-    query: _searchController.text,
+    query: _searchController.text.trim(),
     includedTags: Set.of(_includedTags),
     excludedTags: Set.of(_excludedTags),
     enabledSources: Set.of(_enabledSources),
@@ -1783,7 +1791,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           MangaSourceType.mangadex,
         });
         if (secondary.isNotEmpty) {
-          _isEnrichingCatalog = true;
+          setState(() => _isEnrichingCatalog = true);
           try {
             final extra = await MangaDexService.fetchMergedCatalog(
               filter: YomiSearchFilter(
@@ -1817,10 +1825,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
             }
           } finally {
             if (mounted && generation == _catalogRequestGeneration) {
-              _isEnrichingCatalog = false;
+              setState(() => _isEnrichingCatalog = false);
             }
           }
         }
+      }
+      if (mounted &&
+          generation == _catalogRequestGeneration &&
+          _mangas.isEmpty &&
+          MangaDexService.sourceStatusBanner.value != null) {
+        setState(() => _error = MangaDexService.sourceStatusBanner.value);
       }
     } catch (e) {
       if (mounted && generation == _catalogRequestGeneration) {
@@ -2399,6 +2413,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         ),
                       ),
                     )
+                  else if (_mangas.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            _isEnrichingCatalog
+                                ? 'Buscando em outras fontes…'
+                                : 'Nenhuma obra encontrada. Tente outro título ou revise os filtros.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: palette.soft),
+                          ),
+                        ),
+                      ),
+                    )
                   else ...[
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 110),
@@ -2445,1054 +2475,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
 // ABA 2: MINHA BIBLIOTECA (IDENTIDADE VISUAL LUAR + FAVORITOS + LISTAS)
 // ============================================================================
 class LibraryScreen extends StatelessWidget {
-  const LibraryScreen({super.key});
+  final VoidCallback? onExplore;
+  const LibraryScreen({super.key, this.onExplore});
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder(
-    valueListenable: DeviceStateService.instance,
-    builder: (context, status, _) => DefaultTabController(
-      key: ValueKey(status.internet == InternetState.offline),
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([
+      DeviceStateService.instance,
+      ProfilePaletteService.paletteNotifier,
+    ]),
+    builder: (context, _) => DefaultTabController(
+      key: ValueKey(DeviceStateService.instance.isOffline),
       length: 2,
-      initialIndex: status.internet == InternetState.offline ? 1 : 0,
-      child: Column(
-        children: [
-          SafeArea(
-            bottom: false,
-            child: TabBar(
-              indicatorColor: Theme.of(context).colorScheme.primary,
-              labelColor: Theme.of(context).colorScheme.primary,
-              tabs: const [
-                Tab(text: 'Minha Biblioteca'),
-                Tab(icon: Icon(Icons.offline_pin_rounded), text: 'Baixados'),
-              ],
+      initialIndex: DeviceStateService.instance.isOffline ? 1 : 0,
+      child: Material(
+        color: YomiPalette.pitchBlack,
+        child: Column(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: TabBar(
+                indicatorColor:
+                    ProfilePaletteService.paletteNotifier.value.primary,
+                labelColor: ProfilePaletteService.paletteNotifier.value.primary,
+                tabs: const [
+                  Tab(text: 'Minha Biblioteca'),
+                  Tab(text: 'Baixados'),
+                ],
+              ),
             ),
-          ),
-          const Expanded(
-            child: TabBarView(
-              children: [_LibraryCollectionScreen(), DownloadsScreen()],
+            Expanded(
+              child: TabBarView(
+                children: [
+                  LibraryCollectionScreen(onExplore: onExplore),
+                  const DownloadsScreen(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );
 }
 
-class _LibraryCollectionScreen extends StatefulWidget {
-  const _LibraryCollectionScreen();
-  @override
-  State<_LibraryCollectionScreen> createState() => _LibraryScreenState();
-}
-
-class _LibraryScreenState extends State<_LibraryCollectionScreen> {
-  bool _checkingUpdates = false;
-  bool _downloadingLibraryOffline = false;
-  bool _searching = false;
-  String _searchQuery = '';
-  String _selectedFilterId = 'all'; // 'all', 'favorites', or list.id
-  final TextEditingController _searchCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _confirmAndDownloadLibraryOffline(
-    List<Manga> titles,
-    ProfileAdaptivePalette palette,
-  ) async {
-    if (_downloadingLibraryOffline || titles.isEmpty) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: palette.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: palette.primary.withValues(alpha: 0.35)),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.downloading_rounded, color: palette.primary),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Disponibilizar Biblioteca Offline?',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'Deseja baixar os capítulos das ${titles.length} obra(s) da sua Biblioteca para leitura offline?\n\n'
-          'Todas as páginas serão salvas no seu aparelho para que você possa abrir e ler sua Biblioteca inteira mesmo sem internet.',
-          style: const TextStyle(color: Colors.white70, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: palette.primary,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.download_rounded, size: 18),
-            label: Text('Baixar (${titles.length} obras)'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-    setState(() => _downloadingLibraryOffline = true);
-
-    AppFeedback.show(
-      context,
-      SnackBar(
-        content: Text(
-          'Iniciando download offline de ${titles.length} obra(s) da Biblioteca...',
-        ),
-      ),
-    );
-
-    int totalDownloadedChapters = 0;
-    try {
-      for (final manga in titles) {
-        if (!mounted) break;
-        try {
-          List<Chapter> chapters = StorageService.getOfflineOrCachedChapters(
-            manga.id,
-          );
-          if (chapters.isEmpty) {
-            final bySource = await MangaDexService.discoverAllSourcesForManga(
-              manga,
-            );
-            for (final list in bySource.values) {
-              if (list.length > chapters.length) {
-                chapters = list;
-              }
-            }
-          }
-          if (chapters.isNotEmpty) {
-            totalDownloadedChapters += await DownloadManager.downloadManga(
-              manga: manga,
-              chapters: chapters,
-              useDataSaver: StorageService.dataSaverEnabled,
-            );
-          }
-        } catch (_) {}
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _downloadingLibraryOffline = false);
-        AppFeedback.show(
-          context,
-          SnackBar(
-            content: Text(
-              'Biblioteca disponível offline ($totalDownloadedChapters capítulos baixados)!',
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _checkUpdates() async {
-    if (_checkingUpdates) return;
-    setState(() => _checkingUpdates = true);
-    var newChapters = 0;
-    var failures = 0;
-    // Explicit action only: no background polling or notification permission.
-    final favorites = StorageService.getFavorites();
-    for (final manga in favorites) {
-      if (!mounted) break;
-      try {
-        newChapters += await FavoriteUpdatesService.checkFavorite(manga);
-      } catch (_) {
-        failures++;
-      }
-    }
-    if (!mounted) return;
-    setState(() => _checkingUpdates = false);
-    AppFeedback.show(
-      context,
-      SnackBar(
-        content: Text(
-          failures > 0
-              ? 'Verificação parcial: $newChapters capítulos novos; $failures obras indisponíveis.'
-              : '$newChapters capítulos novos. Na primeira verificação, o histórico é inicializado.',
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReadingListRoll({
-    required String title,
-    required String subtitle,
-    required List<Manga> items,
-    required ProfileAdaptivePalette palette,
-    required String heroPrefix,
-    VoidCallback? onEdit,
-    VoidCallback? onDelete,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                    if (subtitle.isNotEmpty)
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          color: Colors.white60,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: palette.primary.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: palette.primary.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Text(
-                  '${items.length}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: palette.secondary,
-                  ),
-                ),
-              ),
-              if (onEdit != null)
-                IconButton(
-                  tooltip: 'Editar lista',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: onEdit,
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    size: 18,
-                    color: Colors.white70,
-                  ),
-                ),
-              if (onDelete != null)
-                IconButton(
-                  tooltip: 'Excluir lista',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: onDelete,
-                  icon: const Icon(
-                    Icons.delete_outline_rounded,
-                    size: 18,
-                    color: Colors.white54,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (items.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: palette.surface.withValues(alpha: 0.78),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: const Text(
-                'Nenhuma obra adicionada a esta lista ainda. Abra uma obra e toque no ícone de lista no topo para adicioná-la.',
-                style: TextStyle(fontSize: 12, color: Colors.white60),
-              ),
-            )
-          else
-            SizedBox(
-              height: 188,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final manga = items[index];
-                  final pendingCount = FavoriteUpdatesService.pendingFor(
-                    manga,
-                  ).length;
-                  return SizedBox(
-                    width: 114,
-                    child: Stack(
-                      children: [
-                        MangaGridCard(manga: manga, heroPrefix: heroPrefix),
-                        if (pendingCount > 0)
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: palette.primary,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '$pendingCount novos',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<ProfileAdaptivePalette>(
-      valueListenable: ProfilePaletteService.paletteNotifier,
-      builder: (context, palette, _) {
-        return Scaffold(
-          backgroundColor: YomiPalette.pitchBlack,
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Identidade visual sutil e escura da Biblioteca (estante ao luar + pagode + livros YOMI)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: RepaintBoundary(
-                    child: CustomPaint(
-                      painter: YomiMoonlitLibraryBackdropPainter(
-                        accentColor: palette.primary,
-                        secondaryColor: palette.secondary,
-                        opacity: 0.18,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.46),
-                    ),
-                  ),
-                ),
-              ),
-              SafeArea(
-                child: ValueListenableBuilder<NsfwDisplayMode>(
-                  valueListenable: StorageService.nsfwModeNotifier,
-                  builder: (context, _, _) {
-                    return ValueListenableBuilder(
-                      valueListenable: StorageService.favBox.listenable(),
-                      builder: (context, Box box, _) {
-                        return ValueListenableBuilder(
-                          valueListenable: StorageService.settingsBox
-                              .listenable(),
-                          builder: (context, Box settings, _) {
-                            final allFavorites = StorageService.getFavorites();
-                            final readingLists =
-                                StorageService.getReadingLists();
-                            final query = _searchQuery.trim().toLowerCase();
-
-                            List<Manga> filterMangas(List<Manga> source) {
-                              if (query.isEmpty) return source;
-                              return source
-                                  .where(
-                                    (m) =>
-                                        m.title.toLowerCase().contains(query),
-                                  )
-                                  .toList();
-                            }
-
-                            final favorites = filterMangas(allFavorites);
-
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Cabeçalho inspirado na referência visual da Biblioteca
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    18,
-                                    12,
-                                    14,
-                                    6,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.local_library_rounded,
-                                                  color: palette.primary,
-                                                  size: 22,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                const Flexible(
-                                                  child: Text(
-                                                    'Biblioteca',
-                                                    style: TextStyle(
-                                                      fontSize: 24,
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      color: Colors.white,
-                                                      letterSpacing: -0.4,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              'Suas leituras em um só lugar.',
-                                              style: TextStyle(
-                                                fontSize: 12.5,
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.68,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Wrap(
-                                        alignment: WrapAlignment.end,
-                                        children: [
-                                          IconButton(
-                                            tooltip: 'Buscar na biblioteca',
-                                            icon: Icon(
-                                              _searching
-                                                  ? Icons.close_rounded
-                                                  : Icons.search_rounded,
-                                              color: Colors.white,
-                                            ),
-                                            onPressed: () {
-                                              setState(() {
-                                                _searching = !_searching;
-                                                if (!_searching) {
-                                                  _searchCtrl.clear();
-                                                  _searchQuery = '';
-                                                }
-                                              });
-                                            },
-                                          ),
-                                          IconButton(
-                                            tooltip:
-                                                'Criar nova lista de leitura',
-                                            icon: Icon(
-                                              Icons.playlist_add_rounded,
-                                              color: palette.secondary,
-                                            ),
-                                            onPressed: () =>
-                                                showCreateOrEditReadingListDialog(
-                                                  context,
-                                                ),
-                                          ),
-                                          IconButton(
-                                            tooltip:
-                                                'Baixar Biblioteca para ler offline',
-                                            onPressed:
-                                                DeviceStateService
-                                                        .instance
-                                                        .isOffline ||
-                                                    _downloadingLibraryOffline ||
-                                                    (allFavorites.isEmpty &&
-                                                        readingLists.isEmpty)
-                                                ? null
-                                                : () {
-                                                    final uniqueTitles =
-                                                        <String, Manga>{
-                                                          for (final m
-                                                              in allFavorites)
-                                                            m.id: m,
-                                                          for (final l
-                                                              in readingLists)
-                                                            for (final m
-                                                                in l.mangas)
-                                                              m.id: m,
-                                                        }.values.toList();
-                                                    _confirmAndDownloadLibraryOffline(
-                                                      uniqueTitles,
-                                                      palette,
-                                                    );
-                                                  },
-                                            icon: _downloadingLibraryOffline
-                                                ? SizedBox(
-                                                    width: 18,
-                                                    height: 18,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                          color:
-                                                              palette.primary,
-                                                        ),
-                                                  )
-                                                : Icon(
-                                                    Icons.downloading_rounded,
-                                                    color: palette.primary,
-                                                  ),
-                                          ),
-                                          IconButton(
-                                            tooltip: 'Central de atualizações',
-                                            icon: Badge(
-                                              isLabelVisible:
-                                                  FavoriteUpdatesService.allPending(
-                                                    allFavorites,
-                                                  ).isNotEmpty,
-                                              backgroundColor: palette.primary,
-                                              child: const Icon(
-                                                Icons.notifications_outlined,
-                                              ),
-                                            ),
-                                            onPressed: () => Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const FavoriteUpdatesScreen(),
-                                              ),
-                                            ),
-                                          ),
-                                          IconButton(
-                                            tooltip:
-                                                'Verificar novos capítulos dos favoritos',
-                                            onPressed:
-                                                DeviceStateService
-                                                        .instance
-                                                        .isOffline ||
-                                                    _checkingUpdates
-                                                ? null
-                                                : _checkUpdates,
-                                            icon: _checkingUpdates
-                                                ? SizedBox(
-                                                    width: 18,
-                                                    height: 18,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                          color:
-                                                              palette.primary,
-                                                        ),
-                                                  )
-                                                : const Icon(
-                                                    Icons.sync_rounded,
-                                                  ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (_searching)
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      4,
-                                      16,
-                                      8,
-                                    ),
-                                    child: TextField(
-                                      controller: _searchCtrl,
-                                      onChanged: (v) =>
-                                          setState(() => _searchQuery = v),
-                                      decoration: InputDecoration(
-                                        hintText:
-                                            'Filtrar favoritos e listas...',
-                                        prefixIcon: Icon(
-                                          Icons.search_rounded,
-                                          color: palette.secondary,
-                                        ),
-                                        filled: true,
-                                        fillColor: palette.surface.withValues(
-                                          alpha: 0.9,
-                                        ),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 14,
-                                              vertical: 10,
-                                            ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: palette.primary.withValues(
-                                              alpha: 0.35,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                // Chips de filtro: Tudo, Favoritos e Listas criadas pelo usuário
-                                SizedBox(
-                                  height: 40,
-                                  child: ListView(
-                                    scrollDirection: Axis.horizontal,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
-                                    children: [
-                                      _buildFilterChip(
-                                        id: 'all',
-                                        label: 'Visão Geral',
-                                        icon: Icons.auto_stories_rounded,
-                                        palette: palette,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildFilterChip(
-                                        id: 'favorites',
-                                        label:
-                                            'Favoritos (${allFavorites.length})',
-                                        icon: Icons.favorite_rounded,
-                                        palette: palette,
-                                      ),
-                                      for (final list in readingLists) ...[
-                                        const SizedBox(width: 8),
-                                        _buildFilterChip(
-                                          id: list.id,
-                                          label:
-                                              '${list.name} (${list.mangas.length})',
-                                          icon: Icons.queue_music_rounded,
-                                          palette: palette,
-                                        ),
-                                      ],
-                                      const SizedBox(width: 8),
-                                      ActionChip(
-                                        avatar: Icon(
-                                          Icons.add_rounded,
-                                          size: 16,
-                                          color: palette.secondary,
-                                        ),
-                                        label: const Text('Nova Lista'),
-                                        backgroundColor: palette.surface
-                                            .withValues(alpha: 0.8),
-                                        side: BorderSide(
-                                          color: palette.primary.withValues(
-                                            alpha: 0.4,
-                                          ),
-                                        ),
-                                        labelStyle: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                        onPressed: () =>
-                                            showCreateOrEditReadingListDialog(
-                                              context,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Expanded(
-                                  child:
-                                      (allFavorites.isEmpty &&
-                                          readingLists.isEmpty)
-                                      ? ListView(
-                                          padding: const EdgeInsets.fromLTRB(
-                                            20,
-                                            20,
-                                            20,
-                                            110,
-                                          ),
-                                          children: [
-                                            const YomiMascotCompanionCard(
-                                              message:
-                                                  'Sua estante ao luar está pronta! Favorita obras ou crie listas personalizadas para organizá-las aqui.',
-                                            ),
-                                            const SizedBox(height: 28),
-                                            Container(
-                                              padding: const EdgeInsets.all(24),
-                                              decoration: BoxDecoration(
-                                                color: palette.surface
-                                                    .withValues(alpha: 0.72),
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                                border: Border.all(
-                                                  color: palette.primary
-                                                      .withValues(alpha: 0.28),
-                                                ),
-                                              ),
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    Icons
-                                                        .favorite_border_rounded,
-                                                    size: 54,
-                                                    color: palette.secondary
-                                                        .withValues(alpha: 0.6),
-                                                  ),
-                                                  const SizedBox(height: 14),
-                                                  const Text(
-                                                    'Sua biblioteca está vazia',
-                                                    style: TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  Text(
-                                                    'Toque no coração em qualquer Mangá, Manhwa ou HQ para salvá-la nos Favoritos, ou crie suas próprias listas de leitura.',
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                      color: Colors.white
-                                                          .withValues(
-                                                            alpha: 0.65,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 16),
-                                                  FilledButton.icon(
-                                                    style:
-                                                        FilledButton.styleFrom(
-                                                          backgroundColor:
-                                                              palette.primary,
-                                                          foregroundColor:
-                                                              Colors.white,
-                                                        ),
-                                                    onPressed: () =>
-                                                        showCreateOrEditReadingListDialog(
-                                                          context,
-                                                        ),
-                                                    icon: const Icon(
-                                                      Icons
-                                                          .playlist_add_rounded,
-                                                    ),
-                                                    label: const Text(
-                                                      'Criar primeira lista de leitura',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : _buildLibraryContent(
-                                          favorites: favorites,
-                                          readingLists: readingLists,
-                                          filterMangas: filterMangas,
-                                          palette: palette,
-                                        ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFilterChip({
-    required String id,
-    required String label,
-    required IconData icon,
-    required ProfileAdaptivePalette palette,
-  }) {
-    final selected = _selectedFilterId == id;
-    return ChoiceChip(
-      selected: selected,
-      onSelected: (_) => setState(() => _selectedFilterId = id),
-      avatar: Icon(
-        icon,
-        size: 15,
-        color: selected ? Colors.white : palette.secondary,
-      ),
-      label: Text(label),
-      selectedColor: palette.primary,
-      backgroundColor: palette.surface.withValues(alpha: 0.82),
-      side: BorderSide(
-        color: selected
-            ? palette.primary
-            : Colors.white.withValues(alpha: 0.12),
-      ),
-      labelStyle: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        color: selected ? Colors.white : Colors.white70,
-      ),
-    );
-  }
-
-  Widget _buildLibraryContent({
-    required List<Manga> favorites,
-    required List<UserReadingList> readingLists,
-    required List<Manga> Function(List<Manga>) filterMangas,
-    required ProfileAdaptivePalette palette,
-  }) {
-    if (_selectedFilterId == 'favorites') {
-      return _buildGridSection(
-        items: favorites,
-        palette: palette,
-        heroPrefix: 'lib_fav',
-        headerNote:
-            'Toque no sino para verificar novidades. Segure em uma obra para adicioná-la a uma lista de leitura.',
-      );
-    }
-
-    final selectedList = readingLists
-        .where((l) => l.id == _selectedFilterId)
-        .firstOrNull;
-    if (selectedList != null) {
-      final listItems = filterMangas(selectedList.mangas);
-      return _buildGridSection(
-        items: listItems,
-        palette: palette,
-        heroPrefix: 'lib_list_${selectedList.id}',
-        headerNote: selectedList.description.isNotEmpty
-            ? selectedList.description
-            : 'Lista personalizada "${selectedList.name}".',
-        trailingAction: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextButton.icon(
-              onPressed: () => showCreateOrEditReadingListDialog(
-                context,
-                existing: selectedList,
-              ),
-              icon: const Icon(Icons.edit_outlined, size: 16),
-              label: const Text('Editar'),
-            ),
-            TextButton.icon(
-              onPressed: () async {
-                await StorageService.deleteReadingList(selectedList.id);
-                if (mounted) {
-                  setState(() => _selectedFilterId = 'all');
-                }
-              },
-              icon: const Icon(Icons.delete_outline_rounded, size: 16),
-              label: const Text('Excluir'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Visão Geral ('all'): Roll de Favoritos + Rolls de Listas de Leitura + Grade completa
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 110),
-      children: [
-        _buildReadingListRoll(
-          title: 'Obras Favoritas',
-          subtitle: 'Suas obras marcadas com coração',
-          items: favorites,
-          palette: palette,
-          heroPrefix: 'lib_roll_fav',
-        ),
-        for (final list in readingLists)
-          _buildReadingListRoll(
-            title: list.name,
-            subtitle: list.description.isNotEmpty
-                ? list.description
-                : 'Lista de leitura personalizada',
-            items: filterMangas(list.mangas),
-            palette: palette,
-            heroPrefix: 'lib_roll_${list.id}',
-            onEdit: () =>
-                showCreateOrEditReadingListDialog(context, existing: list),
-            onDelete: () => StorageService.deleteReadingList(list.id),
-          ),
-        if (favorites.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          const Text(
-            'Todos os Favoritos na Estante',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio: 0.62,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 16,
-            ),
-            itemCount: favorites.length,
-            itemBuilder: (context, index) {
-              final manga = favorites[index];
-              final count = FavoriteUpdatesService.pendingFor(manga).length;
-              return Stack(
-                children: [
-                  MangaGridCard(manga: manga, heroPrefix: 'lib'),
-                  if (count > 0)
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: palette.primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '$count novos',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildGridSection({
-    required List<Manga> items,
-    required ProfileAdaptivePalette palette,
-    required String heroPrefix,
-    required String headerNote,
-    Widget? trailingAction,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  headerNote,
-                  style: const TextStyle(fontSize: 12, color: Colors.white60),
-                ),
-              ),
-              ?trailingAction,
-            ],
-          ),
-        ),
-        Expanded(
-          child: items.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'Nenhuma obra encontrada neste filtro.',
-                      style: TextStyle(color: Colors.white60),
-                    ),
-                  ),
-                )
-              : GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    childAspectRatio: 0.62,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final manga = items[index];
-                    final count = FavoriteUpdatesService.pendingFor(
-                      manga,
-                    ).length;
-                    return Stack(
-                      children: [
-                        MangaGridCard(manga: manga, heroPrefix: heroPrefix),
-                        if (count > 0)
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: palette.primary,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '$count novos',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-}
-
-// ============================================================================
-// ABA 3: CAPÍTULOS OFFLINE
-// ============================================================================
 class DownloadsScreen extends StatelessWidget {
   const DownloadsScreen({super.key});
 

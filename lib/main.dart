@@ -272,7 +272,10 @@ class _MainNavigationShellState extends State<MainNavigationShell>
             onLibrary: () => _switchTab(1),
             onProfile: () => _switchTab(3),
           ),
-          LibraryScreen(key: ValueKey('library_$_refreshGeneration')),
+          LibraryScreen(
+            key: ValueKey('library_$_refreshGeneration'),
+            onExplore: _offline ? null : () => _switchTab(2),
+          ),
           ExploreScreen(key: ValueKey('explore_$_refreshGeneration')),
           ProfileDashboardScreen(
             onGoToExplore: _offline ? null : () => _switchTab(2),
@@ -373,13 +376,21 @@ class _MainNavigationShellState extends State<MainNavigationShell>
                       top: false,
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                        child: FrostedSurface(
-                          borderRadius: BorderRadius.circular(999),
-                          child: SizedBox(
-                            height: 64,
-                            child: _buildAnimatedLiquidTabBar(
-                              palette: palette,
-                              disableAnimations: disableAnimations,
+                        child: Center(
+                          heightFactor: 1,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: _offline ? 240 : 328,
+                            ),
+                            child: FrostedSurface(
+                              borderRadius: BorderRadius.circular(999),
+                              child: SizedBox(
+                                height: 58,
+                                child: _buildAnimatedLiquidTabBar(
+                                  palette: palette,
+                                  disableAnimations: disableAnimations,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -542,9 +553,9 @@ class _MainNavigationShellState extends State<MainNavigationShell>
         borderRadius: BorderRadius.circular(999),
         onTap: () => _switchTab(item.tabIndex),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
           child: AnimatedScale(
-            scale: selected ? 1.07 : 1.0,
+            scale: selected ? 1.03 : 1.0,
             duration: disableAnimations
                 ? Duration.zero
                 : const Duration(milliseconds: 220),
@@ -558,7 +569,7 @@ class _MainNavigationShellState extends State<MainNavigationShell>
                   size: 21,
                   color: selected ? palette.soft : color,
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 1),
                 Flexible(
                   child: Text(
                     item.label,

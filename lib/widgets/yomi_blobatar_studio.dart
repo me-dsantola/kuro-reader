@@ -426,6 +426,23 @@ class YomiBannerBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final asset =
+        findBannerPreset(bannerPath)?.assetPath ??
+        ((bannerPath == null || bannerPath!.isEmpty)
+            ? kYomiBannerPresets.first.assetPath
+            : null);
+    if (asset != null) {
+      return Image.asset(
+        asset,
+        fit: BoxFit.cover,
+        cacheWidth:
+            (MediaQuery.sizeOf(context).width *
+                    MediaQuery.devicePixelRatioOf(context))
+                .ceil()
+                .clamp(480, 1600),
+        errorBuilder: (_, _, _) => _buildArtisticFallback(),
+      );
+    }
     final provider = ProfilePaletteService.resolveImageProvider(bannerPath);
     if (provider != null) {
       return Image(
@@ -1743,10 +1760,14 @@ class _ProfileAndBlobatarEditorSheetState
           height: 84,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: kYomiBannerPresets.length,
+            itemCount: kYomiBannerPresets
+                .where((preset) => preset.assetPath != null)
+                .length,
             separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
-              final preset = kYomiBannerPresets[index];
+              final preset = kYomiBannerPresets
+                  .where((preset) => preset.assetPath != null)
+                  .elementAt(index);
               final isSelected = _bannerUrlCtrl.text.trim() == preset.id;
               return GestureDetector(
                 onTap: () {

@@ -1,5 +1,5 @@
-import 'dart:async';
 import 'dart:convert';
+import 'support/network_image_client.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -13,6 +13,7 @@ import 'package:kuro_reader/models/manga_models.dart';
 import 'package:kuro_reader/screens/home_overview_screen.dart';
 import 'package:kuro_reader/screens/reader_screen.dart';
 import 'package:kuro_reader/services/storage_service.dart';
+import 'package:kuro_reader/services/profile_palette_service.dart';
 import 'package:kuro_reader/widgets/home_billboard.dart';
 
 class _Routes extends NavigatorObserver {
@@ -20,56 +21,6 @@ class _Routes extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     last = route;
-  }
-}
-
-class _Headers extends Fake implements HttpHeaders {
-  @override
-  void add(String name, Object value, {bool preserveHeaderCase = false}) {}
-}
-
-class _ImageResponse extends Stream<List<int>> implements HttpClientResponse {
-  final Uint8List bytes;
-  _ImageResponse(this.bytes);
-  @override
-  int get statusCode => 200;
-  @override
-  int get contentLength => bytes.length;
-  @override
-  HttpClientResponseCompressionState get compressionState =>
-      HttpClientResponseCompressionState.notCompressed;
-  @override
-  StreamSubscription<List<int>> listen(
-    void Function(List<int>)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) => Stream.value(bytes).listen(
-    onData,
-    onError: onError,
-    onDone: onDone,
-    cancelOnError: cancelOnError,
-  );
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _ImageRequest extends Fake implements HttpClientRequest {
-  final Uint8List bytes;
-  _ImageRequest(this.bytes);
-  @override
-  HttpHeaders get headers => _Headers();
-  @override
-  Future<HttpClientResponse> close() async => _ImageResponse(bytes);
-}
-
-class _Images extends Fake implements HttpClient {
-  final List<Uint8List> images;
-  _Images(this.images);
-  @override
-  Future<HttpClientRequest> getUrl(Uri url) async {
-    final index = int.tryParse(url.pathSegments.last.split('.').first) ?? 0;
-    return _ImageRequest(images[index % images.length]);
   }
 }
 
@@ -130,7 +81,7 @@ void main() {
             for (final entry in previewCatalog!)
               File(entry['cover'] as String).readAsBytesSync(),
           ];
-    debugNetworkImageHttpClientProvider = () => _Images(images);
+    debugNetworkImageHttpClientProvider = () => FixtureImageClient(images);
   });
 
   tearDown(() async {
@@ -227,6 +178,7 @@ void main() {
     double width = 390,
     double scale = 1,
     NavigatorObserver? observer,
+    Future<ProfileAdaptivePalette> Function(Manga)? paletteResolver,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = Size(width, 900);
@@ -248,7 +200,11 @@ void main() {
         ),
         home: RepaintBoundary(
           key: const ValueKey('home-preview'),
-          child: HomeOverviewScreen(onExplore: () {}, onLibrary: () {}),
+          child: HomeOverviewScreen(
+            onExplore: () {},
+            onLibrary: () {},
+            paletteResolver: paletteResolver,
+          ),
         ),
       ),
     );
@@ -352,4 +308,48 @@ void main() {
       await tester.pump();
     }, catalogClient);
   });
+
+  testWidgets(
+    'featured manga rotates automatically and can be selected manually',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      await http.runWithClient(() async {
+        await home(
+          tester,
+          paletteResolver: (manga) async => ProfileAdaptivePalette.fromColor(
+            manga.id.endsWith('0') ? Colors.teal : Colors.amber,
+          ),
+        );
+        final firstColor = tester
+            .widget<HomeBillboard>(find.byType(HomeBillboard))
+            .accent;
+        final first = tester
+            .widget<HomeBillboard>(find.byType(HomeBillboard))
+            .manga
+            .id;
+        await tester.pump(const Duration(seconds: 8));
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 400)),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<HomeBillboard>(find.byType(HomeBillboard)).manga.id,
+          isNot(first),
+        );
+        expect(
+          tester.widget<HomeBillboard>(find.byType(HomeBillboard)).accent,
+          isNot(firstColor),
+        );
+        await tester.tap(find.bySemanticsLabel('Destaque 1 de 5'));
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<HomeBillboard>(find.byType(HomeBillboard)).manga.id,
+          first,
+        );
+        await tester.pumpWidget(const SizedBox());
+        debugNetworkImageHttpClientProvider = null;
+      }, catalogClient);
+      semantics.dispose();
+    },
+  );
 }

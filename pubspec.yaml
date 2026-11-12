@@ -63,6 +63,7 @@ flutter:
   uses-material-design: true
   assets:
     - yomi_hqs_catalog.json
+    - assets/banners/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
