@@ -202,11 +202,12 @@ class _FavoriteUpdatesScreenState extends State<FavoriteUpdatesScreen> {
                       separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final entry = updates[index];
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: palette.surface,
+                        return Material(
+                          color: palette.surface,
+                          clipBehavior: Clip.antiAlias,
+                          shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
+                            side: BorderSide(
                               color: palette.primary.withValues(alpha: 0.28),
                             ),
                           ),

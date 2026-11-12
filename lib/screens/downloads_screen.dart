@@ -167,11 +167,12 @@ class DownloadsScreen extends StatelessWidget {
                       final batchStatus =
                           DownloadManager.activeMangaDownloads.value[manga.id];
 
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: YomiPalette.surface,
+                      return Material(
+                        color: YomiPalette.surface,
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white10),
+                          side: const BorderSide(color: Colors.white10),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,

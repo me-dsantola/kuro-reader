@@ -139,63 +139,6 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                                             ),
                                           ),
                                         ),
-                                        // Direct 1-tap Banner Change Pill Button
-                                        Positioned(
-                                          left: 14,
-                                          bottom: 36,
-                                          child: Material(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.55,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(18),
-                                              side: BorderSide(
-                                                color: accent.withValues(
-                                                  alpha: 0.55,
-                                                ),
-                                              ),
-                                            ),
-                                            child: InkWell(
-                                              borderRadius:
-                                                  BorderRadius.circular(18),
-                                              onTap: () =>
-                                                  showYomiProfileAndBlobatarEditor(
-                                                    context,
-                                                    profile,
-                                                    initialTab: 1,
-                                                  ),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 6,
-                                                    ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.wallpaper_rounded,
-                                                      size: 14,
-                                                      color: palette.soft,
-                                                    ),
-                                                    const SizedBox(width: 5),
-                                                    const Text(
-                                                      'Banner',
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
                                       ],
                                     ),
                                   ),
