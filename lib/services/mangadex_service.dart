@@ -693,15 +693,6 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
     );
 
     final items = <Manga>[];
-    if (cursor == 0) {
-      final vaultItems = await TelegramVaultService.loadCatalog();
-      items.addAll(
-        vaultItems.where(
-          (m) =>
-              q.isEmpty || mangaSearchKey(m.title).contains(mangaSearchKey(q)),
-        ),
-      );
-    }
 
     Map<String, dynamic> data;
     try {
