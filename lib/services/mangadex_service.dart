@@ -697,7 +697,7 @@ class WesternComicsHqAdapter implements IMangaSourceAdapter {
     // or chapter counts from a matching title keyword.
     final items = <Manga>[];
 
-    // Inclui as obras enviadas para o Telegram Vault
+    // Inclui as obras enviadas para o Telegram Vault na busca de HQs
     if (cursor == 0) {
       final vaultItems = await TelegramVaultService.loadCatalog();
       if (q.isEmpty) {
@@ -807,21 +807,6 @@ class AdultVaultAdapter implements IMangaSourceAdapter {
         .toSet();
 
     final items = <Manga>[];
-
-    // Inclui as obras enviadas para o Telegram Vault
-    if (cursor == 0) {
-      final vaultItems = await TelegramVaultService.loadCatalog();
-      if (q.isEmpty) {
-        items.addAll(vaultItems);
-      } else {
-        items.addAll(
-          vaultItems.where(
-            (m) => m.title.toLowerCase().contains(q.toLowerCase()),
-          ),
-        );
-      }
-    }
-
     for (final entry in list) {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);
