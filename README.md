@@ -32,11 +32,14 @@ de redução de movimento do aparelho desativa as transições animadas.
 
 MangaDex é a fonte efetiva de páginas. AniList, Jikan/MAL e Kitsu fornecem
 metadados e descoberta. O adaptador legado chamado ComicK usa Kitsu/MangaDex;
-não há integração direta com ComicK. A categoria HQ combina consultas do
-MangaDex com o catálogo local Telegram Vault. O catálogo acompanha o APK;
-uploads posteriores exigem atualizar o catálogo distribuído. A listagem de
-documentos do Vault está disponível, mas a leitura/download de PDF/CBR/ZIP
-ainda não está integrada. A categoria 18+ consulta o MangaDex.
+não há integração direta com ComicK. As obras do Telegram Vault foram
+removidas temporariamente do catálogo público (`yomi_hqs_catalog.json` vazio
+por padrão e adaptador `WesternComicsHqAdapter` consultando apenas o MangaDex),
+mantendo suporte de leitura de metadados apenas para itens locais já salvos.
+A leitura/download de arquivos PDF/CBR/ZIP ainda não está integrada ao leitor.
+As atualizações de favoritos (`FavoriteUpdatesService`) funcionam de forma
+exclusivamente local quando acionadas no aplicativo, sem notificações push em
+segundo plano. A categoria 18+ consulta o MangaDex.
 A disponibilidade depende das fontes e dos idiomas oferecidos por elas.
 
 ## Instalar a versão estável
@@ -45,9 +48,9 @@ Baixe o APK da [Release publicada](../../releases), de acordo com o aparelho:
 
 | Arquivo | Uso |
 | --- | --- |
-| `YOMI-1.2.0-arm64-v8a.apk` | Android ARM64, comum em celulares atuais |
-| `YOMI-1.2.0-armeabi-v7a.apk` | Android ARM de 32 bits compatível |
-| `YOMI-1.2.0-x86_64.apk` | Emuladores e aparelhos Android x86 de 64 bits |
+| `YOMI-1.2.5-arm64-v8a.apk` | Android ARM64, comum em celulares atuais |
+| `YOMI-1.2.5-armeabi-v7a.apk` | Android ARM de 32 bits compatível |
+| `YOMI-1.2.5-x86_64.apk` | Emuladores e aparelhos Android x86 de 64 bits |
 
 O pacote estável é `com.kuroreader.kuro_reader`. A Beta usa
 `com.kuroreader.kuro_reader.beta`, com armazenamento separado. Exporte o

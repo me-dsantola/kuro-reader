@@ -21,6 +21,7 @@ class DownloadManager {
   activeMangaDownloads = ValueNotifier({});
 
   static final _inFlight = <String, Future<void>>{};
+  static final Map<String, Future<String?>> _inFlightCovers = {};
   static final _deletingChapters = <String>{};
   static bool _deletingAll = false;
 
@@ -219,15 +220,70 @@ class DownloadManager {
       session.close();
     }
 
+    final coverPath = await ensureOfflineCover(manga);
     await StorageService.downloadsBox.put(chapter.id, {
       'chapter': chapter.toMap(),
       'manga': manga.toMap(),
       'paths': savedPaths,
+      'coverPath': ?coverPath,
       'downloadedAt': DateTime.now().toIso8601String(),
     });
 
     // Garante que toda obra baixada entre automaticamente para a Biblioteca e funcione offline
     await StorageService.ensureInLibrary(manga, chapters: [chapter]);
+  }
+
+  /// Baixa e armazena a capa da obra de forma persistente uma única vez.
+  /// Falhas na capa nunca invalidam os capítulos já baixados.
+  static Future<String?> ensureOfflineCover(Manga manga) {
+    final existing = StorageService.getOfflineCoverPath(manga.id);
+    if (existing != null) return Future.value(existing);
+    final pending = _inFlightCovers[manga.id];
+    if (pending != null) return pending;
+    final future = _downloadAndPersistCover(manga);
+    _inFlightCovers[manga.id] = future;
+    return future.whenComplete(() => _inFlightCovers.remove(manga.id));
+  }
+
+  static Future<String?> _downloadAndPersistCover(Manga manga) async {
+    try {
+      final baseDir = await getApplicationSupportDirectory();
+      final coversDir = Directory('${baseDir.path}/covers');
+      if (!await coversDir.exists()) {
+        await coversDir.create(recursive: true);
+      }
+      final safeMangaId = manga.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final targetFile = File('${coversDir.path}/cover_$safeMangaId.img');
+      if (await ImageFileValidator.isCompleteImage(targetFile)) {
+        await StorageService.setOfflineCoverPath(manga.id, targetFile.path);
+        return targetFile.path;
+      }
+      final candidates = manga.getAllCandidateCoverUrls(highRes: false);
+      if (candidates.isEmpty) return null;
+      final session = ReaderImageSession(
+        urls: [candidates.first],
+        headers: manga.customHeaders,
+        maxCacheBytes: 0,
+      );
+      try {
+        final bytes = await session.pageBytes(0);
+        final partFile = File('${targetFile.path}.part');
+        await partFile.writeAsBytes(bytes, flush: true);
+        if (!await ImageFileValidator.isCompleteImage(partFile)) {
+          await partFile.delete();
+          return null;
+        }
+        if (await targetFile.exists()) await targetFile.delete();
+        await partFile.rename(targetFile.path);
+        await StorageService.setOfflineCoverPath(manga.id, targetFile.path);
+        return targetFile.path;
+      } finally {
+        session.close();
+      }
+    } catch (_) {
+      // Falha na capa não invalida capítulos baixados
+      return null;
+    }
   }
 
   static Future<void> deleteChapter(String chapterId) async {
@@ -237,6 +293,11 @@ class DownloadManager {
       throw StateError('Aguarde o download ou a limpeza em andamento.');
     }
     try {
+      final raw = StorageService.downloadsBox.get(chapterId);
+      String? mangaId;
+      if (raw is Map && raw['manga'] is Map) {
+        mangaId = raw['manga']['id']?.toString();
+      }
       final baseDir = await getApplicationSupportDirectory();
       final safeChapterId = chapterId.replaceAll(
         RegExp(r'[^a-zA-Z0-9_-]'),
@@ -245,8 +306,42 @@ class DownloadManager {
       final chapterDir = Directory('${baseDir.path}/chapters/$safeChapterId');
       if (await chapterDir.exists()) await chapterDir.delete(recursive: true);
       await StorageService.downloadsBox.delete(chapterId);
+      if (mangaId != null && mangaId.isNotEmpty) {
+        final remaining = StorageService.countDownloadedChaptersForManga(mangaId);
+        if (remaining == 0) {
+          await _deleteCoverIfUnreferenced(mangaId, baseDir);
+        }
+      }
     } finally {
       _deletingChapters.remove(chapterId);
+    }
+  }
+
+  static Future<void> deleteMangaDownloads(String mangaId) async {
+    final chapters = StorageService.getDownloadedChaptersForManga(mangaId);
+    for (final ch in chapters) {
+      await deleteChapter(ch.id);
+    }
+  }
+
+  static Future<void> _deleteCoverIfUnreferenced(
+    String mangaId,
+    Directory baseDir,
+  ) async {
+    final storedPath = StorageService.getOfflineCoverPath(mangaId);
+    await StorageService.removeOfflineCoverMetadata(mangaId);
+    final safeMangaId = mangaId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    for (final path in <String>{
+      ?storedPath,
+      '${baseDir.path}/covers/cover_$safeMangaId.img',
+    }) {
+      final stillUsed = StorageService.downloadsBox.values.any(
+        (v) => v is Map && v['coverPath'] == path,
+      );
+      if (!stillUsed) {
+        final f = File(path);
+        if (await f.exists()) await f.delete();
+      }
     }
   }
 
@@ -260,6 +355,10 @@ class DownloadManager {
       final rootChaptersDir = Directory('${baseDir.path}/chapters');
       if (await rootChaptersDir.exists()) {
         await rootChaptersDir.delete(recursive: true);
+      }
+      final coversDir = Directory('${baseDir.path}/covers');
+      if (await coversDir.exists()) {
+        await coversDir.delete(recursive: true);
       }
       await StorageService.downloadsBox.clear();
     } finally {

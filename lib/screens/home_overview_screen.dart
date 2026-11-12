@@ -1,20 +1,86 @@
 import 'dart:async';
-import '../widgets/app_feedback.dart';
+import 'dart:collection';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
+import '../services/appearance_controller.dart';
+import '../services/device_state_service.dart';
 import '../services/favorite_updates_service.dart';
+import '../services/library_progress.dart';
 import '../services/mangadex_service.dart';
 import '../services/profile_palette_service.dart';
 import '../services/storage_service.dart';
-import '../widgets/yomi_blobatar_studio.dart';
+import '../widgets/app_feedback.dart';
+import '../widgets/frosted_surface.dart';
 import '../widgets/home_billboard.dart';
+import '../widgets/yomi_blobatar_studio.dart';
+import '../widgets/floating_continue_cover.dart';
 import 'favorite_updates_screen.dart';
 import 'home_tabs.dart';
 import 'manga_detail_screen.dart';
 import 'reader_screen.dart';
 
-/// Reading shortcuts share the same covers, artwork and surfaces as the library.
+/// Clipper que desenha a onda de transição ("wave wipe") revelando a próxima paleta.
+class HomeWaveWipeClipper extends CustomClipper<Path> {
+  final double progress;
+  final bool forward;
+
+  const HomeWaveWipeClipper({
+    required this.progress,
+    this.forward = true,
+  });
+
+  @override
+  Path getClip(Size size) {
+    final p = progress.clamp(0.0, 1.0);
+    if (p <= 0.0) return Path();
+    if (p >= 1.0) return Path()..addRect(Offset.zero & size);
+
+    const waveAmp = 26.0;
+    final totalSpan = size.width + waveAmp * 2;
+    final leadX = forward
+        ? -waveAmp + totalSpan * p
+        : size.width + waveAmp - totalSpan * p;
+
+    final path = Path();
+    if (forward) {
+      path.moveTo(0, 0);
+      path.lineTo(leadX, 0);
+      const segments = 28;
+      for (var i = 0; i <= segments; i++) {
+        final t = i / segments;
+        final y = size.height * t;
+        final wave = math.sin((t * 2.2 + p) * math.pi * 2) *
+            waveAmp *
+            math.sin(p * math.pi);
+        path.lineTo(leadX + wave, y);
+      }
+      path.lineTo(0, size.height);
+      path.close();
+    } else {
+      path.moveTo(size.width, 0);
+      path.lineTo(leadX, 0);
+      const segments = 28;
+      for (var i = 0; i <= segments; i++) {
+        final t = i / segments;
+        final y = size.height * t;
+        final wave = math.sin((t * 2.2 + p) * math.pi * 2) *
+            waveAmp *
+            math.sin(p * math.pi);
+        path.lineTo(leadX - wave, y);
+      }
+      path.lineTo(size.width, size.height);
+      path.close();
+    }
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant HomeWaveWipeClipper oldClipper) =>
+      oldClipper.progress != progress || oldClipper.forward != forward;
+}
+
 class HomeOverviewScreen extends StatefulWidget {
   final VoidCallback onExplore;
   final VoidCallback onLibrary;
@@ -56,54 +122,207 @@ class HomeOverviewScreen extends StatefulWidget {
   State<HomeOverviewScreen> createState() => _HomeOverviewScreenState();
 }
 
-class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
+class _HomeOverviewScreenState extends State<HomeOverviewScreen>
+    with SingleTickerProviderStateMixin {
   List<Manga> _popularMangas = [];
   bool _loadingPopular = false;
   bool _openingFeatured = false;
   int _popularGeneration = 0;
   int _featuredIndex = 0;
+  int _previousFeaturedIndex = 0;
+  bool _transitionForward = true;
   int _paletteGeneration = 0;
   Timer? _featuredTimer;
-  ProfileAdaptivePalette? _featuredPalette;
+
+  // Cache LRU limitado (máx. 4 destaques) para evitar pressão de memória
+  static const int _maxPreloadedEntries = 4;
+  final LinkedHashMap<String, ProfileAdaptivePalette> _preloadedPalettes =
+      LinkedHashMap();
+  final Set<String> _preloadedImages = <String>{};
+  final Set<String> _preloadingInFlight = <String>{};
+
+  late final AnimationController _waveController;
+  ProfileAdaptivePalette _fromPalette =
+      ProfilePaletteService.paletteNotifier.value;
+  ProfileAdaptivePalette _toPalette =
+      ProfilePaletteService.paletteNotifier.value;
+
+  // Controle de encolhimento/recolhimento do Header sincronizado apenas com rolagem vertical
+  double _headerCollapse = 0.0;
 
   List<Manga> get _featuredItems => _visiblePopular.take(5).toList();
 
-  void _selectFeatured(int index) {
+  ProfileAdaptivePalette _deterministicFallback(Manga manga) {
+    final cached = _preloadedPalettes[manga.compositeId];
+    if (cached != null) return cached;
+    final syncFallback =
+        ProfilePaletteService.synchronousFallbackForManga(manga);
+    final profilePalette = ProfilePaletteService.paletteNotifier.value;
+    if (!identical(syncFallback, profilePalette)) return syncFallback;
+    final hue = manga.title.runes.fold<int>(
+      0,
+      (hash, c) => (hash * 31 + c) & 0x7fffffff,
+    ) %
+        360;
+    return ProfileAdaptivePalette.fromColor(
+      HSVColor.fromAHSV(1, hue.toDouble(), 0.65, 0.85).toColor(),
+    );
+  }
+
+  void _storePaletteInBoundedCache(String key, ProfileAdaptivePalette palette) {
+    _preloadedPalettes.remove(key);
+    if (_preloadedPalettes.length >= _maxPreloadedEntries) {
+      final evicted = _preloadedPalettes.keys.first;
+      _preloadedPalettes.remove(evicted);
+      _preloadedImages.remove(evicted);
+    }
+    _preloadedPalettes[key] = palette;
+  }
+
+  Future<void> _warmCandidate(Manga manga) async {
+    final key = manga.compositeId;
+    if (_preloadingInFlight.contains(key)) return;
+    _preloadingInFlight.add(key);
+    try {
+      final resolver =
+          widget.paletteResolver ?? ProfilePaletteService.resolveForManga;
+      final resolved = await resolver(manga);
+      _storePaletteInBoundedCache(key, resolved);
+      if (mounted && !DeviceStateService.instance.isOffline) {
+        final rawUrl = manga.getCoverUrl(highRes: true);
+        if (rawUrl.isNotEmpty) {
+          final width = (MediaQuery.sizeOf(context).width *
+                  MediaQuery.devicePixelRatioOf(context))
+              .ceil()
+              .clamp(240, 1080)
+              .toInt();
+          final provider = ResizeImage(
+            NetworkImage(
+              rawUrl,
+              headers: manga.customHeaders.isEmpty ? null : manga.customHeaders,
+            ),
+            width: width,
+          );
+          await precacheImage(provider, context).catchError((Object _) {});
+        }
+      }
+      _preloadedImages.add(key);
+    } catch (_) {
+      _storePaletteInBoundedCache(key, _deterministicFallback(manga));
+      _preloadedImages.add(key);
+    } finally {
+      _preloadingInFlight.remove(key);
+    }
+  }
+
+  void _warmNeighbors(int currentIndex) {
     final items = _featuredItems;
     if (items.isEmpty) return;
-    final selected = index % items.length;
+    final nextIdx = (currentIndex + 1) % items.length;
+    unawaited(_warmCandidate(items[currentIndex]));
+    if (nextIdx != currentIndex) {
+      unawaited(_warmCandidate(items[nextIdx]));
+    }
+  }
+
+  ProfileAdaptivePalette get _currentInterpolatedPalette {
+    final t = Curves.easeInOutCubic.transform(_waveController.value);
+    return ProfileAdaptivePalette.lerp(_fromPalette, _toPalette, t);
+  }
+
+  void _syncGlobalPaletteProgress() {
+    if (!mounted) return;
+    ProfilePaletteService.paletteNotifier.value = _currentInterpolatedPalette;
+  }
+
+  void _selectFeatured(int index, {bool manual = false}) {
+    final items = _featuredItems;
+    if (items.isEmpty) return;
+    final selected = (index % items.length + items.length) % items.length;
     final manga = items[selected];
     final generation = ++_paletteGeneration;
-    final fallback = ProfilePaletteService.synchronousFallbackForManga(manga);
-    final profile = ProfilePaletteService.paletteNotifier.value;
-    final hue =
-        manga.title.runes.fold<int>(
-          0,
-          (hash, c) => (hash * 31 + c) & 0x7fffffff,
-        ) %
-        360;
+    final reduceMotion =
+        (MediaQuery.maybeDisableAnimationsOf(context) ?? false) ||
+            DeviceStateService.instance.value.reduceEffects;
+    final startPalette = _currentInterpolatedPalette;
+    final targetInitial = _deterministicFallback(manga);
+
     setState(() {
+      _transitionForward = selected >= _featuredIndex ||
+          (_featuredIndex == items.length - 1 && selected == 0);
+      _previousFeaturedIndex = _featuredIndex;
       _featuredIndex = selected;
-      _featuredPalette = identical(fallback, profile)
-          ? ProfileAdaptivePalette.fromColor(
-              HSVColor.fromAHSV(1, hue.toDouble(), 0.65, 0.85).toColor(),
-            )
-          : fallback;
+      _fromPalette = startPalette;
+      _toPalette = targetInitial;
     });
+
+    if (reduceMotion) {
+      _waveController.value = 1.0;
+      _syncGlobalPaletteProgress();
+    } else {
+      _waveController.forward(from: 0.0);
+    }
+
+    _warmNeighbors(selected);
+
     (widget.paletteResolver ?? ProfilePaletteService.resolveForManga)(
       manga,
-    ).then((palette) {
-      if (mounted &&
-          generation == _paletteGeneration &&
-          !identical(palette, ProfilePaletteService.paletteNotifier.value)) {
-        setState(() => _featuredPalette = palette);
+    ).then((resolved) {
+      _storePaletteInBoundedCache(manga.compositeId, resolved);
+      if (!mounted || generation != _paletteGeneration) return;
+      if (resolved != _toPalette) {
+        setState(() {
+          _fromPalette = _currentInterpolatedPalette;
+          _toPalette = resolved;
+        });
+        if (reduceMotion) {
+          _waveController.value = 1.0;
+          _syncGlobalPaletteProgress();
+        } else if (!_waveController.isAnimating) {
+          _waveController.forward(from: 0.0);
+        }
       }
     });
+  }
+
+  bool _handleHomeVerticalScroll(ScrollNotification notification) {
+    // Rolagem horizontal de carrosséis NÃO deve encolher nem recolher o header
+    if (notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    if (!AppearanceController.instance.value.autoHideMenus) {
+      if (_headerCollapse != 0.0) {
+        setState(() => _headerCollapse = 0.0);
+      }
+      return false;
+    }
+    if (notification is ScrollUpdateNotification) {
+      final pixels = notification.metrics.pixels;
+      if (pixels <= 8) {
+        if (_headerCollapse != 0.0) {
+          setState(() => _headerCollapse = 0.0);
+        }
+        return false;
+      }
+      final delta = notification.scrollDelta ?? 0.0;
+      if (delta.abs() < 0.5) return false;
+      final next = (_headerCollapse + (delta / 76.0)).clamp(0.0, 1.0);
+      if ((next - _headerCollapse).abs() > 0.01) {
+        setState(() => _headerCollapse = next);
+      }
+    }
+    return false;
   }
 
   @override
   void initState() {
     super.initState();
+    _waveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+      value: 1.0,
+    )..addListener(_syncGlobalPaletteProgress);
+
     _loadPopularMangas();
     _featuredTimer = Timer.periodic(widget.featuredInterval, (_) {
       if (!mounted ||
@@ -111,12 +330,19 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
           _featuredItems.length < 2 ||
           !TickerMode.of(context) ||
           MediaQuery.disableAnimationsOf(context) ||
+          DeviceStateService.instance.value.reduceEffects ||
           ModalRoute.of(context)?.isCurrent == false) {
         return;
       }
       final lifecycle = WidgetsBinding.instance.lifecycleState;
       if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
-      _selectFeatured(_featuredIndex + 1);
+      final nextIdx = (_featuredIndex + 1) % _featuredItems.length;
+      final nextManga = _featuredItems[nextIdx];
+      // Se o próximo destaque ainda não estiver pré-carregado, prepara-o sem piscar a tela
+      if (!_preloadedImages.contains(nextManga.compositeId)) {
+        unawaited(_warmCandidate(nextManga));
+      }
+      _selectFeatured(nextIdx);
     });
     StorageService.nsfwModeNotifier.addListener(_loadPopularMangas);
   }
@@ -124,6 +350,8 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
   @override
   void dispose() {
     _featuredTimer?.cancel();
+    _waveController.removeListener(_syncGlobalPaletteProgress);
+    _waveController.dispose();
     StorageService.nsfwModeNotifier.removeListener(_loadPopularMangas);
     super.dispose();
   }
@@ -140,11 +368,12 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
         setState(() {
           _popularMangas = fetched;
           _featuredIndex = 0;
+          _previousFeaturedIndex = 0;
         });
         _selectFeatured(0);
       }
     } catch (_) {
-      // Keep actual previously fetched titles on temporary failures.
+      // Mantém títulos anteriores em falhas temporárias
     } finally {
       if (mounted && generation == _popularGeneration) {
         setState(() => _loadingPopular = false);
@@ -176,122 +405,364 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([
-      ProfilePaletteService.paletteNotifier,
-      StorageService.profileNotifier,
-      StorageService.nsfwModeNotifier,
-    ]),
-    builder: (context, _) {
-      final palette =
-          _featuredPalette ?? ProfilePaletteService.paletteNotifier.value;
-      final profile = StorageService.profileNotifier.value;
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: Listenable.merge([
+          _waveController,
+          ProfilePaletteService.paletteNotifier,
+          StorageService.profileNotifier,
+          StorageService.nsfwModeNotifier,
+        ]),
+        builder: (context, _) {
+          final palette = _currentInterpolatedPalette;
+          final profile = StorageService.profileNotifier.value;
+          final reduceMotion = MediaQuery.disableAnimationsOf(context) ||
+              DeviceStateService.instance.value.reduceEffects;
+          final collapse = reduceMotion
+              ? (_headerCollapse > 0.5 ? 1.0 : 0.0)
+              : _headerCollapse;
 
-      return Scaffold(
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          title: const YomiEnsoLogo(),
-          scrolledUnderElevation: 0,
-          surfaceTintColor: Colors.transparent,
-          actions: [
-            IconButton(
-              tooltip: 'Buscar mangás',
-              onPressed: widget.onExplore,
-              icon: const Icon(Icons.search_rounded, size: 25),
+          return Scaffold(
+            extendBodyBehindAppBar: true,
+            body: NotificationListener<ScrollNotification>(
+              onNotification: _handleHomeVerticalScroll,
+              child: Stack(
+                children: [
+                  ValueListenableBuilder(
+                    valueListenable: StorageService.historyBox.listenable(
+                      keys: const ['recent_reading_list'],
+                    ),
+                    builder: (context, Box box, _) {
+                      final recent = StorageService.getContinueReadingList()
+                          .take(12)
+                          .toList();
+                      return ValueListenableBuilder(
+                        valueListenable: StorageService.historyBox.listenable(
+                          keys: [
+                            for (final item in recent)
+                              'page_${(item['chapter'] as Chapter).id}',
+                          ],
+                        ),
+                        builder: (context, Box history, _) => SingleChildScrollView(
+                          padding: const EdgeInsets.only(bottom: 112),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _featured(context, palette, reduceMotion),
+                              const SizedBox(height: 8),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: _popularSection(context, palette),
+                              ),
+                              const SizedBox(height: 28),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (recent.isNotEmpty) ...[
+                                      _sectionHeader(
+                                        title: 'Continue lendo',
+                                        actionLabel: 'Ver todos',
+                                        accentColor: palette.secondary,
+                                        onAction: recent.length > 1
+                                            ? () => _showAllRecentSheet(
+                                                  context,
+                                                  recent,
+                                                  palette,
+                                                )
+                                            : widget.onLibrary,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _readingCard(
+                                        context,
+                                        recent.first,
+                                        palette: palette,
+                                        featured: true,
+                                      ),
+                                      const SizedBox(height: 24),
+                                    ],
+                                    _shortcuts(context, palette),
+                                    const SizedBox(height: 14),
+                                    YomiMascotCompanionCard(
+                                      compact: true,
+                                      message: recent.isNotEmpty
+                                          ? 'Continue sua jornada de onde parou!'
+                                          : 'Escolha uma obra popular para começar!',
+                                      onTap: widget.onProfile,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _updates(context, palette),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  // Header com superfície própria de alto contraste sincronizado com rolagem e paleta
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _buildCollapsibleHeader(
+                      context,
+                      palette: palette,
+                      profile: profile,
+                      collapse: collapse,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 14, left: 4),
-              child: Center(
-                child: YomiProfileAvatarView(
-                  profile: profile,
-                  size: 34,
-                  borderColor: palette.primary,
-                  adaptiveHue: palette.hue,
-                  onTap: widget.onProfile ?? widget.onLibrary,
+          );
+        },
+      );
+
+  Widget _buildCollapsibleHeader(
+    BuildContext context, {
+    required ProfileAdaptivePalette palette,
+    required UserProfile profile,
+    required double collapse,
+  }) {
+    final topPad = MediaQuery.paddingOf(context).top;
+    // Encolhe suavemente até ocultar quando collapse == 1.0, coordenado com a barra inferior
+    final slideY = -(collapse * 0.85);
+    final barHeight = 56.0 - (10.0 * collapse);
+    final logoSize = 23.0 - (3.0 * collapse);
+    final fgColor = palette.readableOnSurface;
+
+    return IgnorePointer(
+      ignoring: collapse > 0.92,
+      child: FractionalTranslation(
+        translation: Offset(0, slideY),
+        child: Opacity(
+          opacity: (1.0 - collapse * 0.9).clamp(0.0, 1.0),
+          child: FrostedSurface(
+            palette: palette,
+            borderRadius: BorderRadius.zero,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: palette.surfaceTint.withValues(alpha: 0.90),
+                border: Border(
+                  bottom: BorderSide(
+                    color: palette.primary.withValues(alpha: 0.32),
+                    width: 1,
+                  ),
                 ),
               ),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  top: topPad,
+                  left: 16,
+                  right: 10,
+                ),
+                child: SizedBox(
+                  height: barHeight,
+                  child: Row(
+                    children: [
+                      YomiEnsoLogo(fontSize: logoSize, palette: palette),
+                      const Spacer(),
+                      IconButton(
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        tooltip: 'Buscar mangás',
+                        onPressed: widget.onExplore,
+                        icon: Icon(
+                          Icons.search_rounded,
+                          size: 24,
+                          color: fgColor,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4, left: 4),
+                        child: Center(
+                          child: YomiProfileAvatarView(
+                            profile: profile,
+                            size: 34 - (4 * collapse),
+                            borderColor: palette.primary,
+                            adaptiveHue: palette.hue,
+                            onTap: widget.onProfile ?? widget.onLibrary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _featured(
+    BuildContext context,
+    ProfileAdaptivePalette palette,
+    bool reduceMotion,
+  ) {
+    final popular = _featuredItems;
+    if (popular.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 108, 20, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Sua próxima história começa aqui',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                height: 1.1,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Descubra mangás, acompanhe suas leituras e guarde seus favoritos.',
+              style: TextStyle(color: Colors.white70, height: 1.5),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: widget.onExplore,
+              icon: const Icon(Icons.explore_rounded),
+              label: const Text('Explorar agora'),
             ),
           ],
         ),
-        body: ValueListenableBuilder(
-          valueListenable: StorageService.historyBox.listenable(
-            keys: ['recent_reading_list'],
-          ),
-          builder: (context, Box box, _) {
-            final recent = StorageService.getContinueReadingList()
-                .take(12)
-                .toList();
-            return ValueListenableBuilder(
-              valueListenable: StorageService.historyBox.listenable(
-                keys: [
-                  for (final item in recent)
-                    'page_${(item['chapter'] as Chapter).id}',
-                ],
-              ),
-              builder: (context, Box history, _) => SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 112),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _featured(context, palette),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _popularSection(context, palette),
-                    ),
-                    const SizedBox(height: 28),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (recent.isNotEmpty) ...[
-                            _sectionHeader(
-                              title: 'Continue lendo',
-                              actionLabel: 'Ver todos',
-                              accentColor: palette.secondary,
-                              onAction: recent.length > 1
-                                  ? () => _showAllRecentSheet(
-                                      context,
-                                      recent,
-                                      palette,
-                                    )
-                                  : widget.onLibrary,
-                            ),
-                            const SizedBox(height: 12),
-                            _readingCard(
-                              context,
-                              recent.first,
-                              palette: palette,
-                              featured: true,
-                            ),
-                            const SizedBox(height: 24),
-                          ],
+      );
+    }
 
-                          _shortcuts(context, palette),
-                          const SizedBox(height: 14),
-                          YomiMascotCompanionCard(
-                            compact: true,
-                            message: recent.isNotEmpty
-                                ? 'Continue sua jornada de onde parou!'
-                                : 'Escolha uma obra popular para começar!',
-                            onTap: widget.onProfile,
+    final currentManga = popular[_featuredIndex % popular.length];
+    final prevManga = popular[_previousFeaturedIndex % popular.length];
+    final waveProgress =
+        Curves.easeInOutCubic.transform(_waveController.value);
+
+    return ValueListenableBuilder(
+      valueListenable: StorageService.favBox.listenable(),
+      builder: (context, Box box, _) => GestureDetector(
+        onHorizontalDragEnd: popular.length > 1
+            ? (details) {
+                final vx = details.primaryVelocity ?? 0;
+                if (vx < -180) {
+                  _selectFeatured(_featuredIndex + 1, manual: true);
+                } else if (vx > 180) {
+                  _selectFeatured(_featuredIndex - 1, manual: true);
+                }
+              }
+            : null,
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                if (!reduceMotion &&
+                    waveProgress < 1.0 &&
+                    prevManga.compositeId != currentManga.compositeId)
+                  HomeBillboard(
+                    key: ValueKey('prev_${prevManga.compositeId}'),
+                    manga: prevManga,
+                    artwork: YomiCoverImage(manga: prevManga, highRes: true),
+                    accent: _fromPalette.primary,
+                    inList: StorageService.isMangaInReadLater(prevManga.id),
+                    opening: _openingFeatured,
+                    onRead: () => _readFeatured(prevManga),
+                    onToggleList: () =>
+                        _toggleReadLaterWithFeedback(prevManga),
+                  ),
+                ClipPath(
+                  clipper: reduceMotion || waveProgress >= 1.0
+                      ? null
+                      : HomeWaveWipeClipper(
+                          progress: waveProgress,
+                          forward: _transitionForward,
+                        ),
+                  child: HomeBillboard(
+                    key: ValueKey(currentManga.compositeId),
+                    manga: currentManga,
+                    artwork: YomiCoverImage(manga: currentManga, highRes: true),
+                    accent: palette.primary,
+                    inList: StorageService.isMangaInReadLater(currentManga.id),
+                    opening: _openingFeatured,
+                    onRead: () => _readFeatured(currentManga),
+                    onToggleList: () =>
+                        _toggleReadLaterWithFeedback(currentManga),
+                  ),
+                ),
+              ],
+            ),
+            if (popular.length > 1)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var index = 0; index < popular.length; index++)
+                    Semantics(
+                      button: true,
+                      selected: index == _featuredIndex,
+                      label: 'Destaque ${index + 1} de ${popular.length}',
+                      child: InkWell(
+                        onTap: () => _selectFeatured(index, manual: true),
+                        borderRadius: BorderRadius.circular(24),
+                        child: SizedBox(
+                          width: 40,
+                          height: 36,
+                          child: Center(
+                            child: AnimatedContainer(
+                              duration: reduceMotion
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 180),
+                              height: 5,
+                              width: index == _featuredIndex ? 23 : 6,
+                              decoration: BoxDecoration(
+                                color: index == _featuredIndex
+                                    ? palette.primary
+                                    : Colors.white24,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 12),
-                          _updates(context, palette),
-                        ],
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
-            );
-          },
+          ],
         ),
-      );
-    },
-  );
+      ),
+    );
+  }
+
+  Future<void> _toggleReadLaterWithFeedback(Manga manga) async {
+    try {
+      final added = await StorageService.toggleReadLater(manga);
+      if (mounted) {
+        AppFeedback.show(
+          context,
+          SnackBar(
+            content: Text(
+              added
+                  ? '"${manga.title}" adicionado à lista Ler mais tarde.'
+                  : '"${manga.title}" removido de Ler mais tarde.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        AppFeedback.show(
+          context,
+          const SnackBar(
+            content: Text('Não foi possível atualizar sua lista. Tente novamente.'),
+          ),
+        );
+      }
+    }
+  }
 
   void _showAllRecentSheet(
     BuildContext context,
@@ -357,6 +828,12 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
       final chapters = await MangaDexService.fetchChapters(manga);
       if (!mounted) return;
       if (chapters.isEmpty) {
+        await StorageService.recordKnownChaptersCount(
+          manga.id,
+          0,
+          titleKey: manga.normalizedTitleKey,
+        );
+        if (!mounted) return;
         _openMangaDetail(context, manga, 'home_featured');
         AppFeedback.show(
           context,
@@ -392,167 +869,55 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
     }
   }
 
-  Widget _featured(BuildContext context, ProfileAdaptivePalette palette) {
-    final popular = _featuredItems;
-    if (popular.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 108, 20, 28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Sua próxima história começa aqui',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                height: 1.1,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Descubra mangás, acompanhe suas leituras e guarde seus favoritos.',
-              style: TextStyle(color: Colors.white70, height: 1.5),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: widget.onExplore,
-              icon: const Icon(Icons.explore_rounded),
-              label: const Text('Explorar agora'),
-            ),
-          ],
-        ),
-      );
-    }
-    final manga = popular[_featuredIndex % popular.length];
-    return ValueListenableBuilder(
-      valueListenable: StorageService.favBox.listenable(),
-      builder: (context, Box box, _) => Column(
-        children: [
-          AnimatedSwitcher(
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 280),
-            child: HomeBillboard(
-              key: ValueKey(manga.compositeId),
-              manga: manga,
-              artwork: YomiCoverImage(manga: manga, highRes: true),
-              accent: palette.primary,
-              inList: StorageService.isMangaInReadLater(manga.id),
-              opening: _openingFeatured,
-              onRead: () => _readFeatured(manga),
-              onToggleList: () async {
-                try {
-                  final added = await StorageService.toggleReadLater(manga);
-                  if (context.mounted) {
-                    AppFeedback.show(
-                      context,
-                      SnackBar(
-                        content: Text(
-                          added
-                              ? '"${manga.title}" adicionado à lista Ler mais tarde.'
-                              : '"${manga.title}" removido de Ler mais tarde.',
-                        ),
-                      ),
-                    );
-                  }
-                } catch (_) {
-                  if (context.mounted) {
-                    AppFeedback.show(
-                      context,
-                      const SnackBar(
-                        content: Text(
-                          'Não foi possível atualizar sua lista. Tente novamente.',
-                        ),
-                      ),
-                    );
-                  }
-                }
-              },
-            ),
-          ),
-          if (popular.length > 1)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var index = 0; index < popular.length; index++)
-                  Semantics(
-                    button: true,
-                    selected: index == _featuredIndex,
-                    label: 'Destaque ${index + 1} de ${popular.length}',
-                    child: InkWell(
-                      onTap: () => _selectFeatured(index),
-                      borderRadius: BorderRadius.circular(24),
-                      child: SizedBox(
-                        width: 40,
-                        height: 36,
-                        child: Center(
-                          child: AnimatedContainer(
-                            duration: MediaQuery.disableAnimationsOf(context)
-                                ? Duration.zero
-                                : const Duration(milliseconds: 180),
-                            height: 5,
-                            width: index == _featuredIndex ? 23 : 6,
-                            decoration: BoxDecoration(
-                              color: index == _featuredIndex
-                                  ? palette.primary
-                                  : Colors.white24,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _sectionHeader({
     required String title,
     required String actionLabel,
     required Color accentColor,
     required VoidCallback onAction,
-  }) => Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Expanded(
-        child: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 19,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.3,
-          ),
-        ),
-      ),
-      InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onAction,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                actionLabel,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: accentColor,
-                ),
+  }) =>
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.3,
               ),
-              const SizedBox(width: 2),
-              Icon(Icons.chevron_right_rounded, size: 16, color: accentColor),
-            ],
+            ),
           ),
-        ),
-      ),
-    ],
-  );
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onAction,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    actionLabel,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: accentColor,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 16,
+                    color: accentColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
 
+  /// Compartilha a animação de capa (`FloatingContinueCover`) com a Biblioteca.
   Widget _readingCard(
     BuildContext context,
     Map<String, dynamic> item, {
@@ -562,12 +927,15 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
     final manga = item['manga'] as Manga;
     final chapter = item['chapter'] as Chapter;
     final page = StorageService.getSavedPageIndex(chapter.id) + 1;
+    final reading = LibraryProgress.forManga(manga);
     final progress = chapter.pages > 0
         ? (page / chapter.pages).clamp(0.0, 1.0)
-        : null;
+        : reading.fraction;
     final percentText = progress != null
         ? '${(progress * 100).round()}%'
         : 'Progresso indisponível';
+    final isFav = StorageService.isFavorite(manga.id);
+
     void open() => _openChapter(context, manga, chapter);
     void openManga() => _openMangaDetail(context, manga, 'home_continue');
 
@@ -581,8 +949,9 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
               : Colors.white10,
         ),
       ),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: Clip.none,
       child: InkWell(
+        borderRadius: BorderRadius.circular(20),
         onTap: open,
         child: Padding(
           padding: EdgeInsets.all(featured ? 16 : 12),
@@ -590,18 +959,28 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   GestureDetector(
                     onTap: openManga,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: YomiCoverImage(
-                        manga: manga,
-                        width: featured ? 80 : 56,
-                        height: featured ? 114 : 84,
-                      ),
-                    ),
+                    child: featured
+                        ? FloatingContinueCover(
+                            manga: manga,
+                            width: 84,
+                            height: 120,
+                            palette: palette,
+                            isFavorite: isFav,
+                            onFavoriteToggle: () =>
+                                StorageService.toggleFavorite(manga),
+                          )
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: YomiCoverImage(
+                              manga: manga,
+                              width: 56,
+                              height: 84,
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -781,7 +1160,13 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
     );
   }
 
-  /// A popularity ranking contains only titles fetched from the provider.
+  static const ColorFilter _grayscaleFilter = ColorFilter.matrix(<double>[
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0, 0, 0, 1, 0,
+  ]);
+
   Widget _popularSection(BuildContext context, ProfileAdaptivePalette palette) {
     final seen = <String>{};
     final rollItems = <Manga>[];
@@ -814,50 +1199,100 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
           height: rollItems.isEmpty
               ? 0
               : homeCoverWidth(MediaQuery.sizeOf(context).width - 32) * 1.5 +
-                    MediaQuery.textScalerOf(context).scale(12.5) * 3 +
-                    16,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: rollItems.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, idx) {
-              final m = rollItems[idx];
-              return InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => _openMangaDetail(context, m, 'home_popular_$idx'),
-                child: SizedBox(
-                  width: homeCoverWidth(MediaQuery.sizeOf(context).width - 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AspectRatio(
-                        aspectRatio: 2 / 3,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: YomiCoverImage(
-                            manga: m,
-                            width: homeCoverWidth(
-                              MediaQuery.sizeOf(context).width - 32,
+                  MediaQuery.textScalerOf(context).scale(12.5) * 3 +
+                  16,
+          child: ValueListenableBuilder(
+            valueListenable: StorageService.historyBox.listenable(),
+            builder: (context, Box historyBox, _) => ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: rollItems.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, idx) {
+                final m = rollItems[idx];
+                final isZeroConfirmed =
+                    StorageService.isConfirmedZeroChapters(m);
+                final coverWidth =
+                    homeCoverWidth(MediaQuery.sizeOf(context).width - 32);
+                Widget cover = YomiCoverImage(manga: m, width: coverWidth);
+                if (isZeroConfirmed) {
+                  cover = ColorFiltered(
+                    colorFilter: _grayscaleFilter,
+                    child: cover,
+                  );
+                }
+
+                return Semantics(
+                  label: isZeroConfirmed
+                      ? '${m.title} — 0 capítulos disponíveis'
+                      : m.title,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () =>
+                        _openMangaDetail(context, m, 'home_popular_$idx'),
+                    child: Opacity(
+                      opacity: isZeroConfirmed ? 0.62 : 1.0,
+                      child: SizedBox(
+                        width: coverWidth,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AspectRatio(
+                              aspectRatio: 2 / 3,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    cover,
+                                    if (isZeroConfirmed)
+                                      Positioned(
+                                        bottom: 0,
+                                        left: 0,
+                                        right: 0,
+                                        child: Container(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.80),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 3,
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: const Text(
+                                            '0 CAPÍTULOS',
+                                            style: TextStyle(
+                                              fontSize: 8.5,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 0.4,
+                                              color: Colors.white70,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            Text(
+                              m.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.3,
+                                fontWeight: FontWeight.w700,
+                                color: isZeroConfirmed
+                                    ? Colors.white54
+                                    : Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        m.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          height: 1.3,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -901,82 +1336,88 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen> {
     IconData icon,
     Color accentColor,
     VoidCallback onTap,
-  ) => Material(
-    color: YomiPalette.surface.withValues(alpha: 0.75),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
-      side: const BorderSide(color: Colors.white10),
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Icon(icon, size: 19, color: accentColor),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
-              color: Colors.white38,
-            ),
-          ],
+  ) =>
+      Material(
+        color: YomiPalette.surface.withValues(alpha: 0.75),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Colors.white10),
         ),
-      ),
-    ),
-  );
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Icon(icon, size: 19, color: accentColor),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: Colors.white38,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 
   Widget _updates(
     BuildContext context,
     ProfileAdaptivePalette palette,
-  ) => ValueListenableBuilder(
-    valueListenable: StorageService.settingsBox.listenable(),
-    builder: (context, Box box, _) => ValueListenableBuilder(
-      valueListenable: StorageService.favBox.listenable(),
-      builder: (context, Box favs, _) {
-        final pending = FavoriteUpdatesService.allPending(
-          StorageService.getFavorites(),
-        );
-        if (pending.isEmpty) return const SizedBox.shrink();
-        return Material(
-          color: YomiPalette.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: palette.secondary.withValues(alpha: 0.35)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: ListTile(
-            leading: Badge(
-              label: Text('${pending.length}'),
-              backgroundColor: palette.primary,
-              child: Icon(
-                Icons.notifications_active_rounded,
-                color: palette.secondary,
+  ) =>
+      ValueListenableBuilder(
+        valueListenable: StorageService.settingsBox.listenable(),
+        builder: (context, Box box, _) => ValueListenableBuilder(
+          valueListenable: StorageService.favBox.listenable(),
+          builder: (context, Box favs, _) {
+            final pending = FavoriteUpdatesService.allPending(
+              StorageService.getFavorites(),
+            );
+            if (pending.isEmpty) return const SizedBox.shrink();
+            return Material(
+              color: YomiPalette.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: palette.secondary.withValues(alpha: 0.35),
+                ),
               ),
-            ),
-            title: const Text(
-              'Novidades nos favoritos',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-            subtitle: Text('${pending.length} capítulos aguardando'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FavoriteUpdatesScreen()),
-            ),
-          ),
-        );
-      },
-    ),
-  );
+              clipBehavior: Clip.antiAlias,
+              child: ListTile(
+                leading: Badge(
+                  label: Text('${pending.length}'),
+                  backgroundColor: palette.primary,
+                  child: Icon(
+                    Icons.notifications_active_rounded,
+                    color: palette.secondary,
+                  ),
+                ),
+                title: const Text(
+                  'Novidades nos favoritos',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text('${pending.length} capítulos aguardando'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const FavoriteUpdatesScreen(),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
 }

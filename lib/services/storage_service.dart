@@ -454,6 +454,65 @@ class StorageService {
     }
   }
 
+  static final Set<String> _inFlightAvailabilityChecks = <String>{};
+  static final Set<String> _completedAvailabilityChecks = <String>{};
+  static int _activeAvailabilityJobs = 0;
+  static const int _maxConcurrentAvailabilityJobs = 2;
+
+  /// Diferencia explicitamente:
+  /// - 0 capítulos confirmados (retorna true)
+  /// - contagem desconhecida (-1) ou carregando (retorna false)
+  static bool isConfirmedZeroChapters(Manga manga) {
+    final known = getKnownChaptersCount(
+      manga.id,
+      manga.availableChaptersCount,
+      titleKey: manga.normalizedTitleKey,
+    );
+    return known == 0;
+  }
+
+  /// Agenda verificação única e limitada com cache para obras com contagem desconhecida (-1).
+  static void requestLimitedAvailabilityCheck(
+    Manga manga,
+    Future<List<Chapter>> Function(Manga) fetcher,
+  ) {
+    if (DeviceStateService.instance.isOffline) return;
+    final known = getKnownChaptersCount(
+      manga.id,
+      manga.availableChaptersCount,
+      titleKey: manga.normalizedTitleKey,
+    );
+    if (known >= 0) return; // Já conhecido (0 ou > 0)
+    if (_completedAvailabilityChecks.contains(manga.id) ||
+        _inFlightAvailabilityChecks.contains(manga.id) ||
+        _activeAvailabilityJobs >= _maxConcurrentAvailabilityJobs) {
+      return;
+    }
+
+    _inFlightAvailabilityChecks.add(manga.id);
+    _activeAvailabilityJobs++;
+    fetcher(manga).then((chapters) async {
+      _completedAvailabilityChecks.add(manga.id);
+      await recordKnownChaptersCount(
+        manga.id,
+        chapters.length,
+        titleKey: manga.normalizedTitleKey,
+      );
+      if (chapters.isNotEmpty) {
+        await cacheMangaChapters(
+          manga.id,
+          chapters,
+          titleKey: manga.normalizedTitleKey,
+        );
+      }
+    }).catchError((Object _) {
+      // Em falha de rede, mantém como desconhecido (-1), nunca marcando como 0.
+    }).whenComplete(() {
+      _inFlightAvailabilityChecks.remove(manga.id);
+      _activeAvailabilityJobs--;
+    });
+  }
+
   static int getKnownChaptersCount(
     String mangaId,
     int fallback, {
@@ -877,6 +936,88 @@ class StorageService {
   }
 
   // --- DOWNLOADS OFFLINE ---
+  static const String offlineCoverPrefix = 'offline_cover_';
+
+  static String? getOfflineCoverPath(String mangaId) {
+    if (!Hive.isBoxOpen(settingsBoxName)) return null;
+    final stored = settingsBox.get('$offlineCoverPrefix$mangaId');
+    if (stored is String && stored.isNotEmpty && !kIsWeb) {
+      final f = File(stored);
+      if (f.existsSync() && f.lengthSync() > 0) return stored;
+    }
+    // Compatibilidade com registros em downloadsBox que salvaram coverPath diretamente
+    if (Hive.isBoxOpen(downloadsBoxName)) {
+      for (final raw in downloadsBox.values) {
+        if (raw is! Map) continue;
+        final manga = _storedManga(raw['manga']);
+        final coverPath = raw['coverPath'];
+        if (manga?.id == mangaId &&
+            coverPath is String &&
+            coverPath.isNotEmpty &&
+            !kIsWeb &&
+            File(coverPath).existsSync()) {
+          return coverPath;
+        }
+      }
+    }
+    return null;
+  }
+
+  static Future<void> setOfflineCoverPath(String mangaId, String path) async {
+    if (Hive.isBoxOpen(settingsBoxName)) {
+      await settingsBox.put('$offlineCoverPrefix$mangaId', path);
+    }
+  }
+
+  static Future<void> removeOfflineCoverMetadata(String mangaId) async {
+    if (Hive.isBoxOpen(settingsBoxName)) {
+      await settingsBox.delete('$offlineCoverPrefix$mangaId');
+    }
+  }
+
+  /// Agrupa os downloads existentes e novos por obra, ordenando capítulos por número.
+  static List<({Manga manga, List<Chapter> chapters, String? coverPath})>
+      getGroupedDownloadedMangas() {
+    final flat = getAllDownloadedChapters();
+    final byMangaId = <String, ({
+      Manga manga,
+      Map<String, Chapter> chapters,
+      String? coverPath
+    })>{};
+
+    for (final entry in flat) {
+      final manga = _storedManga(entry['manga']);
+      final chapter = _storedChapter(entry['chapter']);
+      if (manga == null || chapter == null) continue;
+      final entryCover = entry['coverPath'] is String ? entry['coverPath'] as String : null;
+      final existing = byMangaId[manga.id];
+      if (existing == null) {
+        byMangaId[manga.id] = (
+          manga: manga,
+          chapters: {chapter.id: chapter},
+          coverPath: entryCover ?? getOfflineCoverPath(manga.id),
+        );
+      } else {
+        existing.chapters[chapter.id] = chapter;
+      }
+    }
+
+    final groups = <({Manga manga, List<Chapter> chapters, String? coverPath})>[];
+    for (final item in byMangaId.values) {
+      final sortedChapters = item.chapters.values.toList()
+        ..sort((a, b) => a.numericChapter.compareTo(b.numericChapter));
+      groups.add((
+        manga: item.manga,
+        chapters: sortedChapters,
+        coverPath: getOfflineCoverPath(item.manga.id) ?? item.coverPath,
+      ));
+    }
+
+    groups.sort((a, b) =>
+        a.manga.title.toLowerCase().compareTo(b.manga.title.toLowerCase()));
+    return groups;
+  }
+
   static bool isChapterDownloaded(String chapterId) {
     return downloadsBox.containsKey(chapterId);
   }

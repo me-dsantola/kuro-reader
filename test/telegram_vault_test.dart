@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,51 +43,56 @@ void main() {
     await testDir.delete(recursive: true);
   });
 
-  test('bundled catalog loads chapters without a project directory', () async {
+  test('bundled catalog is empty by default while Telegram works are removed', () async {
     final catalog = await TelegramVaultService.loadCatalog();
-    expect(catalog, isNotEmpty);
-    final manga = catalog.firstWhere(
-      (m) => m.title == 'Vingadores Costa Oeste',
-    );
-    expect(manga.preloadedChapters, isNotEmpty);
-    expect(
-      StorageService.getCachedMangaChapters(manga.id),
-      hasLength(manga.preloadedChapters!.length),
-    );
-  }, skip: 'Obras do Telegram removidas temporariamente do catálogo');
+    expect(catalog, isEmpty);
+  });
 
-  test('detail discovery recovers Vault chapters for saved manga', () async {
-    final catalog = await TelegramVaultService.loadCatalog();
-    final original = catalog.first;
-    final saved = Manga(
-      id: original.id,
+  test('detail discovery recovers preloaded or cached chapters for legacy saved Telegram manga', () async {
+    final legacyChapter = Chapter(
+      id: 'tg_ch_file_1',
       source: MangaSourceType.comicsHq,
-      title: original.title,
+      chapterNumber: '1',
+      title: 'Edição #1',
+      language: 'PT-BR',
+      pages: 0,
+      scanlator: 'Telegram Vault',
+    );
+    final saved = Manga(
+      id: 'tg_vingadores_costa_oeste',
+      source: MangaSourceType.comicsHq,
+      title: 'Vingadores Costa Oeste',
       description: '',
       status: 'COMPLETED',
-      tags: const [],
+      tags: const ['HQ Ocidental'],
+      preloadedChapters: [legacyChapter],
     );
     final result = await MangaDexService.discoverAllSourcesForManga(saved);
-    expect(result[saved.source], hasLength(original.preloadedChapters!.length));
-    expect(result[saved.source]!.first.id, startsWith('tg_ch_'));
+    expect(result[saved.source], hasLength(1));
+    expect(result[saved.source]!.first.id, 'tg_ch_file_1');
     expect(MangaDexService.hasOlderChapters(saved.id), isFalse);
     final older = await MangaDexService.discoverAllSourcesForManga(
       saved,
       offset: 100,
     );
     expect(older[saved.source], isEmpty);
-  }, skip: 'Obras do Telegram removidas temporariamente do catálogo');
+  });
 
-  test('a damaged local catalog falls back to the bundled catalog', () async {
-    await File(
-      '${testDir.path}/yomi_hqs_catalog.json',
-    ).writeAsString('{broken');
-    expect(await TelegramVaultService.loadCatalog(), isNotEmpty);
-  }, skip: 'Obras do Telegram removidas temporariamente do catálogo');
-
-  test('document chapters do not request a MangaDex image endpoint', () async {
+  test('a damaged local catalog falls back safely to the bundled empty catalog without throwing', () async {
+    await File('${testDir.path}/yomi_hqs_catalog.json').writeAsString('{broken');
     final catalog = await TelegramVaultService.loadCatalog();
-    final chapter = catalog.first.preloadedChapters!.first;
+    expect(catalog, isEmpty);
+  });
+
+  test('document chapters throw UnsupportedError and do not request MangaDex image endpoints', () async {
+    final chapter = Chapter(
+      id: 'tg_ch_doc_01',
+      source: MangaSourceType.comicsHq,
+      chapterNumber: '1',
+      title: 'Capítulo 1',
+      language: 'PT-BR',
+      pages: 0,
+    );
     var requests = 0;
     await http.runWithClient(
       () async {
@@ -102,19 +107,19 @@ void main() {
       }),
     );
     expect(requests, 0);
-  }, skip: 'Obras do Telegram removidas temporariamente do catálogo');
+  });
 
-  test('HQ catalog survives a MangaDex outage', () async {
+  test('public HQ catalog does not expose Telegram entries and surfaces MangaDex errors when offline', () async {
     await http.runWithClient(() async {
-      final result = await WesternComicsHqAdapter().fetchCatalog(
-        filter: YomiSearchFilter(query: 'Vingadores Costa Oeste'),
-        cursor: 0,
+      await expectLater(
+        WesternComicsHqAdapter().fetchCatalog(
+          filter: const YomiSearchFilter(query: 'Vingadores Costa Oeste'),
+          cursor: 0,
+        ),
+        throwsException,
       );
-      expect(result.items, isNotEmpty);
-      expect(result.items.first.id, startsWith('tg_'));
-      expect(result.items.first.preloadedChapters, isNotEmpty);
     }, () => MockClient((_) async => throw http.ClientException('offline')));
-  }, skip: 'Obras do Telegram removidas temporariamente do catálogo');
+  });
 
   test('expanded EN feeds fill gaps without overriding PT-BR', () async {
     final requests = <Uri>[];

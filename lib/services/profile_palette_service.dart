@@ -161,6 +161,38 @@ class ProfileAdaptivePalette {
     );
   }
 
+  static ProfileAdaptivePalette lerp(
+    ProfileAdaptivePalette a,
+    ProfileAdaptivePalette b,
+    double t,
+  ) {
+    final clamped = t.clamp(0.0, 1.0);
+    final primary = Color.lerp(a.primary, b.primary, clamped)!;
+    final secondary = Color.lerp(a.secondary, b.secondary, clamped)!;
+    final soft = Color.lerp(a.soft, b.soft, clamped)!;
+    final surfaceTint = Color.lerp(a.surfaceTint, b.surfaceTint, clamped)!;
+    final bannerDark = Color.lerp(a.bannerDark, b.bannerDark, clamped)!;
+    double deltaHue = (b.hue - a.hue) % 360.0;
+    if (deltaHue > 180.0) deltaHue -= 360.0;
+    if (deltaHue < -180.0) deltaHue += 360.0;
+    final hue = (a.hue + deltaHue * clamped) % 360.0;
+
+    return ProfileAdaptivePalette(
+      primary: primary,
+      secondary: secondary,
+      soft: soft,
+      surfaceTint: surfaceTint,
+      bannerDark: bannerDark,
+      hue: hue < 0 ? hue + 360.0 : hue,
+    );
+  }
+
+  /// Garante cor de texto/ícone com contraste adequado mesmo se a paleta for muito clara ou escura.
+  Color get readableOnSurface =>
+      surfaceTint.computeLuminance() > 0.42
+          ? const Color(0xFF101014)
+          : const Color(0xFFFAFAFA);
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

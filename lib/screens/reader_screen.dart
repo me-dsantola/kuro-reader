@@ -603,6 +603,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             chapter: widget.chapter.chapterNumber,
                             page: page,
                             total: totalPages,
+                            visible: _showHud,
                             offline:
                                 _isOfflineMode ||
                                 DeviceStateService.instance.isOffline,
@@ -656,6 +657,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
   }
 
+  void _returnToLibrary() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
   Widget _buildEndOfChapterFooter(Chapter? nextCh, Chapter? prevCh) {
     return ListenableBuilder(
       listenable: Listenable.merge([
@@ -668,88 +674,166 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ? _readerPalette ?? ProfilePaletteService.paletteNotifier.value
             : ProfilePaletteService.paletteNotifier.value;
         final mascotName = profile.effectiveBlobatarName;
+        final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
         return Container(
-          padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
           color: YomiPalette.pitchBlack,
-          child: Column(
-            children: [
-              YomiProfileBlobatar(
-                profile: profile,
-                size: 86,
-                adaptiveHue: palette.hue,
-                overrideExpressionId: 'love',
-                interactiveCycleOnTap: true,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Fim do Capítulo ${widget.chapter.chapterNumber}',
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: palette.surfaceTint,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: palette.primary.withValues(alpha: 0.38),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                nextCh != null
-                    ? '$mascotName adorou ler com você! O próximo capítulo já está pronto.'
-                    : '$mascotName comemorou: você alcançou o capítulo mais recente!',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12.5, color: palette.soft),
-              ),
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                alignment: WrapAlignment.center,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _markCurrentChapterFinished,
-                    icon: const Icon(Icons.check_circle_outline_rounded),
-                    label: const Text('Marcar como concluído'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _openMangaPage,
-                    icon: const Icon(Icons.menu_book_rounded),
-                    label: const Text('Ver página do mangá'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              if (nextCh != null)
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      await StorageService.markChapterAsRead(
-                        widget.manga,
-                        widget.chapter,
-                      );
-                      if (mounted) _goToChapter(nextCh);
-                    },
-                    icon: const Icon(Icons.skip_next_rounded),
-                    label: Text('Ler Próximo: Cap. ${nextCh.chapterNumber}'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: palette.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: TickerMode(
+                        enabled: !reduceMotion,
+                        child: YomiProfileBlobatar(
+                          profile: profile,
+                          size: 74,
+                          adaptiveHue: palette.hue,
+                          overrideExpressionId: 'love',
+                          interactiveCycleOnTap: true,
+                        ),
+                      ),
                     ),
-                  ),
-                )
-              else
-                const Text(
-                  'Você chegou ao capítulo mais recente desta fonte!',
-                  style: TextStyle(color: Colors.white54),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Fim do Capítulo ${widget.chapter.chapterNumber}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      nextCh != null
+                          ? '$mascotName adorou ler com você! O próximo capítulo já está disponível.'
+                          : '$mascotName comemorou: você alcançou o capítulo mais recente desta fonte!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12.5, color: palette.soft),
+                    ),
+                    const SizedBox(height: 20),
+                    if (nextCh != null) ...[
+                      FilledButton.icon(
+                        onPressed: () async {
+                          await StorageService.markChapterAsRead(
+                            widget.manga,
+                            widget.chapter,
+                          );
+                          if (mounted) _goToChapter(nextCh);
+                        },
+                        icon: const Icon(Icons.skip_next_rounded),
+                        label: Text(
+                          'Continuar: Cap. ${nextCh.chapterNumber}',
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: palette.primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final textScale =
+                            MediaQuery.textScalerOf(context).scale(14) / 14;
+                        final vertical =
+                            constraints.maxWidth < 340 || textScale > 1.25;
+                        final backToMangaBtn = OutlinedButton.icon(
+                          onPressed: _openMangaPage,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: palette.secondary.withValues(alpha: 0.45),
+                            ),
+                            minimumSize: const Size(0, 46),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.menu_book_rounded, size: 18),
+                          label: const Text('Ver página do mangá'),
+                        );
+                        final returnLibraryBtn = OutlinedButton.icon(
+                          onPressed: _returnToLibrary,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: palette.soft,
+                            side: const BorderSide(color: Colors.white24),
+                            minimumSize: const Size(0, 46),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.collections_bookmark_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('Retornar à biblioteca'),
+                        );
+                        if (vertical) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              backToMangaBtn,
+                              const SizedBox(height: 8),
+                              returnLibraryBtn,
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(child: backToMangaBtn),
+                            const SizedBox(width: 10),
+                            Expanded(child: returnLibraryBtn),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _markCurrentChapterFinished,
+                          icon: const Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('Marcar como concluído'),
+                        ),
+                        if (prevCh != null)
+                          TextButton.icon(
+                            onPressed: () => _goToChapter(prevCh),
+                            icon: const Icon(
+                              Icons.skip_previous_rounded,
+                              size: 18,
+                            ),
+                            label: Text('Cap. anterior (${prevCh.chapterNumber})'),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              if (prevCh != null) ...[
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  onPressed: () => _goToChapter(prevCh),
-                  icon: const Icon(Icons.skip_previous_rounded),
-                  label: Text('Voltar para Cap. ${prevCh.chapterNumber}'),
-                ),
-              ],
-            ],
+              ),
+            ),
           ),
         );
       },

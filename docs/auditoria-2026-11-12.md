@@ -60,8 +60,9 @@ ou execução de cada fluxo no Android real.
 | 1.2.2: todas as obras completas / sem lacunas | Não pode ser garantido | Só há capítulos disponibilizados pela fonte nos idiomas consultados. Não se criam traduções ou capítulos ausentes. A busca inicial é limitada a 1500 entradas por idioma, com paginação adicional |
 | 1.2.3: substituição de `ScrollCacheExtent.pixels` | Presente | usa APIs de lista compatíveis com o SDK instalado. “Todas as versões do Flutter” não é uma garantia verificável; o projeto tem uma versão de SDK de referência no CI |
 | 1.2.3: Chrome e Android sem erros | Exige compilação por plataforma | análise Dart e testes não equivalem a compilar ou executar nos dois alvos; ver seção de validação |
-| 1.2.4: HQs do Telegram na aba HQs e capítulos | Listagem implementada e corrigida | asset, serviço e adaptador HQ; testes `telegram_vault` cobrem APK sem arquivo no diretório, detalhe de obra salva e queda do MangaDex |
-| 1.2.4: leitura e download de PDF/CBR/ZIP | **Não implementado** | o leitor e o gerenciador de downloads trabalham com sequências de imagens; faltam download de documentos, extração/rasterização e integração ao leitor |
+| 1.2.4: HQs do Telegram na aba HQs e capítulos | Removido temporariamente do catálogo público | `yomi_hqs_catalog.json` distribuído vazio (`items: []`) e `WesternComicsHqAdapter` restrito ao MangaDex; itens legados salvos localmente mantêm compatibilidade em `TelegramVaultService` |
+| 1.2.4: leitura e download de PDF/CBR/ZIP | **Não implementado** | o leitor e o gerenciador de downloads trabalham apenas com sequências de imagens (`ChapterPagesData`); `fetchChapterPages` lança `UnsupportedError` para capítulos `tg_ch_` |
+| Segredo antigo no histórico Git | **Pendente de ação do proprietário** | O token foi removido do código atual, mas permanece no histórico Git (que não foi reescrito para preservar a integridade dos clones). A revogação exige ação direta do proprietário no `@BotFather` e não pode ser declarada concluída apenas pela remoção no código |
 | 1.2.5: correção da variável `q` no adaptador adulto | Presente | integração fica no adaptador HQ; análise estática verifica nomes indefinidos |
 | 1.2.5: catálogo dinâmico e carregamento assíncrono | Parcial | carrega asset ou arquivo local. Não existe mecanismo de buscar automaticamente o JSON atualizado do computador/canal para o celular |
 
@@ -133,6 +134,6 @@ resolver downloads por um serviço intermediário sem expor o token do bot.
 1. Integrar um leitor de documentos e downloads de PDF/CBR/CBZ/ZIP ao Vault.
 2. Definir distribuição remota do catálogo para o app receber novos uploads sem
    recompilar. Atualizar o JSON no computador não atualiza APKs já instalados.
-3. Revogar a credencial antiga e provisionar a substituta fora do código.
+3. Revogar a credencial antiga no @BotFather (ação pendente do proprietário; o histórico Git não foi reescrito) e provisionar a substituta fora do código.
 4. Validar instalação, reinstalação/backup, bateria, rede, fluidez e leitor em
    aparelho Android físico. Validar assinatura antes de publicar uma release.
