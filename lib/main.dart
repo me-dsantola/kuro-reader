@@ -142,7 +142,6 @@ class MainNavigationShell extends StatefulWidget {
 class _MainNavigationShellState extends State<MainNavigationShell>
     with SingleTickerProviderStateMixin {
   late int _currentIndex;
-  int? _previousIndex;
   bool _isForward = true;
   final _visitedTabs = <int>{};
   final List<int> _backHistory = [];
@@ -195,15 +194,6 @@ class _MainNavigationShellState extends State<MainNavigationShell>
       duration: const Duration(milliseconds: 380),
       value: 1.0,
     );
-    _transition.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        if (mounted && _previousIndex != null) {
-          setState(() {
-            _previousIndex = null;
-          });
-        }
-      }
-    });
     _lastInternet = DeviceStateService.instance.value.internet;
     DeviceStateService.instance.addListener(_syncNetwork);
     ProfilePaletteService.bindToProfileNotifier(StorageService.profileNotifier);
@@ -245,7 +235,6 @@ class _MainNavigationShellState extends State<MainNavigationShell>
     }
 
     _isForward = fromBack ? false : (index > _currentIndex);
-    _previousIndex = _currentIndex;
     _currentIndex = index;
     _visitedTabs.add(index);
     _chrome.show();
@@ -256,7 +245,6 @@ class _MainNavigationShellState extends State<MainNavigationShell>
 
     if (disableAnimations) {
       _transition.value = 1.0;
-      _previousIndex = null;
       setState(() {});
     } else {
       _transition.forward(from: 0.0);
@@ -386,7 +374,7 @@ class _MainNavigationShellState extends State<MainNavigationShell>
                                     .tabTransitions
                             ? const AlwaysStoppedAnimation(Offset.zero)
                             : Tween<Offset>(
-                                begin: Offset(_isForward ? 0.18 : -0.18, 0),
+                                begin: Offset(_isForward ? -0.12 : 0.12, 0),
                                 end: Offset.zero,
                               )
                                 .chain(CurveTween(curve: Curves.easeOutCubic))

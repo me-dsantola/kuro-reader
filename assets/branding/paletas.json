@@ -1,0 +1,66 @@
+{
+  "roxo-nebulosa": {
+    "fundo": "#101018",
+    "nome": "#FCFAFF",
+    "pagina-clara": "#FFFFFF",
+    "pagina-sombra": "#D8BFFF",
+    "destaque-claro": "#CB48FF",
+    "destaque-escuro": "#6518BA"
+  },
+  "azul-noturno": {
+    "fundo": "#071424",
+    "nome": "#F2FAFF",
+    "pagina-clara": "#D9F9FF",
+    "pagina-sombra": "#64C6F2",
+    "destaque-claro": "#35BCFF",
+    "destaque-escuro": "#0954C8"
+  },
+  "verde-esmeralda": {
+    "fundo": "#071E19",
+    "nome": "#F0FFF8",
+    "pagina-clara": "#D6FFE6",
+    "pagina-sombra": "#70DFA5",
+    "destaque-claro": "#42E691",
+    "destaque-escuro": "#078052"
+  },
+  "vermelho-carmesim": {
+    "fundo": "#290A16",
+    "nome": "#FFF4F7",
+    "pagina-clara": "#FFE6EE",
+    "pagina-sombra": "#F29EB7",
+    "destaque-claro": "#F34884",
+    "destaque-escuro": "#A11743"
+  },
+  "branco-minimalista": {
+    "fundo": "#F5F3FA",
+    "nome": "#191923",
+    "pagina-clara": "#343440",
+    "pagina-sombra": "#12121C",
+    "destaque-claro": "#767481",
+    "destaque-escuro": "#242431"
+  },
+  "cinza-grafite": {
+    "fundo": "#16161F",
+    "nome": "#F5F4FA",
+    "pagina-clara": "#F5F3FF",
+    "pagina-sombra": "#C6C3D2",
+    "destaque-claro": "#9893AA",
+    "destaque-escuro": "#494554"
+  },
+  "mono-preto": {
+    "fundo": "#FFFFFF",
+    "nome": "#000000",
+    "pagina-clara": "#000000",
+    "pagina-sombra": "#000000",
+    "destaque-claro": "#000000",
+    "destaque-escuro": "#000000"
+  },
+  "mono-branco": {
+    "fundo": "#15151D",
+    "nome": "#FFFFFF",
+    "pagina-clara": "#FFFFFF",
+    "pagina-sombra": "#FFFFFF",
+    "destaque-claro": "#FFFFFF",
+    "destaque-escuro": "#FFFFFF"
+  }
+}

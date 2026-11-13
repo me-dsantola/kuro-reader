@@ -560,7 +560,10 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
               height: barHeight,
               child: Row(
                 children: [
-                  Flexible(
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width - 132,
+                    ),
                     child: IndividualGlassCapsule(
                       borderRadius: BorderRadius.circular(18),
                       padding: const EdgeInsets.symmetric(
@@ -655,8 +658,6 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
 
     final currentManga = popular[_featuredIndex % popular.length];
     final prevManga = popular[_previousFeaturedIndex % popular.length];
-    final waveProgress =
-        Curves.easeInOutCubic.transform(_waveController.value);
 
     return ValueListenableBuilder(
       valueListenable: StorageService.favBox.listenable(),
@@ -708,38 +709,115 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                     ),
                   ),
                 ),
-                if (!reduceMotion &&
-                    waveProgress < 1.0 &&
-                    prevManga.compositeId != currentManga.compositeId)
-                  HomeBillboard(
-                    key: ValueKey('prev_${prevManga.compositeId}'),
-                    manga: prevManga,
-                    artwork: YomiCoverImage(manga: prevManga, highRes: true),
-                    accent: _fromPalette.primary,
-                    inList: StorageService.isMangaInReadLater(prevManga.id),
-                    opening: _openingFeatured,
-                    onRead: () => _readFeatured(prevManga),
-                    onToggleList: () =>
-                        _toggleReadLaterWithFeedback(prevManga),
+                // Efeito Ambilight: aura luminosa vazando para a parte de baixo após o destaque
+                Positioned(
+                  bottom: -72,
+                  left: 0,
+                  right: 0,
+                  height: 120,
+                  child: IgnorePointer(
+                    child: AnimatedBuilder(
+                      animation: _waveController,
+                      builder: (context, _) {
+                        final currentPalette = _currentInterpolatedPalette;
+                        final enabled =
+                            YomiThemeController.instance.ambilightEnabled;
+                        if (!enabled) return const SizedBox.shrink();
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                currentPalette.primary.withValues(alpha: 0.32),
+                                currentPalette.secondary.withValues(
+                                  alpha: 0.12,
+                                ),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.45, 1.0],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ClipPath(
-                  clipper: reduceMotion || waveProgress >= 1.0
-                      ? null
-                      : HomeWaveWipeClipper(
-                          progress: waveProgress,
-                          forward: _transitionForward,
+                ),
+                AnimatedBuilder(
+                  animation: _waveController,
+                  builder: (context, _) {
+                    final progress = _waveController.value;
+                    if (reduceMotion ||
+                        progress >= 1.0 ||
+                        prevManga.compositeId == currentManga.compositeId) {
+                      return HomeBillboard(
+                        key: ValueKey(currentManga.compositeId),
+                        manga: currentManga,
+                        artwork:
+                            YomiCoverImage(manga: currentManga, highRes: true),
+                        accent: palette.primary,
+                        inList: StorageService.isMangaInReadLater(
+                          currentManga.id,
                         ),
-                  child: HomeBillboard(
-                    key: ValueKey(currentManga.compositeId),
-                    manga: currentManga,
-                    artwork: YomiCoverImage(manga: currentManga, highRes: true),
-                    accent: palette.primary,
-                    inList: StorageService.isMangaInReadLater(currentManga.id),
-                    opening: _openingFeatured,
-                    onRead: () => _readFeatured(currentManga),
-                    onToggleList: () =>
-                        _toggleReadLaterWithFeedback(currentManga),
-                  ),
+                        opening: _openingFeatured,
+                        onRead: () => _readFeatured(currentManga),
+                        onToggleList: () =>
+                            _toggleReadLaterWithFeedback(currentManga),
+                      );
+                    }
+
+                    final t = Curves.easeInOutCubic.transform(progress);
+                    final slideOffset = _transitionForward
+                        ? (1.0 - t) * 28.0
+                        : -(1.0 - t) * 28.0;
+
+                    return Stack(
+                      children: [
+                        Opacity(
+                          opacity: (1.0 - t).clamp(0.0, 1.0),
+                          child: HomeBillboard(
+                            key: ValueKey('prev_${prevManga.compositeId}'),
+                            manga: prevManga,
+                            artwork: YomiCoverImage(
+                              manga: prevManga,
+                              highRes: true,
+                            ),
+                            accent: _fromPalette.primary,
+                            inList: StorageService.isMangaInReadLater(
+                              prevManga.id,
+                            ),
+                            opening: _openingFeatured,
+                            onRead: () => _readFeatured(prevManga),
+                            onToggleList: () =>
+                                _toggleReadLaterWithFeedback(prevManga),
+                          ),
+                        ),
+                        Transform.translate(
+                          offset: Offset(slideOffset, 0),
+                          child: Opacity(
+                            opacity: t.clamp(0.0, 1.0),
+                            child: HomeBillboard(
+                              key: ValueKey(currentManga.compositeId),
+                              manga: currentManga,
+                              artwork: YomiCoverImage(
+                                manga: currentManga,
+                                highRes: true,
+                              ),
+                              accent: palette.primary,
+                              inList: StorageService.isMangaInReadLater(
+                                currentManga.id,
+                              ),
+                              opening: _openingFeatured,
+                              onRead: () => _readFeatured(currentManga),
+                              onToggleList: () =>
+                                  _toggleReadLaterWithFeedback(currentManga),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -972,6 +1050,8 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
     bool featured = false,
   }) {
     final manga = item['manga'] as Manga;
+    final cardPalette =
+        ProfilePaletteService.synchronousFallbackForManga(manga);
     final chapter = item['chapter'] as Chapter;
     final page = StorageService.getSavedPageIndex(chapter.id) + 1;
     final reading = LibraryProgress.forManga(manga);
@@ -987,12 +1067,12 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
     void openManga() => _openMangaDetail(context, manga, 'home_continue');
 
     return Material(
-      color: featured ? palette.surfaceTint : YomiPalette.surface,
+      color: featured ? cardPalette.surfaceTint : YomiPalette.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
           color: featured
-              ? palette.primary.withValues(alpha: 0.42)
+              ? cardPalette.primary.withValues(alpha: 0.42)
               : Colors.white10,
         ),
       ),
@@ -1015,7 +1095,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                             manga: manga,
                             width: 84,
                             height: 120,
-                            palette: palette,
+                            palette: cardPalette,
                             isFavorite: isFav,
                             onFavoriteToggle: () =>
                                 StorageService.toggleFavorite(manga),
@@ -1156,7 +1236,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                                   child: LinearProgressIndicator(
                                     value: progress,
                                     minHeight: 5,
-                                    color: palette.primary,
+                                    color: cardPalette.primary,
                                     backgroundColor: Colors.white12,
                                   ),
                                 ),
@@ -1183,7 +1263,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                 FilledButton.icon(
                   onPressed: open,
                   style: FilledButton.styleFrom(
-                    backgroundColor: palette.primary,
+                    backgroundColor: cardPalette.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(13),

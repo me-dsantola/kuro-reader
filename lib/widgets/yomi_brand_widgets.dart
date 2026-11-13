@@ -234,10 +234,13 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
 class YomiEnsoLogo extends StatelessWidget {
   final double fontSize;
   final ProfileAdaptivePalette? palette;
+  final bool showMark;
+
   const YomiEnsoLogo({
     super.key,
     this.fontSize = 23,
     this.palette,
+    this.showMark = true,
   });
 
   @override
@@ -247,10 +250,24 @@ class YomiEnsoLogo extends StatelessWidget {
       builder: (context, globalPalette, _) {
         final active = palette ?? globalPalette;
         final textColor = active.readableOnSurface;
+        final markSize = fontSize * 1.08;
+
         return Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            if (showMark) ...[
+              CustomPaint(
+                size: Size(markSize * 1.04, markSize),
+                painter: YomiPagesMarkPainter(
+                  primary: active.primary,
+                  secondary: active.secondary,
+                  pageHighlight: Colors.white,
+                  pageShadow: active.soft,
+                ),
+              ),
+              SizedBox(width: fontSize * 0.35),
+            ],
             Text(
               'Y',
               style: TextStyle(
@@ -283,6 +300,107 @@ class YomiEnsoLogo extends StatelessWidget {
       },
     );
   }
+}
+
+/// Pintor vetorial de alta precisão que renderiza as curvas oficiais da marca YOMI
+/// (páginas curvadas de mangá em perspectiva com dobra central e gradientes dinâmicos).
+class YomiPagesMarkPainter extends CustomPainter {
+  final Color primary;
+  final Color secondary;
+  final Color pageHighlight;
+  final Color pageShadow;
+
+  const YomiPagesMarkPainter({
+    required this.primary,
+    required this.secondary,
+    this.pageHighlight = Colors.white,
+    this.pageShadow = const Color(0xFFFBCFE8),
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    final scaleX = size.width / 260.0;
+    final scaleY = size.height / 250.0;
+    final scale = scaleX < scaleY ? scaleX : scaleY;
+    final dx = (size.width - 260.0 * scale) / 2.0;
+    final dy = (size.height - 250.0 * scale) / 2.0;
+    canvas.translate(dx, dy);
+    canvas.scale(scale, scale);
+
+    // 1. Página traseira
+    final traseiraPath = Path()
+      ..moveTo(10.0, 230.0)
+      ..cubicTo(70.0, 169.0, 126.0, 112.0, 158.0, 119.0)
+      ..cubicTo(201.0, 126.0, 229.0, 153.0, 242.0, 200.0)
+      ..cubicTo(244.0, 205.0, 242.0, 206.0, 236.0, 203.0)
+      ..cubicTo(174.0, 175.0, 92.0, 178.0, 10.0, 230.0)
+      ..close();
+
+    final traseiraPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.bottomLeft,
+        end: Alignment.topRight,
+        colors: [primary, secondary],
+      ).createShader(const Rect.fromLTWH(0, 0, 260, 250));
+    canvas.drawPath(traseiraPath, traseiraPaint);
+
+    // 2. Dobra / lombada central
+    final dobraPath = Path()
+      ..moveTo(10.0, 230.0)
+      ..cubicTo(82.0, 162.0, 158.0, 132.0, 217.0, 153.0)
+      ..cubicTo(199.0, 132.0, 176.0, 121.0, 158.0, 119.0)
+      ..cubicTo(126.0, 112.0, 70.0, 169.0, 10.0, 230.0)
+      ..close();
+
+    final dobraPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [secondary, primary],
+      ).createShader(const Rect.fromLTWH(0, 0, 260, 250));
+    canvas.drawPath(dobraPath, dobraPaint);
+
+    // 3. Página esquerda curvada
+    final esquerdaPath = Path()
+      ..moveTo(10.0, 230.0)
+      ..cubicTo(65.0, 137.0, 83.0, 80.0, 32.0, 31.0)
+      ..cubicTo(29.0, 28.0, 29.0, 27.0, 33.0, 25.0)
+      ..cubicTo(50.0, 18.0, 70.0, 12.0, 91.0, 11.0)
+      ..cubicTo(96.0, 11.0, 97.0, 13.0, 100.0, 17.0)
+      ..cubicTo(136.0, 58.0, 114.0, 100.0, 80.0, 144.0)
+      ..cubicTo(51.0, 181.0, 28.0, 210.0, 10.0, 230.0)
+      ..close();
+
+    final pagesShader = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [pageHighlight, pageShadow],
+    ).createShader(const Rect.fromLTWH(0, 0, 260, 250));
+
+    final pagesPaint = Paint()..shader = pagesShader;
+    canvas.drawPath(esquerdaPath, pagesPaint);
+
+    // 4. Página direita curvada
+    final direitaPath = Path()
+      ..moveTo(10.0, 230.0)
+      ..cubicTo(88.0, 153.0, 125.0, 75.0, 158.0, 32.0)
+      ..cubicTo(175.0, 11.0, 203.0, 8.0, 236.0, 8.0)
+      ..cubicTo(240.0, 8.0, 240.0, 9.0, 238.0, 13.0)
+      ..cubicTo(216.0, 69.0, 182.0, 105.0, 141.0, 130.0)
+      ..cubicTo(89.0, 161.0, 41.0, 196.0, 10.0, 230.0)
+      ..close();
+
+    canvas.drawPath(direitaPath, pagesPaint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant YomiPagesMarkPainter oldDelegate) =>
+      oldDelegate.primary != primary ||
+      oldDelegate.secondary != secondary ||
+      oldDelegate.pageHighlight != pageHighlight ||
+      oldDelegate.pageShadow != pageShadow;
 }
 
 class _EnsoOPainter extends CustomPainter {

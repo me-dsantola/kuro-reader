@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../widgets/yomi_blobatar_studio.dart';
-import '../widgets/yomi_library_ambient_blob.dart';
 import '../widgets/floating_continue_cover.dart';
 import '../models/manga_models.dart';
 import '../services/storage_service.dart';
@@ -190,10 +189,18 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                const Positioned(
-                  top: -24,
-                  right: -10,
-                  child: YomiLibraryAmbientBlob(size: 146),
+                Positioned(
+                  top: -8,
+                  right: 4,
+                  child: ValueListenableBuilder<UserProfile>(
+                    valueListenable: StorageService.profileNotifier,
+                    builder: (context, profile, _) => YomiProfileBlobatar(
+                      profile: profile,
+                      size: 68,
+                      adaptiveHue: palette.hue,
+                      interactiveCycleOnTap: true,
+                    ),
+                  ),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -720,6 +727,8 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
     final reading =
         progress[manga.compositeId] ?? LibraryProgress.forManga(manga);
     final isFav = favorites.any((m) => m.compositeId == manga.compositeId);
+    final mangaPalette =
+        ProfilePaletteService.synchronousFallbackForManga(manga);
 
     return Material(
       color: Colors.transparent,
@@ -733,13 +742,15 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
           padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: palette.primary.withValues(alpha: 0.35)),
+            border: Border.all(
+              color: mangaPalette.primary.withValues(alpha: 0.35),
+            ),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                palette.surfaceTint,
-                palette.primary.withValues(alpha: 0.22),
+                mangaPalette.surfaceTint,
+                mangaPalette.primary.withValues(alpha: 0.22),
               ],
             ),
           ),
@@ -755,7 +766,7 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                       'CONTINUE LENDO',
                       style: TextStyle(
                         fontSize: 11,
-                        color: palette.secondary,
+                        color: mangaPalette.secondary,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.1,
                       ),
@@ -777,7 +788,7 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                       child: LinearProgressIndicator(
                         value: reading.fraction ?? 0,
                         minHeight: 4,
-                        color: palette.primary,
+                        color: mangaPalette.primary,
                         backgroundColor: Colors.white12,
                       ),
                     ),
@@ -800,7 +811,7 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                   manga: manga,
                   width: 96,
                   height: 140,
-                  palette: palette,
+                  palette: mangaPalette,
                   isFavorite: isFav,
                   onFavoriteToggle: () => StorageService.toggleFavorite(manga),
                 ),
@@ -811,10 +822,10 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                 height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: palette.primary,
+                  color: mangaPalette.primary,
                   boxShadow: [
                     BoxShadow(
-                      color: palette.primary.withValues(alpha: 0.4),
+                      color: mangaPalette.primary.withValues(alpha: 0.4),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),

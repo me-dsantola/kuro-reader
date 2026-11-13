@@ -1,0 +1,12 @@
+YOMI - V2 / REFERÊNCIA FORNECIDA
+
+Esta versão substitui visualmente a primeira entrega.
+Reconstrução manual em curvas da imagem aprovada: páginas inclinadas e sobrepostas.
+O lettering Yomi foi reconstruído manualmente em curvas a partir da imagem. Reader foi composto em Segoe UI e convertido em contornos. Não é uma extração automática do original.
+Reader aparece apenas nas composições horizontal-reader.
+SVG e PDF: 8 paletas x 5 composições x 2 acabamentos = 80 arquivos por formato.
+As versões de marca têm fundo transparente; o ícone inclui uma base arredondada.
+Gradientes são vetoriais reais. Não foram incluídos a textura raster, o brilho difuso ou o cartaz completo da referência.
+Edite os caminhos, grupos e gradientes em Illustrator, Inkscape ou Affinity Designer.
+Fontes não precisam estar instaladas para abrir as marcas.
+Cores RGB. Avalie o mínimo sugerido de 32 px no dispositivo de destino.

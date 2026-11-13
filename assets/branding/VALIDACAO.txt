@@ -1,0 +1,5 @@
+VALIDAÇÃO ESTRUTURAL
+80 SVGs válidos: caminhos editáveis, sem imagens, scripts ou texto dependente de fontes.
+81 PDFs verificados: nenhuma imagem rasterizada embutida.
+44 páginas com gradientes PDF nativos.
+Reconstrução manual, não equivalência pixel a pixel com a referência.

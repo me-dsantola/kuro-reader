@@ -85,7 +85,10 @@ class HomeCollapsibleHeader extends StatelessWidget {
               height: currentHeight,
               child: Row(
                 children: [
-                  Flexible(
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width - 132,
+                    ),
                     child: IndividualGlassCapsule(
                       borderRadius: BorderRadius.circular(18),
                       padding: const EdgeInsets.symmetric(
