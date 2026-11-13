@@ -174,20 +174,51 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
                                 color: Colors.red.withValues(alpha: 0.25),
                               ),
                             ),
-                            child: Row(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(
-                                  Icons.info_outline_rounded,
-                                  color: Colors.redAccent,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    errorMsg,
-                                    style: const TextStyle(
-                                      fontSize: 12,
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.info_outline_rounded,
                                       color: Colors.redAccent,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        errorMsg,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    onPressed: () {
+                                      widget.onAuthenticated();
+                                    },
+                                    child: const Text(
+                                      'Entrar no modo local',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: Colors.white70,
+                                        decoration: TextDecoration.underline,
+                                      ),
                                     ),
                                   ),
                                 ),

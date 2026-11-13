@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -24,7 +25,13 @@ class CloudAuthService {
     return true;
   }
 
+  /// Web Client ID from Firebase Console / google-services.json (client_type 3).
+  /// Required on Android for Google Play Services to generate the OAuth idToken for Firebase Auth.
+  static const String serverClientId =
+      '885390508088-b5pr402180a4u7l0jtacutvgnd1depuf.apps.googleusercontent.com';
+
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: serverClientId,
     scopes: ['email', 'profile'],
   );
 
@@ -81,6 +88,11 @@ class CloudAuthService {
       isSigningIn.value = true;
       lastAuthError.value = null;
 
+      // Reset any previous state to ensure a clean account selector prompt
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         // User canceled the sign-in prompt
@@ -97,10 +109,29 @@ class CloudAuthService {
           await FirebaseAuth.instance.signInWithCredential(credential);
       currentUser.value = userCredential.user;
       return userCredential.user;
-    } catch (e) {
-      lastAuthError.value =
-          'Falha ao conectar com o Google. Verifique sua conexão e tente novamente.';
-      debugPrint('Erro Google Sign-In: $e');
+    } catch (e, stack) {
+      debugPrint('Erro Google Sign-In: $e\n$stack');
+      String msg = e.toString();
+      if (e is FirebaseAuthException) {
+        msg = 'Erro Firebase (${e.code}): ${e.message ?? e.code}';
+      } else if (msg.contains('ApiException: 10') ||
+          msg.contains(': 10:') ||
+          msg.contains('10: ,')) {
+        msg =
+            'Erro 10 (Google Play): Ative o provedor Google no Firebase Console e confirme a chave SHA-1.';
+      } else if (msg.contains('ApiException: 12500') ||
+          msg.contains(': 12500:') ||
+          msg.contains('12500: ,')) {
+        msg =
+            'Erro 12500: Configure o e-mail de suporte do projeto no Firebase Console (Autenticação > Configurações).';
+      } else if (msg.contains('network_error') ||
+          msg.contains('SocketException') ||
+          msg.contains('7:')) {
+        msg = 'Sem conexão com a internet ou Play Services indisponível.';
+      } else if (e is PlatformException && (e.message?.isNotEmpty ?? false)) {
+        msg = '${e.message} (${e.code})';
+      }
+      lastAuthError.value = msg;
       return null;
     } finally {
       isSigningIn.value = false;

@@ -36,10 +36,7 @@ android {
 
     defaultConfig {
         applicationId = "com.kuroreader.kuro_reader"
-        if (isBetaBuild) {
-            applicationIdSuffix = ".beta"
-        }
-        manifestPlaceholders["appLabel"] = if (isBetaBuild) "Kuro Reader Beta" else "Kuro Reader"
+        manifestPlaceholders["appLabel"] = if (isBetaBuild) "Yomi Beta" else "Yomi"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -48,10 +45,11 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (isBetaBuild) {
-                signingConfigs.getByName("debug")
-            } else {
+            val prodPath = System.getenv("YOMI_KEYSTORE_PATH")
+            signingConfig = if (!prodPath.isNullOrBlank() && file(prodPath).exists()) {
                 signingConfigs.getByName("production")
+            } else {
+                signingConfigs.getByName("debug")
             }
             isMinifyEnabled = false
             isShrinkResources = false
