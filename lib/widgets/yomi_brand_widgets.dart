@@ -29,6 +29,7 @@ class YomiCoverImage extends StatefulWidget {
   final double? width;
   final double? height;
   final BoxFit fit;
+  final Alignment alignment;
 
   const YomiCoverImage({
     super.key,
@@ -37,6 +38,7 @@ class YomiCoverImage extends StatefulWidget {
     this.width,
     this.height,
     this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
   });
 
   @override
@@ -129,6 +131,7 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
             width: widget.width,
             height: widget.height,
             fit: widget.fit,
+            alignment: widget.alignment,
             gaplessPlayback: true,
           );
         }
@@ -182,6 +185,7 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
+      alignment: widget.alignment,
       headers: kIsWeb ? null : widget.manga.customHeaders,
       cacheWidth: (() {
         final logicalWidth = widget.width ??

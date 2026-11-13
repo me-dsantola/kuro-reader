@@ -27,7 +27,8 @@ class HomeBillboard extends StatelessWidget {
     const background = Color(0xFF070709);
     final wide = MediaQuery.sizeOf(context).width >= 700;
     final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
-    final totalHeight = wide ? 520.0 : 490.0;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final totalHeight = wide ? 580.0 : (screenHeight * 0.62).clamp(540.0, 620.0);
 
     return SizedBox(
       height: totalHeight,
@@ -41,12 +42,12 @@ class HomeBillboard extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  stops: [0, 0.25, 0.55, 0.8, 1],
+                  stops: [0, 0.18, 0.48, 0.78, 1],
                   colors: [
-                    Color(0x99070709),
                     Color(0x33070709),
-                    Color(0xCC070709),
-                    Color(0xF5070709),
+                    Colors.transparent,
+                    Color(0x66070709),
+                    Color(0xEE070709),
                     background,
                   ],
                 ),

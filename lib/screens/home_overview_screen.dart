@@ -148,10 +148,25 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
   ProfileAdaptivePalette _toPalette =
       ProfilePaletteService.paletteNotifier.value;
 
-  // Controle de encolhimento/recolhimento do Header sincronizado apenas com rolagem vertical
-  double _headerCollapse = 0.0;
+  // Controle de encolhimento/recolhimento do Header sincronizado com rolagem vertical sem forçar rebuilds globais
+  final ValueNotifier<double> _headerCollapse = ValueNotifier<double>(0.0);
 
-  List<Manga> get _featuredItems => _visiblePopular.take(5).toList();
+  // Destaques dinâmicos selecionados aleatoriamente a partir dos mais populares por janela de tempo
+  static const Duration _featuredRotationWindow = Duration(minutes: 45);
+
+  List<Manga> get _featuredItems {
+    final pool = _visiblePopular;
+    if (pool.length <= 5) return pool;
+
+    final now = DateTime.now();
+    final timeSlot =
+        now.millisecondsSinceEpoch ~/ _featuredRotationWindow.inMilliseconds;
+
+    final candidatePool = pool.take(25).toList();
+    final rng = math.Random(timeSlot);
+    final shuffled = List<Manga>.from(candidatePool)..shuffle(rng);
+    return shuffled.take(5).toList();
+  }
 
   ProfileAdaptivePalette _deterministicFallback(Manga manga) {
     final cached = _preloadedPalettes[manga.compositeId];
@@ -299,24 +314,24 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
       return false;
     }
     if (!AppearanceController.instance.value.autoHideMenus) {
-      if (_headerCollapse != 0.0) {
-        setState(() => _headerCollapse = 0.0);
+      if (_headerCollapse.value != 0.0) {
+        _headerCollapse.value = 0.0;
       }
       return false;
     }
     if (notification is ScrollUpdateNotification) {
       final pixels = notification.metrics.pixels;
       if (pixels <= 8) {
-        if (_headerCollapse != 0.0) {
-          setState(() => _headerCollapse = 0.0);
+        if (_headerCollapse.value != 0.0) {
+          _headerCollapse.value = 0.0;
         }
         return false;
       }
       final delta = notification.scrollDelta ?? 0.0;
       if (delta.abs() < 0.5) return false;
-      final next = (_headerCollapse + (delta / 76.0)).clamp(0.0, 1.0);
-      if ((next - _headerCollapse).abs() > 0.01) {
-        setState(() => _headerCollapse = next);
+      final next = (_headerCollapse.value + (delta / 76.0)).clamp(0.0, 1.0);
+      if ((next - _headerCollapse.value).abs() > 0.01) {
+        _headerCollapse.value = next;
       }
     }
     return false;
@@ -360,6 +375,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
     _featuredTimer?.cancel();
     _waveController.removeListener(_syncGlobalPaletteProgress);
     _waveController.dispose();
+    _headerCollapse.dispose();
     StorageService.nsfwModeNotifier.removeListener(_loadPopularMangas);
     super.dispose();
   }
@@ -369,7 +385,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
     setState(() => _loadingPopular = true);
     try {
       final fetched = await MangaDexService.fetchPopularMangas(
-        limit: 12,
+        limit: 25,
         includeNsfw: StorageService.nsfwMode.allowNsfwFetch,
       );
       if (mounted && generation == _popularGeneration) {
@@ -415,20 +431,15 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
         animation: Listenable.merge([
-          _waveController,
           ProfilePaletteService.paletteNotifier,
           StorageService.profileNotifier,
           StorageService.nsfwModeNotifier,
         ]),
         builder: (context, _) {
-          final billboardPalette = _currentInterpolatedPalette;
           final pagePalette = ProfilePaletteService.paletteNotifier.value;
           final profile = StorageService.profileNotifier.value;
           final reduceMotion = MediaQuery.disableAnimationsOf(context) ||
               DeviceStateService.instance.value.reduceEffects;
-          final collapse = reduceMotion
-              ? (_headerCollapse > 0.5 ? 1.0 : 0.0)
-              : _headerCollapse;
 
           return Scaffold(
             extendBodyBehindAppBar: true,
@@ -456,7 +467,14 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _featured(context, billboardPalette, reduceMotion),
+                              AnimatedBuilder(
+                                animation: _waveController,
+                                builder: (context, _) => _featured(
+                                  context,
+                                  _currentInterpolatedPalette,
+                                  reduceMotion,
+                                ),
+                              ),
                               const SizedBox(height: 8),
                               Padding(
                                 padding:
@@ -518,11 +536,19 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                     top: 0,
                     left: 0,
                     right: 0,
-                    child: _buildCollapsibleHeader(
-                      context,
-                      palette: pagePalette,
-                      profile: profile,
-                      collapse: collapse,
+                    child: ValueListenableBuilder<double>(
+                      valueListenable: _headerCollapse,
+                      builder: (context, collapseVal, _) {
+                        final collapse = reduceMotion
+                            ? (collapseVal > 0.5 ? 1.0 : 0.0)
+                            : collapseVal;
+                        return _buildCollapsibleHeader(
+                          context,
+                          palette: pagePalette,
+                          profile: profile,
+                          collapse: collapse,
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -687,8 +713,11 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                       return HomeBillboard(
                         key: ValueKey(currentManga.compositeId),
                         manga: currentManga,
-                        artwork:
-                            YomiCoverImage(manga: currentManga, highRes: true),
+                        artwork: YomiCoverImage(
+                          manga: currentManga,
+                          highRes: true,
+                          alignment: Alignment.topCenter,
+                        ),
                         accent: palette.primary,
                         inList: StorageService.isMangaInReadLater(
                           currentManga.id,
@@ -715,6 +744,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                             artwork: YomiCoverImage(
                               manga: prevManga,
                               highRes: true,
+                              alignment: Alignment.topCenter,
                             ),
                             accent: _fromPalette.primary,
                             inList: StorageService.isMangaInReadLater(
@@ -736,6 +766,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                               artwork: YomiCoverImage(
                                 manga: currentManga,
                                 highRes: true,
+                                alignment: Alignment.topCenter,
                               ),
                               accent: palette.primary,
                               inList: StorageService.isMangaInReadLater(

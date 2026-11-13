@@ -74,14 +74,9 @@ class FrostedSurface extends StatelessWidget {
             boxShadow: (glass && borderRadius != null)
                 ? [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                    BoxShadow(
-                      color: palette.primary.withValues(alpha: 0.12),
-                      blurRadius: 18,
-                      spreadRadius: -2,
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
                     ),
                   ]
                 : null,
@@ -95,8 +90,8 @@ class FrostedSurface extends StatelessWidget {
         }
         final blurred = BackdropFilter(
           filter: ImageFilter.blur(
-            sigmaX: glass ? 22 : 8,
-            sigmaY: glass ? 22 : 8,
+            sigmaX: glass ? 12 : 6,
+            sigmaY: glass ? 12 : 6,
           ),
           child: surface,
         );
