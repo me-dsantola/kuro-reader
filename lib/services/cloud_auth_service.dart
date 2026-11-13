@@ -28,6 +28,14 @@ class CloudAuthService {
     scopes: ['email', 'profile'],
   );
 
+  static const FirebaseOptions defaultFirebaseOptions = FirebaseOptions(
+    apiKey: 'AIzaSyBpt30WLATz1vAtOIsJLnLCIyz8jNW3V-s',
+    appId: '1:885390508088:android:d56224a2dea9c2a758e6cd',
+    messagingSenderId: '885390508088',
+    projectId: 'kuro-reader',
+    storageBucket: 'kuro-reader.firebasestorage.app',
+  );
+
   static StreamSubscription<User?>? _authSubscription;
   static bool _initialized = false;
 
@@ -38,7 +46,11 @@ class CloudAuthService {
 
     try {
       if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp();
+        try {
+          await Firebase.initializeApp(options: defaultFirebaseOptions);
+        } catch (_) {
+          await Firebase.initializeApp();
+        }
       }
       isFirebaseAvailable.value = true;
       currentUser.value = FirebaseAuth.instance.currentUser;
@@ -48,10 +60,9 @@ class CloudAuthService {
         currentUser.value = user;
       });
     } catch (e) {
-      // Firebase not configured yet (e.g. google-services.json pending)
       isFirebaseAvailable.value = false;
       currentUser.value = null;
-      debugPrint('Firebase não inicializado: $e');
+      debugPrint('Firebase init: $e');
     }
   }
 
@@ -60,7 +71,8 @@ class CloudAuthService {
     if (!isFirebaseAvailable.value) {
       await initialize();
       if (!isFirebaseAvailable.value) {
-        lastAuthError.value = 'Firebase não está configurado. Adicione o google-services.json.';
+        lastAuthError.value =
+            'Serviço de autenticação temporariamente indisponível. Tente novamente.';
         return null;
       }
     }
@@ -86,7 +98,8 @@ class CloudAuthService {
       currentUser.value = userCredential.user;
       return userCredential.user;
     } catch (e) {
-      lastAuthError.value = 'Falha ao autenticar com Google: $e';
+      lastAuthError.value =
+          'Falha ao conectar com o Google. Verifique sua conexão e tente novamente.';
       debugPrint('Erro Google Sign-In: $e');
       return null;
     } finally {

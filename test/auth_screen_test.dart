@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kuro_reader/screens/auth_screen.dart';
 import 'package:kuro_reader/services/cloud_auth_service.dart';
+import 'package:kuro_reader/widgets/yomi_brand_widgets.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('KuroAuthScreen renders welcome UI and Google Sign-In button', (tester) async {
+  testWidgets('KuroAuthScreen renders clean minimalist UI, vector brand logo and Google Sign-In button', (tester) async {
     CloudAuthService.bypassAuthForTesting = false;
     var authenticatedCalled = false;
 
@@ -20,10 +21,10 @@ void main() {
       ),
     );
 
+    expect(find.text('KURO READER'), findsOneWidget);
+    expect(find.text('Sua biblioteca definitiva de mangás.'), findsOneWidget);
     expect(find.text('Continuar com o Google'), findsOneWidget);
-    expect(find.text('Backup e Sincronização em Nuvem'), findsOneWidget);
-    expect(find.text('Experiência Offline Completa'), findsOneWidget);
-    expect(find.text('Perfil Personalizado & Mascote'), findsOneWidget);
+    expect(find.byType(YomiBrandSvgLogo), findsOneWidget);
     expect(authenticatedCalled, isFalse);
 
     CloudAuthService.bypassAuthForTesting = true;

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
 import '../services/device_state_service.dart';
@@ -296,6 +297,67 @@ class YomiEnsoLogo extends StatelessWidget {
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+/// Renders the official vector logo from the branding pack (assets/branding/SVG)
+/// with transparent background, matching the active profile color scheme.
+class YomiBrandSvgLogo extends StatelessWidget {
+  final double width;
+  final double height;
+  final ProfileAdaptivePalette? palette;
+  final bool iconOnly;
+  final bool showReader;
+
+  const YomiBrandSvgLogo({
+    super.key,
+    this.width = 88,
+    this.height = 84,
+    this.palette,
+    this.iconOnly = true,
+    this.showReader = false,
+  });
+
+  static String getThemeFolder(ProfileAdaptivePalette palette) {
+    final hue = palette.hue;
+    if (hue >= 180 && hue < 250) return 'azul-noturno';
+    if (hue >= 250 && hue < 315) return 'roxo-nebulosa';
+    if (hue >= 75 && hue < 180) return 'verde-esmeralda';
+    if (palette.primary.computeLuminance() > 0.85) return 'branco-minimalista';
+    return 'vermelho-carmesim';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ProfileAdaptivePalette>(
+      valueListenable: ProfilePaletteService.paletteNotifier,
+      builder: (context, globalPalette, _) {
+        final active = palette ?? globalPalette;
+        final folder = getThemeFolder(active);
+        final fileName = iconOnly
+            ? 'yomi-simbolo-gradiente.svg'
+            : (showReader
+                ? 'yomi-horizontal-reader-gradiente.svg'
+                : 'yomi-horizontal-gradiente.svg');
+        final assetPath = 'assets/branding/SVG/$folder/$fileName';
+
+        return SvgPicture.asset(
+          assetPath,
+          width: width,
+          height: height,
+          fit: BoxFit.contain,
+          placeholderBuilder: (_) => CustomPaint(
+            size: Size(width, height),
+            painter: YomiPagesMarkPainter(
+              primary: active.primary,
+              secondary: active.secondary,
+              pageHighlight: Colors.white,
+              pageShadow: active.soft,
+            ),
+          ),
         );
       },
     );

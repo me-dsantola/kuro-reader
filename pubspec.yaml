@@ -45,6 +45,7 @@ dependencies:
   google_sign_in: 6.2.2
   share_plus: ^13.3.1
   file_picker: ^13.3.3
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +73,16 @@ flutter:
     - assets/banners/
     - assets/images/
     - assets/
+    - assets/branding/
+    - assets/branding/SVG/
+    - assets/branding/SVG/vermelho-carmesim/
+    - assets/branding/SVG/azul-noturno/
+    - assets/branding/SVG/roxo-nebulosa/
+    - assets/branding/SVG/verde-esmeralda/
+    - assets/branding/SVG/cinza-grafite/
+    - assets/branding/SVG/branco-minimalista/
+    - assets/branding/SVG/mono-branco/
+    - assets/branding/SVG/mono-preto/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

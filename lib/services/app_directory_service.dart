@@ -58,6 +58,16 @@ class AppDirectoryService {
     return coversDir;
   }
 
+  /// Directory where user custom profile photos and banners are stored.
+  static Future<Directory> getProfileMediaDirectory() async {
+    final base = await getDownloadsDirectory();
+    final mediaDir = Directory('${base.path}/profile_media');
+    if (!await mediaDir.exists()) {
+      await mediaDir.create(recursive: true);
+    }
+    return mediaDir;
+  }
+
   /// List of candidate directories that may contain downloaded files
   /// (both modern external directory and legacy internal sandbox directory).
   static Future<List<Directory>> getAllCandidateBaseDirectories() async {

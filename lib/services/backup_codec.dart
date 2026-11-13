@@ -52,6 +52,8 @@ class BackupCodec {
         'favoriteGenre',
         'avatarImagePath',
         'bannerImagePath',
+        'avatarBase64',
+        'bannerBase64',
         'blobatarName',
         'blobatarSeed',
         'blobatarShape',

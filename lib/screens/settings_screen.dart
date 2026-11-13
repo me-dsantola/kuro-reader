@@ -440,7 +440,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           valueListenable: CloudSyncService.syncStatus,
           builder: (context, status, _) {
             final isSyncing = status == CloudSyncStatus.syncing;
-            final isFirebaseReady = CloudAuthService.isFirebaseAvailable.value;
 
             return Container(
               padding: const EdgeInsets.all(16),
@@ -528,31 +527,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                     ],
                   ),
-                  if (!isFirebaseReady) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.amber.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.info_outline_rounded, size: 16, color: Colors.amber),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Firebase: adicione o google-services.json no app para ativar a nuvem.',
-                              style: TextStyle(fontSize: 11, color: Colors.amber),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 14),
                   if (user == null)
                     SizedBox(

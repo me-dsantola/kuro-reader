@@ -42,6 +42,10 @@ void main() {
       expect(coversDir.path, contains('covers'));
       expect(coversDir.existsSync(), isTrue);
 
+      final profileMediaDir = await AppDirectoryService.getProfileMediaDirectory();
+      expect(profileMediaDir.path, contains('profile_media'));
+      expect(profileMediaDir.existsSync(), isTrue);
+
       final candidates = await AppDirectoryService.getAllCandidateBaseDirectories();
       expect(candidates.isNotEmpty, isTrue);
     });

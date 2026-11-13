@@ -7,8 +7,10 @@ import '../services/storage_service.dart';
 import '../widgets/yomi_brand_widgets.dart';
 
 /// Mandatory Auth Gate Screen shown when the user is not signed in with a Google Account.
-/// Once authenticated, checks whether a cloud backup exists to restore, or prompts
-/// profile personalization.
+/// Designed with an ultra-clean, minimalist AMOLED aesthetic:
+/// - Official vector Ensō / Pages logo from the branding pack (transparent background, dynamic accent)
+/// - Clean typography without clutter or marketing feature cards
+/// - Premium Google Sign-in pill button
 class KuroAuthScreen extends StatefulWidget {
   final VoidCallback onAuthenticated;
 
@@ -61,7 +63,9 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
 
       // If profile is not configured yet, pre-populate name from Google displayName
       final currentProfile = StorageService.profileNotifier.value;
-      if (!currentProfile.isConfigured && user.displayName != null && user.displayName!.isNotEmpty) {
+      if (!currentProfile.isConfigured &&
+          user.displayName != null &&
+          user.displayName!.isNotEmpty) {
         await StorageService.updateUserProfile(
           currentProfile.copyWith(name: user.displayName),
         );
@@ -94,18 +98,16 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
           backgroundColor: const Color(0xFF070709),
           body: Stack(
             children: [
-              // Subtle Ensō ambient glow in the top-right
-              Positioned(
-                top: -80,
-                right: -80,
+              // Subtle centered radial ambient glow behind the logo
+              Center(
                 child: Container(
-                  width: 280,
-                  height: 280,
+                  width: 320,
+                  height: 320,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        palette.primary.withValues(alpha: 0.22),
+                        palette.primary.withValues(alpha: 0.16),
                         palette.primary.withValues(alpha: 0.0),
                       ],
                     ),
@@ -114,185 +116,156 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
               ),
 
               SafeArea(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // App Logo
-                        Container(
-                          width: 88,
-                          height: 88,
-                          decoration: BoxDecoration(
-                            color: palette.surface,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: palette.primary.withValues(alpha: 0.35),
-                              width: 1.5,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    children: [
+                      const Spacer(flex: 3),
+
+                      // Official Vector SVG Brand Mark (transparent background, dynamic palette)
+                      YomiBrandSvgLogo(
+                        width: 96,
+                        height: 92,
+                        palette: palette,
+                        iconOnly: true,
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Minimalist Typography
+                      const Text(
+                        'KURO READER',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 4.5,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Sua biblioteca definitiva de mangás.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white60,
+                          letterSpacing: 0.2,
+                          height: 1.3,
+                        ),
+                      ),
+
+                      const Spacer(flex: 3),
+
+                      // Inline Error (if any, styled discreetly)
+                      ValueListenableBuilder<String?>(
+                        valueListenable: CloudAuthService.lastAuthError,
+                        builder: (context, errorMsg, _) {
+                          if (errorMsg == null) return const SizedBox.shrink();
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 18),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: palette.primary.withValues(alpha: 0.18),
-                                blurRadius: 24,
-                                spreadRadius: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.red.withValues(alpha: 0.25),
                               ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(16),
-                          child: Image.asset(
-                            'assets/images/yomi_logo.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, _, _) => Icon(
-                              Icons.auto_stories_rounded,
-                              size: 42,
-                              color: palette.primary,
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Title
-                        const YomiEnsoLogo(fontSize: 28),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Sua biblioteca de mangás, manhwas e quadrinhos sincronizada na nuvem.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 36),
-
-                        // Feature highlights
-                        _buildFeatureRow(
-                          icon: Icons.cloud_sync_rounded,
-                          color: palette.primary,
-                          title: 'Backup e Sincronização em Nuvem',
-                          subtitle: 'Seus favoritos, histórico e listas salvos na sua conta Google.',
-                          palette: palette,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildFeatureRow(
-                          icon: Icons.offline_pin_rounded,
-                          color: palette.secondary,
-                          title: 'Experiência Offline Completa',
-                          subtitle: 'Baixe capítulos inteiros e leia quando e onde quiser sem internet.',
-                          palette: palette,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildFeatureRow(
-                          icon: Icons.face_retouching_natural_rounded,
-                          color: palette.primary,
-                          title: 'Perfil Personalizado & Mascote',
-                          subtitle: 'Crie seu Blobatar interativo e temas visuais adaptativos exclusivos.',
-                          palette: palette,
-                        ),
-                        const SizedBox(height: 38),
-
-                        // Google Sign-In Action Area
-                        ValueListenableBuilder<String?>(
-                          valueListenable: CloudAuthService.lastAuthError,
-                          builder: (context, errorMsg, _) {
-                            if (errorMsg == null) return const SizedBox.shrink();
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 16),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.red.withValues(alpha: 0.3),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.info_outline_rounded,
+                                  color: Colors.redAccent,
+                                  size: 16,
                                 ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      errorMsg,
-                                      style: const TextStyle(fontSize: 12, color: Colors.redAccent),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    errorMsg,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.redAccent,
                                     ),
                                   ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-
-                        if (_statusMessage != null) ...[
-                          Text(
-                            _statusMessage!,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: palette.primary,
-                              fontWeight: FontWeight.w600,
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                        ],
+                          );
+                        },
+                      ),
 
-                        // Primary Google Sign-In Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 54,
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF1E1E1E),
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            onPressed: _isLoading ? null : _handleGoogleSignIn,
-                            child: _isLoading
-                                ? SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.4,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        palette.primary,
-                                      ),
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      // Google G custom icon
-                                      _buildGoogleGLogo(),
-                                      const SizedBox(width: 12),
-                                      const Text(
-                                        'Continuar com o Google',
-                                        style: TextStyle(
-                                          fontSize: 15.5,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: 0.2,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Mandatory login notice
-                        const Text(
-                          'O login é obrigatório para inicializar sua biblioteca e garantir a restauração segura dos seus mangás.',
-                          textAlign: TextAlign.center,
+                      if (_statusMessage != null) ...[
+                        Text(
+                          _statusMessage!,
                           style: TextStyle(
-                            fontSize: 11.5,
-                            color: Colors.white38,
-                            height: 1.35,
+                            fontSize: 13,
+                            color: palette.primary,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+                        const SizedBox(height: 14),
                       ],
-                    ),
+
+                      // White Minimalist Google Sign-In Pill Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF1E1E1E),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(26),
+                            ),
+                          ),
+                          onPressed: _isLoading ? null : _handleGoogleSignIn,
+                          child: _isLoading
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      palette.primary,
+                                    ),
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _buildGoogleGLogo(),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'Continuar com o Google',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Subtle Security & Sync Footer
+                      const Text(
+                        'Sincronização em nuvem de favoritos, histórico e perfil.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: Colors.white38,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+
+                      const Spacer(flex: 1),
+                    ],
                   ),
                 ),
               ),
@@ -303,73 +276,82 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
     );
   }
 
-  Widget _buildFeatureRow({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required ProfileAdaptivePalette palette,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.07),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: Colors.white60,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+  Widget _buildGoogleGLogo() {
+    return const SizedBox(
+      width: 20,
+      height: 20,
+      child: CustomPaint(
+        painter: _GoogleGLogoPainter(),
       ),
     );
+  }
+}
+
+/// Official Google 'G' vector mark painter
+class _GoogleGLogoPainter extends CustomPainter {
+  const _GoogleGLogoPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 24.0;
+    canvas.save();
+    canvas.scale(scale, scale);
+
+    // Blue horizontal bar and arc
+    final bluePath = Path()
+      ..moveTo(23.49, 12.27)
+      ..cubicTo(23.49, 11.48, 23.42, 10.73, 23.3, 10.0)
+      ..lineTo(12.0, 10.0)
+      ..lineTo(12.0, 14.64)
+      ..lineTo(18.45, 14.64)
+      ..cubicTo(18.17, 16.14, 17.31, 17.41, 16.03, 18.26)
+      ..lineTo(16.03, 21.3)
+      ..lineTo(19.92, 21.3)
+      ..cubicTo(22.2, 19.2, 23.49, 16.02, 23.49, 12.27)
+      ..close();
+    canvas.drawPath(bluePath, Paint()..color = const Color(0xFF4285F4));
+
+    // Green bottom arc
+    final greenPath = Path()
+      ..moveTo(12.0, 24.0)
+      ..cubicTo(15.24, 24.0, 17.96, 22.92, 19.92, 21.3)
+      ..lineTo(16.03, 18.26)
+      ..cubicTo(14.96, 18.98, 13.59, 19.41, 12.0, 19.41)
+      ..cubicTo(8.87, 19.41, 6.22, 17.29, 5.27, 14.44)
+      ..lineTo(1.24, 14.44)
+      ..lineTo(1.24, 17.56)
+      ..cubicTo(3.23, 21.52, 7.3, 24.0, 12.0, 24.0)
+      ..close();
+    canvas.drawPath(greenPath, Paint()..color = const Color(0xFF34A853));
+
+    // Yellow left arc
+    final yellowPath = Path()
+      ..moveTo(5.27, 14.44)
+      ..cubicTo(5.03, 13.72, 4.9, 12.95, 4.9, 12.16)
+      ..cubicTo(4.9, 11.37, 5.03, 10.6, 5.27, 9.88)
+      ..lineTo(5.27, 6.76)
+      ..lineTo(1.24, 6.76)
+      ..cubicTo(0.45, 8.33, 0.0, 10.19, 0.0, 12.16)
+      ..cubicTo(0.0, 14.13, 0.45, 15.99, 1.24, 17.56)
+      ..lineTo(5.27, 14.44)
+      ..close();
+    canvas.drawPath(yellowPath, Paint()..color = const Color(0xFFFBBC05));
+
+    // Red top arc
+    final redPath = Path()
+      ..moveTo(12.0, 4.91)
+      ..cubicTo(13.76, 4.91, 15.34, 5.52, 16.59, 6.7)
+      ..lineTo(20.0, 3.29)
+      ..cubicTo(17.95, 1.38, 15.24, 0.24, 12.0, 0.24)
+      ..cubicTo(7.3, 0.24, 3.23, 2.72, 1.24, 6.68)
+      ..lineTo(5.27, 9.8)
+      ..cubicTo(6.22, 6.95, 8.87, 4.91, 12.0, 4.91)
+      ..close();
+    canvas.drawPath(redPath, Paint()..color = const Color(0xFFEA4335));
+
+    canvas.restore();
   }
 
-  Widget _buildGoogleGLogo() {
-    return Container(
-      width: 22,
-      height: 22,
-      alignment: Alignment.center,
-      child: const Icon(
-        Icons.g_mobiledata_rounded,
-        size: 28,
-        color: Color(0xFF4285F4),
-      ),
-    );
-  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
