@@ -234,12 +234,10 @@ class _YomiCoverImageState extends State<YomiCoverImage> {
 class YomiEnsoLogo extends StatelessWidget {
   final double fontSize;
   final ProfileAdaptivePalette? palette;
-  final bool showEmblem;
   const YomiEnsoLogo({
     super.key,
     this.fontSize = 23,
     this.palette,
-    this.showEmblem = true,
   });
 
   @override
@@ -253,20 +251,6 @@ class YomiEnsoLogo extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (showEmblem) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(fontSize * 0.3),
-                child: Image.asset(
-                  'assets/images/yomi_logo.png',
-                  width: fontSize * 1.2,
-                  height: fontSize * 1.2,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const SizedBox.shrink(),
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
             Text(
               'Y',
               style: TextStyle(
