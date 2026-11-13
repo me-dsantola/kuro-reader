@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:google_sign_in_android/google_sign_in_android.dart';
+import 'package:google_sign_in_platform_interface/google_sign_in_platform_interface.dart';
 
 /// Manages Google Authentication and Firebase Auth lifecycle.
 /// Designed defensively: if Firebase configuration (such as google-services.json)
@@ -51,6 +53,16 @@ class CloudAuthService {
     if (_initialized) return;
     _initialized = true;
 
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        if (GoogleSignInPlatform.instance is! GoogleSignInAndroid) {
+          GoogleSignInAndroid.registerWith();
+        }
+      } catch (e) {
+        debugPrint('GoogleSignInAndroid registerWith: $e');
+      }
+    }
+
     try {
       if (Firebase.apps.isEmpty) {
         try {
@@ -75,6 +87,14 @@ class CloudAuthService {
 
   /// Initiates Google Sign-In flow.
   static Future<User?> signInWithGoogle() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        if (GoogleSignInPlatform.instance is! GoogleSignInAndroid) {
+          GoogleSignInAndroid.registerWith();
+        }
+      } catch (_) {}
+    }
+
     if (!isFirebaseAvailable.value) {
       await initialize();
       if (!isFirebaseAvailable.value) {

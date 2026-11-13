@@ -88,6 +88,9 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        try {
+            io.flutter.plugins.GeneratedPluginRegistrant.registerWith(flutterEngine)
+        } catch (_: Throwable) {}
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, "yomi/device_state")
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink) = startDeviceEvents(events)
