@@ -34,7 +34,7 @@ android {
 
     defaultConfig {
         applicationId = "com.kuroreader.kuro_reader"
-        manifestPlaceholders["appLabel"] = if (isBetaBuild) "Yomi Beta" else "Yomi"
+        manifestPlaceholders["appLabel"] = if (isBetaBuild) "YOMI Beta" else "YOMI"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
