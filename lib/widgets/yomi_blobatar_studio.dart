@@ -56,21 +56,29 @@ const List<BlobatarExpressionOption> kBlobatarExpressions = [
 const List<double> kBlobatarHues = [
   0,
   12,
-  28,
-  40,
+  24,
+  36,
+  48,
   60,
-  78,
-  110,
-  140,
+  75,
+  90,
+  105,
+  125,
+  145,
   165,
-  190,
+  180,
+  195,
   210,
   225,
-  250,
-  275,
+  240,
+  255,
+  270,
+  285,
   300,
-  320,
-  340,
+  315,
+  330,
+  345,
+  354,
 ];
 
 BlobatarShapeOption blobatarShapeById(String id) => kBlobatarShapes.firstWhere(
@@ -933,22 +941,45 @@ class _ProfileAndBlobatarEditorSheetState
   ];
 
   static const List<int> _accentSwatches = [
-    0xFFE11D48, // Enso Red
+    // Vermelhos & Carmesins (Marca YOMI)
+    0xFFE11D48, // YOMI Ensō Red
+    0xFFEF4444, // Carmim Vivo
+    0xFFF34884, // Carmesim Destaque
+    0xFFA11743, // Carmesim Profundo
+    0xFFF43F5E, // Coral Rosado
+    // Rosas & Magentas
     0xFFF472B6, // Sakura Pink
-    0xFF8B5CF6, // Violet
-    0xFF02A9FF, // Cyan Blue
-    0xFF10B981, // Emerald
-    0xFFF59E0B, // Amber
-    0xFFEC4899, // Magenta
-    0xFFEF4444, // Crimson
-    0xFF14B8A6, // Teal
-    0xFF84CC16, // Lime
-    0xFFFB923C, // Tangerine
-    0xFF6366F1, // Indigo
-    0xFFA78BFA, // Lavender
-    0xFF22D3EE, // Aqua
-    0xFFFBBF24, // Gold
-    0xFF94A3B8, // Slate
+    0xFFEC4899, // Magenta Neon
+    0xFFDB2777, // Fúcsia Intenso
+    // Roxos, Violetas & Nebulosa (Marca YOMI)
+    0xFFCB48FF, // Roxo Nebulosa
+    0xFF8B5CF6, // Violeta Suave
+    0xFF6518BA, // Nebulosa Profundo
+    0xFF6366F1, // Índigo
+    0xFFA78BFA, // Lavanda
+    // Azuis & Azul Noturno (Marca YOMI)
+    0xFF35BCFF, // Azul Noturno Destaque
+    0xFF02A9FF, // Azul Celeste
+    0xFF0954C8, // Azul Noturno Profundo
+    0xFF2563EB, // Safira Real
+    0xFF38BDF8, // Céu Claro
+    // Cianos, Aquas & Turquesas
+    0xFF22D3EE, // Aqua Brilhante
+    0xFF06B6D4, // Ciano Oceânico
+    0xFF14B8A6, // Turquesa
+    // Verdes & Verde Esmeralda (Marca YOMI)
+    0xFF42E691, // Verde Esmeralda Destaque
+    0xFF078052, // Verde Esmeralda Profundo
+    0xFF10B981, // Menta Fresco
+    0xFF84CC16, // Lima Neon
+    // Âmbares, Laranjas & Dourados
+    0xFFF59E0B, // Âmbar Quente
+    0xFFFB923C, // Tangerina
+    0xFFFBBF24, // Dourado Imperial
+    // Grafites & Ardósia (Marca YOMI)
+    0xFF9893AA, // Cinza Grafite Destaque
+    0xFF64748B, // Ardósia
+    0xFF94A3B8, // Platina
   ];
 
   @override

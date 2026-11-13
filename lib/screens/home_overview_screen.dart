@@ -421,7 +421,8 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
           StorageService.nsfwModeNotifier,
         ]),
         builder: (context, _) {
-          final palette = _currentInterpolatedPalette;
+          final billboardPalette = _currentInterpolatedPalette;
+          final pagePalette = ProfilePaletteService.paletteNotifier.value;
           final profile = StorageService.profileNotifier.value;
           final reduceMotion = MediaQuery.disableAnimationsOf(context) ||
               DeviceStateService.instance.value.reduceEffects;
@@ -455,12 +456,12 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _featured(context, palette, reduceMotion),
+                              _featured(context, billboardPalette, reduceMotion),
                               const SizedBox(height: 8),
                               Padding(
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 16),
-                                child: _popularSection(context, palette),
+                                child: _popularSection(context, pagePalette),
                               ),
                               const SizedBox(height: 28),
                               Padding(
@@ -474,12 +475,12 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                                       _sectionHeader(
                                         title: 'Continue lendo',
                                         actionLabel: 'Ver todos',
-                                        accentColor: palette.secondary,
+                                        accentColor: pagePalette.secondary,
                                         onAction: recent.length > 1
                                             ? () => _showAllRecentSheet(
                                                   context,
                                                   recent,
-                                                  palette,
+                                                  pagePalette,
                                                 )
                                             : widget.onLibrary,
                                       ),
@@ -487,12 +488,12 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                                       _readingCard(
                                         context,
                                         recent.first,
-                                        palette: palette,
+                                        palette: pagePalette,
                                         featured: true,
                                       ),
                                       const SizedBox(height: 24),
                                     ],
-                                    _shortcuts(context, palette),
+                                    _shortcuts(context, pagePalette),
                                     const SizedBox(height: 14),
                                     YomiMascotCompanionCard(
                                       compact: true,
@@ -502,7 +503,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                                       onTap: widget.onProfile,
                                     ),
                                     const SizedBox(height: 12),
-                                    _updates(context, palette),
+                                    _updates(context, pagePalette),
                                   ],
                                 ),
                               ),
@@ -519,7 +520,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                     right: 0,
                     child: _buildCollapsibleHeader(
                       context,
-                      palette: palette,
+                      palette: pagePalette,
                       profile: profile,
                       collapse: collapse,
                     ),
@@ -675,75 +676,7 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
         child: Column(
           children: [
             Stack(
-              clipBehavior: Clip.none,
               children: [
-                // Efeito Ambilight: aura luminosa ambiental difusa ao redor do destaque
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: AnimatedBuilder(
-                      animation: _waveController,
-                      builder: (context, _) {
-                        final currentPalette = _currentInterpolatedPalette;
-                        final enabled =
-                            YomiThemeController.instance.ambilightEnabled;
-                        if (!enabled) return const SizedBox.shrink();
-
-                        return Container(
-                          decoration: BoxDecoration(
-                            gradient: RadialGradient(
-                              center: const Alignment(0.0, -0.15),
-                              radius: 1.15,
-                              colors: [
-                                currentPalette.primary.withValues(alpha: 0.38),
-                                currentPalette.secondary.withValues(
-                                  alpha: 0.18,
-                                ),
-                                currentPalette.primary.withValues(alpha: 0.05),
-                                Colors.transparent,
-                              ],
-                              stops: const [0.0, 0.38, 0.72, 1.0],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                // Efeito Ambilight: aura luminosa vazando para a parte de baixo após o destaque
-                Positioned(
-                  bottom: -72,
-                  left: 0,
-                  right: 0,
-                  height: 120,
-                  child: IgnorePointer(
-                    child: AnimatedBuilder(
-                      animation: _waveController,
-                      builder: (context, _) {
-                        final currentPalette = _currentInterpolatedPalette;
-                        final enabled =
-                            YomiThemeController.instance.ambilightEnabled;
-                        if (!enabled) return const SizedBox.shrink();
-
-                        return Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                currentPalette.primary.withValues(alpha: 0.32),
-                                currentPalette.secondary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                Colors.transparent,
-                              ],
-                              stops: const [0.0, 0.45, 1.0],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
                 AnimatedBuilder(
                   animation: _waveController,
                   builder: (context, _) {

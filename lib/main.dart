@@ -419,12 +419,12 @@ class _MainNavigationShellState extends State<MainNavigationShell>
                           heightFactor: 1,
                           child: ConstrainedBox(
                             constraints: BoxConstraints(
-                              maxWidth: _offline ? 240 : 328,
+                              maxWidth: _offline ? 256 : 346,
                             ),
                             child: FrostedSurface(
                               borderRadius: BorderRadius.circular(999),
                               child: SizedBox(
-                                height: 58,
+                                height: 64,
                                 child: _buildAnimatedLiquidTabBar(
                                   palette: palette,
                                   disableAnimations: disableAnimations,
@@ -524,8 +524,8 @@ class _MainNavigationShellState extends State<MainNavigationShell>
                   Positioned(
                     left: pillLeft,
                     width: pillWidth,
-                    top: 5.0 + shrinkY,
-                    bottom: 5.0 + shrinkY,
+                    top: 5.5 + shrinkY,
+                    bottom: 5.5 + shrinkY,
                     child: IgnorePointer(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -593,7 +593,7 @@ class _MainNavigationShellState extends State<MainNavigationShell>
         borderRadius: BorderRadius.circular(999),
         onTap: () => _switchTab(item.tabIndex),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
+          padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 1),
           child: AnimatedScale(
             scale: selected ? 1.03 : 1.0,
             duration: disableAnimations
@@ -606,17 +606,17 @@ class _MainNavigationShellState extends State<MainNavigationShell>
               children: [
                 Icon(
                   selected ? item.selectedIcon : item.icon,
-                  size: 21,
+                  size: 23.5,
                   color: selected ? palette.soft : color,
                 ),
-                const SizedBox(height: 1),
+                const SizedBox(height: 2),
                 Flexible(
                   child: Text(
                     item.label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 10.5,
+                      fontSize: 11.0,
                       fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
                       color: color,
                     ),
