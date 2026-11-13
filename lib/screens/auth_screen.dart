@@ -133,12 +133,12 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
 
                       // Minimalist Typography
                       const Text(
-                        'KURO READER',
+                        'YOMI',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 22,
+                          fontSize: 26,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 4.5,
+                          letterSpacing: 6.0,
                           color: Colors.white,
                         ),
                       ),

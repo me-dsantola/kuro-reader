@@ -328,7 +328,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               subtitle: const Text(
-                                'Ao reiniciar o Kuro Reader, o filtro 18+ volta para Seguro.',
+                                'Ao reiniciar o Yomi, o filtro 18+ volta para Seguro.',
                                 style: TextStyle(
                                   fontSize: 11.5,
                                   color: Colors.white54,

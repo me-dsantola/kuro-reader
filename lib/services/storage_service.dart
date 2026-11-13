@@ -1267,7 +1267,7 @@ class StorageService {
             name: 'kuro_backup_$dateStr.kuro',
           ),
         ],
-        subject: 'Backup Kuro Reader ($dateStr)',
+        subject: 'Backup Yomi ($dateStr)',
       );
       return result.status == ShareResultStatus.success ||
           result.status == ShareResultStatus.dismissed;

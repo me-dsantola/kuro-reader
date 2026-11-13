@@ -2351,7 +2351,7 @@ class _FirstTimeProfileOnboardingScreenState
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text(
-                    'Bem-vindo ao Kuro Reader',
+                    'Bem-vindo ao Yomi',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,

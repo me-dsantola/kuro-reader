@@ -21,7 +21,7 @@ void main() {
       ),
     );
 
-    expect(find.text('KURO READER'), findsOneWidget);
+    expect(find.text('YOMI'), findsOneWidget);
     expect(find.text('Sua biblioteca definitiva de mangás.'), findsOneWidget);
     expect(find.text('Continuar com o Google'), findsOneWidget);
     expect(find.byType(YomiBrandSvgLogo), findsOneWidget);
