@@ -2276,6 +2276,10 @@ class _FirstTimeProfileOnboardingScreenState
     if (googleName != null && googleName.trim().isNotEmpty) {
       _nameCtrl.text = googleName.trim();
     }
+    final googlePhoto = CloudAuthService.currentUser.value?.photoURL;
+    if (googlePhoto != null && googlePhoto.trim().isNotEmpty) {
+      _avatarPath = googlePhoto.trim();
+    }
     _updatePalette();
   }
 
@@ -2289,10 +2293,10 @@ class _FirstTimeProfileOnboardingScreenState
 
   UserProfile _buildProfile() {
     final cleanName = _nameCtrl.text.trim().isEmpty
-        ? 'Kuroyomi'
+        ? 'Leitor YOMI'
         : _nameCtrl.text.trim();
     final cleanMascot = _mascotNameCtrl.text.trim().isEmpty
-        ? 'Kuro'
+        ? 'Yomi'
         : _mascotNameCtrl.text.trim();
     final genres = _selectedGenres.isEmpty
         ? 'Ação, Fantasia, Seinen'
@@ -2300,13 +2304,13 @@ class _FirstTimeProfileOnboardingScreenState
     return UserProfile(
       name: cleanName,
       bio: _bioCtrl.text.trim().isEmpty
-          ? 'Mais histórias, menos realidade.'
+          ? 'Explorando novas páginas.'
           : _bioCtrl.text.trim(),
       favoriteGenre: genres,
       isConfigured: true,
       avatarImagePath: _avatarPath,
       bannerImagePath: _bannerPath,
-      useBlobatarAsAvatar: _useBlobatarAsAvatar,
+      useBlobatarAsAvatar: _avatarPath == null ? true : _useBlobatarAsAvatar,
       blobatarName: cleanMascot,
       blobatarSeed: '$cleanName-$cleanMascot',
       blobatarShape: _blobatarShape,
@@ -2329,6 +2333,10 @@ class _FirstTimeProfileOnboardingScreenState
     await StorageService.setPrivacyProtectionEnabled(_privacyProtection);
     await StorageService.updateUserProfile(profile);
     await ProfilePaletteService.refreshGlobalPalette(profile);
+    final user = CloudAuthService.currentUser.value;
+    if (user != null) {
+      await StorageService.setActiveUserUid(user.uid);
+    }
     unawaited(CloudSyncService.backupToCloud(silent: true));
     widget.onCompleted?.call();
   }

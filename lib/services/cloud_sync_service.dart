@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/manga_models.dart';
 import 'app_directory_service.dart';
 import 'cloud_auth_service.dart';
 import 'profile_palette_service.dart';
@@ -58,11 +59,20 @@ class CloudSyncService {
 
       if (!doc.exists || doc.data() == null) return null;
       final data = doc.data()!;
+      // Confirma que os dados da nuvem pertencem a este email se presente
+      if (data['userEmail'] != null &&
+          user.email != null &&
+          (data['userEmail'] as String).toLowerCase() != user.email!.toLowerCase()) {
+        debugPrint('Backup em nuvem com email conflitante ignorado.');
+        return null;
+      }
       return {
         'updatedAt': data['updatedAtLocal'] ?? '',
         'favoritesCount': data['favoritesCount'] ?? 0,
         'historyCount': data['historyCount'] ?? 0,
         'appVersion': data['appVersion'] ?? '',
+        'userEmail': data['userEmail'] ?? '',
+        'profileName': data['userDisplayName'] ?? (data['profile'] is Map ? data['profile']['name'] : null),
       };
     } catch (e) {
       debugPrint('Erro ao verificar metadados no Firestore: $e');
@@ -142,6 +152,9 @@ class CloudSyncService {
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedAtLocal': now.toIso8601String(),
         'appVersion': '1.2.7',
+        'uid': user.uid,
+        'userEmail': user.email,
+        'userDisplayName': user.displayName,
         'payload': rawPayload,
         'profile': decoded['profile'],
         'avatarBase64': ?avatarBase64,
@@ -152,9 +165,9 @@ class CloudSyncService {
         'historyCount': (decoded['history'] as Map?)?.length ?? 0,
         'readingListsCount': readingLists.length,
         'mascotName': profile.effectiveBlobatarName,
-        'userEmail': user.email,
-        'userDisplayName': user.displayName,
       }, SetOptions(merge: true));
+
+      await StorageService.setActiveUserUid(user.uid);
 
       lastCloudSyncTime.value = now;
       if (StorageService.settingsBox.isOpen) {
@@ -202,6 +215,15 @@ class CloudSyncService {
       }
 
       final data = doc.data()!;
+      // Garante que o documento recuperado não pertença a outro email
+      if (data['userEmail'] != null &&
+          user.email != null &&
+          (data['userEmail'] as String).toLowerCase() != user.email!.toLowerCase()) {
+        syncStatus.value = CloudSyncStatus.error;
+        syncErrorMessage.value = 'Os dados na nuvem pertencem a outra conta de email.';
+        return false;
+      }
+
       final payload = data['payload'];
       if (payload is! String || payload.trim().isEmpty) {
         syncStatus.value = CloudSyncStatus.error;
@@ -209,8 +231,11 @@ class CloudSyncService {
         return false;
       }
 
-      final ok = await StorageService.importFullBackupJson(payload.trim());
+      // Limpa dados locais residuais de qualquer sessão anterior antes de restaurar
+      await StorageService.clearUserDataForNewSession();
+      final ok = await StorageService.importFullBackupJson(payload.trim(), clearExisting: true);
       if (ok) {
+        await StorageService.setActiveUserUid(user.uid);
         // Restore custom avatar and banner if present in Firestore
         var currentProfile = StorageService.profileNotifier.value;
         bool profileModified = false;
@@ -299,5 +324,48 @@ class CloudSyncService {
     _debounceTimer = Timer(const Duration(seconds: 4), () {
       unawaited(backupToCloud(silent: true));
     });
+  }
+
+  /// Cancela qualquer sincronização pendente e zera os estados de sincronização.
+  static void cancelPendingSync() {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+    syncStatus.value = CloudSyncStatus.idle;
+    lastCloudSyncTime.value = null;
+    syncErrorMessage.value = null;
+  }
+
+  /// Limpa integralmente o backup na nuvem (Firestore) do usuário atual
+  /// e redefine o armazenamento local para um perfil recém-criado,
+  /// permitindo que o usuário comece 100% do zero.
+  static Future<bool> resetCloudData() async {
+    final user = CloudAuthService.currentUser.value;
+    if (user == null || !CloudAuthService.isFirebaseAvailable.value) return false;
+
+    try {
+      syncStatus.value = CloudSyncStatus.syncing;
+      final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      await docRef.delete();
+      await StorageService.clearUserDataForNewSession();
+      final freshProfile = UserProfile(
+        name: (user.displayName != null && user.displayName!.trim().isNotEmpty)
+            ? user.displayName!.trim()
+            : 'Leitor YOMI',
+        avatarImagePath: user.photoURL,
+        isConfigured: false,
+      );
+      await StorageService.updateUserProfile(freshProfile);
+      await ProfilePaletteService.refreshGlobalPalette(freshProfile);
+      await StorageService.setActiveUserUid(user.uid);
+      syncStatus.value = CloudSyncStatus.idle;
+      lastCloudSyncTime.value = null;
+      syncErrorMessage.value = null;
+      return true;
+    } catch (e) {
+      debugPrint('Erro ao resetar dados na nuvem: $e');
+      syncStatus.value = CloudSyncStatus.error;
+      syncErrorMessage.value = 'Erro ao limpar dados na nuvem: $e';
+      return false;
+    }
   }
 }

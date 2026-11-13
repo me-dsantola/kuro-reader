@@ -543,13 +543,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           final signedUser = await CloudAuthService.signInWithGoogle();
                           if (!context.mounted) return;
                           if (signedUser != null) {
+                            final meta = await CloudSyncService.checkCloudBackupMetadata();
+                            if (meta != null) {
+                              await CloudSyncService.restoreFromCloud();
+                            } else {
+                              await StorageService.setActiveUserUid(signedUser.uid);
+                              await CloudSyncService.backupToCloud(silent: true);
+                            }
+                            if (!context.mounted) return;
                             AppFeedback.show(
                               context,
                               SnackBar(
                                 content: Text('Conectado como ${signedUser.email}!'),
                               ),
                             );
-                            await CloudSyncService.backupToCloud(silent: true);
                           }
                         },
                         icon: const Icon(Icons.login_rounded, size: 18),
@@ -624,27 +631,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          foregroundColor: Colors.white60,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor: Colors.redAccent.withOpacity(0.85),
+                          ),
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: const Color(0xFF141416),
+                                title: const Text('Redefinir Dados e Nuvem?'),
+                                content: const Text(
+                                  'Isso apagará a biblioteca e o perfil vinculados a esta conta '
+                                  '(no aparelho e no Firestore), permitindo configurar tudo do zero.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Cancelar'),
+                                  ),
+                                  FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    child: const Text('Redefinir Tudo'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              final ok = await CloudSyncService.resetCloudData();
+                              if (!context.mounted) return;
+                              AppFeedback.show(
+                                context,
+                                SnackBar(
+                                  content: Text(
+                                    ok
+                                        ? 'Perfil e dados na nuvem redefinidos com sucesso!'
+                                        : 'Falha ao redefinir nuvem.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded, size: 14),
+                          label: const Text(
+                            'Começar do zero',
+                            style: TextStyle(fontSize: 12),
+                          ),
                         ),
-                        onPressed: () async {
-                          await CloudAuthService.signOut();
-                          if (!context.mounted) return;
-                          AppFeedback.show(
-                            context,
-                            const SnackBar(content: Text('Conta desconectada.')),
-                          );
-                        },
-                        icon: const Icon(Icons.logout_rounded, size: 14),
-                        label: const Text(
-                          'Desconectar conta',
-                          style: TextStyle(fontSize: 12),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor: Colors.white60,
+                          ),
+                          onPressed: () async {
+                            CloudSyncService.cancelPendingSync();
+                            await StorageService.clearUserDataForNewSession();
+                            await StorageService.setActiveUserUid(null);
+                            await CloudAuthService.signOut();
+                            if (!context.mounted) return;
+                            AppFeedback.show(
+                              context,
+                              const SnackBar(content: Text('Conta desconectada.')),
+                            );
+                          },
+                          icon: const Icon(Icons.logout_rounded, size: 14),
+                          label: const Text(
+                            'Desconectar conta',
+                            style: TextStyle(fontSize: 12),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ],

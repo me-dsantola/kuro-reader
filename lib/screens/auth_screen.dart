@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../models/manga_models.dart';
 import '../services/cloud_auth_service.dart';
 import '../services/cloud_sync_service.dart';
 import '../services/profile_palette_service.dart';
@@ -42,6 +43,9 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
         return;
       }
 
+      final previousUid = StorageService.activeUserUid;
+      final isSwitchingAccount = previousUid != null && previousUid != user.uid;
+
       if (mounted) {
         setState(() {
           _statusMessage = 'Verificando dados na nuvem...';
@@ -49,26 +53,44 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
       }
 
       // Check if user has an existing cloud backup in Firestore
+      Map<String, dynamic>? meta;
       try {
-        final meta = await CloudSyncService.checkCloudBackupMetadata();
-        if (meta != null) {
-          if (mounted) {
-            setState(() {
-              _statusMessage = 'Restaurando sua biblioteca da nuvem...';
-            });
-          }
-          await CloudSyncService.restoreFromCloud();
-        }
+        meta = await CloudSyncService.checkCloudBackupMetadata();
       } catch (_) {}
 
-      // If profile is not configured yet, pre-populate name from Google displayName
-      final currentProfile = StorageService.profileNotifier.value;
-      if (!currentProfile.isConfigured &&
-          user.displayName != null &&
-          user.displayName!.isNotEmpty) {
-        await StorageService.updateUserProfile(
-          currentProfile.copyWith(name: user.displayName),
+      if (meta != null) {
+        // Se trocou de conta ou é uma sessão nova, limpa o estado residual
+        if (isSwitchingAccount || previousUid == null) {
+          await StorageService.clearUserDataForNewSession();
+        }
+        if (mounted) {
+          setState(() {
+            _statusMessage = 'Restaurando sua biblioteca da nuvem...';
+          });
+        }
+        await CloudSyncService.restoreFromCloud();
+        await StorageService.setActiveUserUid(user.uid);
+      } else {
+        // Novo usuário ou usuário sem backup em nuvem:
+        // JAMAIS herda favoritos, histórico ou perfil de outros usuários do aparelho.
+        // Limpa tudo, inicia perfil limpo com o nome e foto do Google, mantendo isConfigured = false.
+        if (mounted) {
+          setState(() {
+            _statusMessage = 'Preparando seu novo perfil...';
+          });
+        }
+        await StorageService.clearUserDataForNewSession();
+        final googleName = (user.displayName != null && user.displayName!.trim().isNotEmpty)
+            ? user.displayName!.trim()
+            : 'Leitor YOMI';
+        final freshProfile = UserProfile(
+          name: googleName,
+          avatarImagePath: user.photoURL,
+          isConfigured: false,
         );
+        await StorageService.updateUserProfile(freshProfile);
+        await ProfilePaletteService.refreshGlobalPalette(freshProfile);
+        await StorageService.setActiveUserUid(user.uid);
       }
 
       if (mounted) {

@@ -102,16 +102,12 @@ class StorageService {
     final settings = await Hive.openBox(settingsBoxName);
     await recoverInterruptedRestore();
 
-    // 0. Restauração Automática pós-reinstalação:
-    // Se esta instalação estiver limpa (sem favoritos, histórico ou perfil configurado),
-    // consulta o backup automático persistido no aparelho/OS e restaura sem depender de código manual.
+    // 0. Em novas instalações, a biblioteca inicia limpa.
+    // A restauração da conta é gerenciada após a autenticação segura do usuário no Google/Firestore.
     final isFreshInstall =
         favBox.isEmpty &&
         historyBox.isEmpty &&
         settings.get('user_profile') == null;
-    if (isFreshInstall) {
-      await tryRestoreFromDeviceAutoBackup();
-    }
 
     // 1. Conteúdo Adulto: Oculto de cara na primeira abertura e sempre desligado por padrão.
     final bool keepNsfwLockedOnStartup =
@@ -200,6 +196,46 @@ class StorageService {
   static Future<void> updateUserProfile(UserProfile profile) async {
     profileNotifier.value = profile;
     await settingsBox.put('user_profile', profile.toMap());
+  }
+
+  // --- CONTROLE DE SESSÃO E ISOLAMENTO MULTIUSUÁRIO ---
+  static const String activeUserUidKey = 'active_user_uid_v1';
+
+  static String? get activeUserUid {
+    if (!Hive.isBoxOpen(settingsBoxName)) return null;
+    final val = settingsBox.get(activeUserUidKey);
+    return val is String ? val : null;
+  }
+
+  static Future<void> setActiveUserUid(String? uid) async {
+    if (!Hive.isBoxOpen(settingsBoxName)) return;
+    if (uid == null) {
+      await settingsBox.delete(activeUserUidKey);
+    } else {
+      await settingsBox.put(activeUserUidKey, uid);
+    }
+  }
+
+  /// Limpa integralmente dados locais vinculados ao usuário anterior
+  /// (favoritos, histórico, listas personalizadas, downloads e perfil)
+  /// para garantir isolamento absoluto entre contas diferentes.
+  static Future<void> clearUserDataForNewSession() async {
+    if (Hive.isBoxOpen(favBoxName)) {
+      await favBox.clear();
+    }
+    if (Hive.isBoxOpen(historyBoxName)) {
+      await historyBox.clear();
+    }
+    if (Hive.isBoxOpen(downloadsBoxName)) {
+      await downloadsBox.clear();
+    }
+    if (Hive.isBoxOpen(settingsBoxName)) {
+      await settingsBox.delete(readingListsKey);
+      await settingsBox.delete('user_profile');
+      await settingsBox.delete('last_cloud_sync_at_v1');
+    }
+    const freshProfile = UserProfile(isConfigured: false);
+    profileNotifier.value = freshProfile;
   }
 
   // --- LISTAS DE LEITURA PERSONALIZADAS PELO USUÁRIO ---
@@ -821,14 +857,22 @@ class StorageService {
     return BackupCodec.encode(payload);
   }
 
-  static Future<bool> importFullBackupJson(String rawInput) {
+  static Future<bool> importFullBackupJson(
+    String rawInput, {
+    bool clearExisting = true,
+  }) {
     // A second restore must not replace the first restore's recovery journal.
-    final result = _restoreTail.then((_) => _importBackup(rawInput));
+    final result = _restoreTail.then(
+      (_) => _importBackup(rawInput, clearExisting: clearExisting),
+    );
     _restoreTail = result.then<void>((_) {});
     return result;
   }
 
-  static Future<bool> _importBackup(String rawInput) async {
+  static Future<bool> _importBackup(
+    String rawInput, {
+    bool clearExisting = true,
+  }) async {
     try {
       // Parse and validate every section before mutating any Hive box.
       // Older backups without a version number remain supported.
@@ -875,6 +919,10 @@ class StorageService {
         'history': _snapshot(historyBox, hist.keys),
         'settings': _snapshot(settingsBox, settingChanges.keys),
       });
+      if (clearExisting) {
+        await favBox.clear();
+        await historyBox.clear();
+      }
       if (favs.isNotEmpty) await favBox.putAll(favs);
       if (hist.isNotEmpty) await historyBox.putAll(hist);
       if (settingChanges.isNotEmpty) await settingsBox.putAll(settingChanges);
