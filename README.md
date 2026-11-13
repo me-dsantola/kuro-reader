@@ -48,9 +48,9 @@ Baixe o APK da [Release publicada](../../releases), de acordo com o aparelho:
 
 | Arquivo | Uso |
 | --- | --- |
-| `YOMI-1.2.6-arm64-v8a.apk` | Android ARM64, comum em celulares atuais |
-| `YOMI-1.2.6-armeabi-v7a.apk` | Android ARM de 32 bits compatível |
-| `YOMI-1.2.6-x86_64.apk` | Emuladores e aparelhos Android x86 de 64 bits |
+| `YOMI-1.2.7-arm64-v8a.apk` | Android ARM64, comum em celulares atuais |
+| `YOMI-1.2.7-armeabi-v7a.apk` | Android ARM de 32 bits compatível |
+| `YOMI-1.2.7-x86_64.apk` | Emuladores e aparelhos Android x86 de 64 bits |
 
 O pacote estável é `com.kuroreader.kuro_reader`. A Beta usa
 `com.kuroreader.kuro_reader.beta`, com armazenamento separado. Exporte o
