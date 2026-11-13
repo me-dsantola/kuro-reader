@@ -8,12 +8,12 @@ class YomiBackupAgent : BackupAgentHelper() {
     override fun onCreate() {
         super.onCreate()
         addHelper(
-            "yomi_prefs_backup",
-            SharedPreferencesBackupHelper(this, "yomi_auto_backup_prefs"),
+            "kuro_prefs_backup",
+            SharedPreferencesBackupHelper(this, "kuro_auto_backup_prefs", "yomi_auto_backup_prefs"),
         )
         addHelper(
-            "yomi_file_backup",
-            FileBackupHelper(this, "yomi_auto_backup.txt"),
+            "kuro_file_backup",
+            FileBackupHelper(this, "kuro_auto_backup.json", "yomi_auto_backup.txt"),
         )
     }
 }

@@ -1,10 +1,15 @@
 import 'dart:async';
-import 'device_state_service.dart';
+import 'dart:convert';
 import 'dart:io';
-import 'backup_codec.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'backup_codec.dart';
+import 'cloud_sync_service.dart';
+import 'device_state_service.dart';
 import '../models/manga_models.dart';
 import '../models/reader_anchor.dart';
 
@@ -1103,12 +1108,15 @@ class StorageService {
   static bool get _isTestEnv =>
       !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
 
-  static File? _desktopAutoBackupFile() {
-    if (kIsWeb || _isTestEnv) return null;
+  static List<File> _desktopAutoBackupFiles() {
+    if (kIsWeb || _isTestEnv) return [];
     final home =
         Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'];
-    if (home == null || home.trim().isEmpty) return null;
-    return File('$home/.yomi_backup/yomi_auto_backup.txt');
+    if (home == null || home.trim().isEmpty) return [];
+    return [
+      File('$home/.kuro_backup/kuro_auto_backup.json'),
+      File('$home/.yomi_backup/yomi_auto_backup.txt'),
+    ];
   }
 
   static void _attachAutoBackupWatchers() {
@@ -1139,6 +1147,7 @@ class StorageService {
     _autoBackupDebounce?.cancel();
     _autoBackupDebounce = Timer(const Duration(milliseconds: 900), () {
       unawaited(syncAutoBackupNow());
+      CloudSyncService.scheduleAutoCloudSync();
     });
   }
 
@@ -1172,8 +1181,8 @@ class StorageService {
         } catch (_) {}
       }
 
-      final file = _desktopAutoBackupFile();
-      if (file != null) {
+      final files = _desktopAutoBackupFiles();
+      for (final file in files) {
         try {
           if (!file.parent.existsSync()) {
             await file.parent.create(recursive: true);
@@ -1210,11 +1219,17 @@ class StorageService {
         } catch (_) {}
       }
       if (payload == null || payload.trim().isEmpty) {
-        final file = _desktopAutoBackupFile();
-        if (file != null && file.existsSync()) {
-          try {
-            payload = await file.readAsString();
-          } catch (_) {}
+        final files = _desktopAutoBackupFiles();
+        for (final file in files) {
+          if (file.existsSync()) {
+            try {
+              final text = await file.readAsString();
+              if (text.trim().isNotEmpty) {
+                payload = text;
+                break;
+              }
+            } catch (_) {}
+          }
         }
       }
       if (payload == null || payload.trim().isEmpty) return false;
@@ -1230,6 +1245,63 @@ class StorageService {
       return false;
     } finally {
       _restoringAutoBackup = false;
+    }
+  }
+
+  /// Exports full backup as a `.kuro` file and invokes the native system share sheet
+  /// (permitting direct save to Google Drive, Telegram, WhatsApp, Local Downloads, etc.).
+  static Future<bool> exportBackupToFile() async {
+    try {
+      final payload = exportFullBackupJson();
+      final tempDir = await getTemporaryDirectory();
+      final now = DateTime.now();
+      final dateStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final file = File('${tempDir.path}/kuro_backup_$dateStr.kuro');
+      await file.writeAsString(payload, flush: true);
+      final result = await Share.shareXFiles(
+        [
+          XFile(
+            file.path,
+            mimeType: 'application/json',
+            name: 'kuro_backup_$dateStr.kuro',
+          ),
+        ],
+        subject: 'Backup Kuro Reader ($dateStr)',
+      );
+      return result.status == ShareResultStatus.success ||
+          result.status == ShareResultStatus.dismissed;
+    } catch (e) {
+      debugPrint('Erro ao exportar backup para arquivo: $e');
+      return false;
+    }
+  }
+
+  /// Opens the system file picker to select a `.kuro` or `.json` backup file
+  /// from local storage, Google Drive, SD Card, etc. and restores it safely.
+  static Future<bool> importBackupFromFile() async {
+    try {
+      final picked = await FilePicker.pickFile();
+      if (picked == null) return false;
+      final path = picked.path;
+      String? content;
+      if (path != null) {
+        final file = File(path);
+        if (await file.exists()) {
+          content = await file.readAsString();
+        }
+      }
+      if (content == null || content.trim().isEmpty) {
+        final bytes = await picked.readAsBytes();
+        if (bytes.isNotEmpty) {
+          content = utf8.decode(bytes);
+        }
+      }
+      if (content == null || content.trim().isEmpty) return false;
+      return await importFullBackupJson(content.trim());
+    } catch (e) {
+      debugPrint('Erro ao importar backup de arquivo: $e');
+      return false;
     }
   }
 }

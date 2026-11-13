@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
+import '../services/cloud_auth_service.dart';
+import '../services/cloud_sync_service.dart';
 import '../services/profile_palette_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/app_feedback.dart';
@@ -297,7 +299,274 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 22),
                       Text(
-                        'Backup Automático & Sincronização no Aparelho',
+                        'Backup na Nuvem (Google / Firestore)',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: palette.soft,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ValueListenableBuilder(
+                        valueListenable: CloudAuthService.currentUser,
+                        builder: (context, user, _) {
+                          return ValueListenableBuilder(
+                            valueListenable: CloudSyncService.syncStatus,
+                            builder: (context, status, _) {
+                              final isSyncing = status == CloudSyncStatus.syncing;
+                              final isFirebaseReady =
+                                  CloudAuthService.isFirebaseAvailable.value;
+
+                              return Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: palette.surface,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: palette.primary.withValues(alpha: 0.35),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          user != null
+                                              ? Icons.cloud_done_rounded
+                                              : Icons.cloud_queue_rounded,
+                                          color: palette.primary,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            user != null
+                                                ? 'Conta Google Conectada'
+                                                : 'Sincronização na Nuvem',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13.5,
+                                            ),
+                                          ),
+                                        ),
+                                        if (isSyncing)
+                                          const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      user != null
+                                          ? 'Logado como: ${user.email ?? user.displayName ?? "Usuário Google"}\nSeus favoritos, histórico e perfil sincronizam com o Firestore.'
+                                          : 'Conecte sua conta Google para salvar sua biblioteca, histórico e preferências na nuvem com restauração em 1 clique.',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white70,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                    if (!isFirebaseReady) ...[
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: Colors.amber.withValues(alpha: 0.3),
+                                          ),
+                                        ),
+                                        child: const Row(
+                                          children: [
+                                            Icon(
+                                              Icons.info_outline_rounded,
+                                              size: 14,
+                                              color: Colors.amber,
+                                            ),
+                                            SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                'Firebase pendente: adicione o google-services.json no app para ativar.',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.amber,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 12),
+                                    if (user == null)
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: FilledButton.icon(
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: palette.primary,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                          onPressed: () async {
+                                            final signedUser =
+                                                await CloudAuthService.signInWithGoogle();
+                                            if (!context.mounted) return;
+                                            if (signedUser != null) {
+                                              AppFeedback.show(
+                                                context,
+                                                SnackBar(
+                                                  content: Text(
+                                                    'Conectado com sucesso como ${signedUser.email}!',
+                                                  ),
+                                                ),
+                                              );
+                                              // Prompt or auto-backup
+                                              await CloudSyncService.backupToCloud(
+                                                silent: true,
+                                              );
+                                            } else {
+                                              final err =
+                                                  CloudAuthService.lastAuthError.value;
+                                              if (err != null) {
+                                                AppFeedback.show(
+                                                  context,
+                                                  SnackBar(content: Text(err)),
+                                                );
+                                              }
+                                            }
+                                          },
+                                          icon: const Icon(
+                                            Icons.login_rounded,
+                                            size: 18,
+                                          ),
+                                          label: const Text('Conectar com Google'),
+                                        ),
+                                      )
+                                    else
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: FilledButton.icon(
+                                                  style: FilledButton.styleFrom(
+                                                    backgroundColor:
+                                                        palette.primary,
+                                                    foregroundColor: Colors.white,
+                                                  ),
+                                                  onPressed: isSyncing
+                                                      ? null
+                                                      : () async {
+                                                          final ok =
+                                                              await CloudSyncService.backupToCloud();
+                                                          if (!context.mounted) {
+                                                            return;
+                                                          }
+                                                          AppFeedback.show(
+                                                            context,
+                                                            SnackBar(
+                                                              content: Text(
+                                                                ok
+                                                                    ? 'Backup sincronizado na nuvem com sucesso!'
+                                                                    : (CloudSyncService.syncErrorMessage.value ??
+                                                                        'Falha ao sincronizar na nuvem.'),
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                  icon: const Icon(
+                                                    Icons.cloud_upload_rounded,
+                                                    size: 18,
+                                                  ),
+                                                  label: const Text(
+                                                    'Salvar na Nuvem',
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: OutlinedButton.icon(
+                                                  onPressed: isSyncing
+                                                      ? null
+                                                      : () async {
+                                                          final ok =
+                                                              await CloudSyncService.restoreFromCloud();
+                                                          if (!context.mounted) {
+                                                            return;
+                                                          }
+                                                          AppFeedback.show(
+                                                            context,
+                                                            SnackBar(
+                                                              content: Text(
+                                                                ok
+                                                                    ? 'Dados restaurados da nuvem com sucesso!'
+                                                                    : (CloudSyncService.syncErrorMessage.value ??
+                                                                        'Nenhum backup encontrado na nuvem.'),
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                  icon: const Icon(
+                                                    Icons.cloud_download_rounded,
+                                                    size: 18,
+                                                  ),
+                                                  label: const Text(
+                                                    'Restaurar da Nuvem',
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child: TextButton.icon(
+                                              style: TextButton.styleFrom(
+                                                visualDensity: VisualDensity.compact,
+                                                foregroundColor: Colors.white60,
+                                              ),
+                                              onPressed: () async {
+                                                await CloudAuthService.signOut();
+                                                if (!context.mounted) return;
+                                                AppFeedback.show(
+                                                  context,
+                                                  const SnackBar(
+                                                    content: Text('Conta desconectada.'),
+                                                  ),
+                                                );
+                                              },
+                                              icon: const Icon(
+                                                Icons.logout_rounded,
+                                                size: 14,
+                                              ),
+                                              label: const Text(
+                                                'Desconectar conta',
+                                                style: TextStyle(fontSize: 12),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Arquivos de Backup (.kuro)',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
@@ -317,17 +586,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            const Row(
                               children: [
                                 Icon(
-                                  Icons.cloud_done_rounded,
-                                  color: palette.primary,
+                                  Icons.file_present_rounded,
+                                  color: Colors.white70,
                                   size: 18,
                                 ),
-                                const SizedBox(width: 8),
-                                const Expanded(
+                                SizedBox(width: 8),
+                                Expanded(
                                   child: Text(
-                                    'Backup automático ativo no seu aparelho',
+                                    'Exportar ou Importar Arquivo de Backup',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 13.5,
@@ -338,7 +607,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'Seus favoritos, listas, perfil, mascote e histórico são salvos automaticamente no armazenamento persistente do telefone. Se você desinstalar e instalar o YOMI novamente, seus dados são restaurados automaticamente sem precisar colar códigos.',
+                              'Gere um arquivo de backup para salvar no seu Google Drive, WhatsApp ou pasta Downloads, ou restaure um arquivo .kuro salvo anteriormente.',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.white70,
@@ -356,6 +625,80 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                     onPressed: () async {
                                       final ok =
+                                          await StorageService.exportBackupToFile();
+                                      if (!context.mounted) return;
+                                      if (!ok) {
+                                        AppFeedback.show(
+                                          context,
+                                          const SnackBar(
+                                            content: Text(
+                                              'Não foi possível exportar o arquivo de backup.',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    icon: const Icon(
+                                      Icons.share_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Exportar Arquivo'),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () async {
+                                      final ok =
+                                          await StorageService.importBackupFromFile();
+                                      if (!context.mounted) return;
+                                      AppFeedback.show(
+                                        context,
+                                        SnackBar(
+                                          content: Text(
+                                            ok
+                                                ? 'Backup restaurado com sucesso!'
+                                                : 'Nenhum backup válido foi restaurado.',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(
+                                      Icons.file_open_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Importar Arquivo'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(color: Colors.white12, height: 22),
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.phone_android_rounded,
+                                  color: Colors.white70,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Backup automático ativo no seu aparelho',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () async {
+                                      final ok =
                                           await StorageService.syncAutoBackupNow();
                                       if (!context.mounted) return;
                                       AppFeedback.show(
@@ -363,15 +706,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         SnackBar(
                                           content: Text(
                                             ok
-                                                ? 'Backup automático atualizado no aparelho com sucesso!'
-                                                : 'Adicione favoritos ou configure o perfil para salvar o backup no aparelho.',
+                                                ? 'Backup salvo no aparelho com sucesso!'
+                                                : 'Adicione favoritos ou configure o perfil primeiro.',
                                           ),
                                         ),
                                       );
                                     },
                                     icon: const Icon(
-                                      Icons.backup_rounded,
-                                      size: 18,
+                                      Icons.save_rounded,
+                                      size: 16,
                                     ),
                                     label: const Text('Salvar no Aparelho'),
                                   ),
@@ -388,7 +731,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         SnackBar(
                                           content: Text(
                                             restored
-                                                ? 'Dados restaurados automaticamente do aparelho!'
+                                                ? 'Dados restaurados do aparelho!'
                                                 : 'Nenhum backup salvo encontrado no aparelho.',
                                           ),
                                         ),
@@ -396,7 +739,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     },
                                     icon: const Icon(
                                       Icons.settings_backup_restore_rounded,
-                                      size: 18,
+                                      size: 16,
                                     ),
                                     label: const Text('Restaurar do Aparelho'),
                                   ),
@@ -414,7 +757,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Exporte um backup antes de desinstalar (Opcional / Outro Celular)',
+                                    'Área de Transferência (Avançado)',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 12.5,
@@ -439,14 +782,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         context,
                                         const SnackBar(
                                           content: Text(
-                                            'Código de Backup copiado para a área de transferência!',
+                                            'Código copiado para a área de transferência!',
                                           ),
                                         ),
                                       );
                                     },
                                     icon: const Icon(
                                       Icons.copy_all_rounded,
-                                      size: 18,
+                                      size: 16,
                                     ),
                                     label: const Text('Copiar Código'),
                                   ),
@@ -457,7 +800,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     onPressed: _showRestoreBackupModal,
                                     icon: const Icon(
                                       Icons.restore_rounded,
-                                      size: 18,
+                                      size: 16,
                                     ),
                                     label: const Text('Colar Código'),
                                   ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'widgets/app_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +6,8 @@ import 'screens/home_overview_screen.dart';
 import 'screens/storage_recovery_screen.dart';
 import 'screens/home_tabs.dart';
 import 'services/appearance_controller.dart';
+import 'services/cloud_auth_service.dart';
+import 'services/cloud_sync_service.dart';
 import 'services/device_state_service.dart';
 import 'services/profile_palette_service.dart';
 import 'services/scroll_chrome_controller.dart';
@@ -37,6 +40,9 @@ void main() async {
     debugPrint('Falha ao iniciar o armazenamento local.');
   }
   DeviceStateService.instance.start();
+  unawaited(CloudAuthService.initialize().then((_) {
+    CloudSyncService.initialize();
+  }));
   runApp(YomiApp(storageReady: storageReady));
 }
 

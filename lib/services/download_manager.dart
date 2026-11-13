@@ -5,9 +5,8 @@ import 'package:flutter/foundation.dart';
 
 import 'reader_image_session.dart';
 
-import 'package:path_provider/path_provider.dart';
-
 import '../models/manga_models.dart';
+import 'app_directory_service.dart';
 import 'mangadex_service.dart';
 import 'storage_service.dart';
 import 'image_file_validator.dart';
@@ -154,9 +153,9 @@ class DownloadManager {
 
     if (urls.isEmpty) throw Exception('Capítulo sem páginas disponíveis.');
 
-    final baseDir = await getApplicationSupportDirectory();
+    final chaptersBase = await AppDirectoryService.getChaptersDirectory();
     final safeChapterId = chapter.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-    final chapterDir = Directory('${baseDir.path}/chapters/$safeChapterId');
+    final chapterDir = Directory('${chaptersBase.path}/$safeChapterId');
     if (!await chapterDir.exists()) {
       await chapterDir.create(recursive: true);
     }
@@ -247,11 +246,7 @@ class DownloadManager {
 
   static Future<String?> _downloadAndPersistCover(Manga manga) async {
     try {
-      final baseDir = await getApplicationSupportDirectory();
-      final coversDir = Directory('${baseDir.path}/covers');
-      if (!await coversDir.exists()) {
-        await coversDir.create(recursive: true);
-      }
+      final coversDir = await AppDirectoryService.getCoversDirectory();
       final safeMangaId = manga.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
       final targetFile = File('${coversDir.path}/cover_$safeMangaId.img');
       if (await ImageFileValidator.isCompleteImage(targetFile)) {
@@ -298,18 +293,20 @@ class DownloadManager {
       if (raw is Map && raw['manga'] is Map) {
         mangaId = raw['manga']['id']?.toString();
       }
-      final baseDir = await getApplicationSupportDirectory();
       final safeChapterId = chapterId.replaceAll(
         RegExp(r'[^a-zA-Z0-9_-]'),
         '_',
       );
-      final chapterDir = Directory('${baseDir.path}/chapters/$safeChapterId');
-      if (await chapterDir.exists()) await chapterDir.delete(recursive: true);
+      final candidateBases = await AppDirectoryService.getAllCandidateBaseDirectories();
+      for (final base in candidateBases) {
+        final chapterDir = Directory('${base.path}/chapters/$safeChapterId');
+        if (await chapterDir.exists()) await chapterDir.delete(recursive: true);
+      }
       await StorageService.downloadsBox.delete(chapterId);
       if (mangaId != null && mangaId.isNotEmpty) {
         final remaining = StorageService.countDownloadedChaptersForManga(mangaId);
         if (remaining == 0) {
-          await _deleteCoverIfUnreferenced(mangaId, baseDir);
+          await _deleteCoverIfUnreferenced(mangaId);
         }
       }
     } finally {
@@ -326,15 +323,16 @@ class DownloadManager {
 
   static Future<void> _deleteCoverIfUnreferenced(
     String mangaId,
-    Directory baseDir,
   ) async {
     final storedPath = StorageService.getOfflineCoverPath(mangaId);
     await StorageService.removeOfflineCoverMetadata(mangaId);
     final safeMangaId = mangaId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-    for (final path in <String>{
+    final candidateBases = await AppDirectoryService.getAllCandidateBaseDirectories();
+    final toCheck = <String>{
       ?storedPath,
-      '${baseDir.path}/covers/cover_$safeMangaId.img',
-    }) {
+      for (final base in candidateBases) '${base.path}/covers/cover_$safeMangaId.img',
+    };
+    for (final path in toCheck) {
       final stillUsed = StorageService.downloadsBox.values.any(
         (v) => v is Map && v['coverPath'] == path,
       );
@@ -351,14 +349,16 @@ class DownloadManager {
     }
     _deletingAll = true;
     try {
-      final baseDir = await getApplicationSupportDirectory();
-      final rootChaptersDir = Directory('${baseDir.path}/chapters');
-      if (await rootChaptersDir.exists()) {
-        await rootChaptersDir.delete(recursive: true);
-      }
-      final coversDir = Directory('${baseDir.path}/covers');
-      if (await coversDir.exists()) {
-        await coversDir.delete(recursive: true);
+      final candidateBases = await AppDirectoryService.getAllCandidateBaseDirectories();
+      for (final base in candidateBases) {
+        final rootChaptersDir = Directory('${base.path}/chapters');
+        if (await rootChaptersDir.exists()) {
+          await rootChaptersDir.delete(recursive: true);
+        }
+        final coversDir = Directory('${base.path}/covers');
+        if (await coversDir.exists()) {
+          await coversDir.delete(recursive: true);
+        }
       }
       await StorageService.downloadsBox.clear();
     } finally {

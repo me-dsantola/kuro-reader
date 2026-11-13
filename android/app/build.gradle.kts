@@ -39,7 +39,7 @@ android {
         if (isBetaBuild) {
             applicationIdSuffix = ".beta"
         }
-        manifestPlaceholders["appLabel"] = if (isBetaBuild) "YOMI Beta" else "YOMI"
+        manifestPlaceholders["appLabel"] = if (isBetaBuild) "Kuro Reader Beta" else "Kuro Reader"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -61,4 +61,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }

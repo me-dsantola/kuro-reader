@@ -81,8 +81,10 @@ class MainActivity : FlutterActivity() {
     }
     private var pendingImageResult: MethodChannel.Result? = null
     private val pickImageRequestCode = 9401
-    private val autoBackupPrefsName = "yomi_auto_backup_prefs"
-    private val autoBackupFileName = "yomi_auto_backup.txt"
+    private val autoBackupPrefsName = "kuro_auto_backup_prefs"
+    private val legacyBackupPrefsName = "yomi_auto_backup_prefs"
+    private val autoBackupFileName = "kuro_auto_backup.json"
+    private val legacyBackupFileName = "yomi_auto_backup.txt"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -117,7 +119,7 @@ class MainActivity : FlutterActivity() {
                         type = "image/*"
                         addCategory(Intent.CATEGORY_OPENABLE)
                     }
-                    val chooser = Intent.createChooser(intent, "Escolher imagem para o YOMI")
+                    val chooser = Intent.createChooser(intent, "Escolher imagem para o Kuro Reader")
                     startActivityForResult(chooser, pickImageRequestCode)
                 } catch (e: Exception) {
                     pendingImageResult = null
@@ -151,8 +153,14 @@ class MainActivity : FlutterActivity() {
 
     private fun saveAutoBackupPayload(payload: String): Boolean {
         var savedAny = false
+        // 1. SharedPreferences (both modern Kuro and legacy Yomi prefs)
         try {
             getSharedPreferences(autoBackupPrefsName, Context.MODE_PRIVATE)
+                .edit()
+                .putString("payload", payload)
+                .putLong("updatedAt", System.currentTimeMillis())
+                .apply()
+            getSharedPreferences(legacyBackupPrefsName, Context.MODE_PRIVATE)
                 .edit()
                 .putString("payload", payload)
                 .putLong("updatedAt", System.currentTimeMillis())
@@ -160,53 +168,63 @@ class MainActivity : FlutterActivity() {
             savedAny = true
         } catch (_: Exception) {}
 
+        // 2. Internal app files
         try {
             File(filesDir, autoBackupFileName).writeText(payload, Charsets.UTF_8)
+            File(filesDir, legacyBackupFileName).writeText(payload, Charsets.UTF_8)
             savedAny = true
         } catch (_: Exception) {}
 
-        // Save to shared Downloads/YOMI so it survives app uninstallation on the phone
+        // 3. Shared Downloads/KuroReader & Downloads/YOMI
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val resolver = contentResolver
                 val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-                val projection = arrayOf(MediaStore.MediaColumns._ID)
-                val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
-                val selectionArgs = arrayOf(autoBackupFileName)
-                var existingUri: Uri? = null
-                resolver.query(collection, projection, selection, selectionArgs, null)?.use { cursor ->
-                    if (cursor.moveToFirst()) {
-                        val id = cursor.getLong(0)
-                        existingUri = ContentUris.withAppendedId(collection, id)
+                for ((folder, fileName, mime) in listOf(
+                    Triple("KuroReader", autoBackupFileName, "application/json"),
+                    Triple("YOMI", legacyBackupFileName, "text/plain"),
+                )) {
+                    val projection = arrayOf(MediaStore.MediaColumns._ID)
+                    val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
+                    val selectionArgs = arrayOf(fileName)
+                    var existingUri: Uri? = null
+                    resolver.query(collection, projection, selection, selectionArgs, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val id = cursor.getLong(0)
+                            existingUri = ContentUris.withAppendedId(collection, id)
+                        }
                     }
-                }
-                val targetUri = existingUri ?: run {
-                    val values = ContentValues().apply {
-                        put(MediaStore.MediaColumns.DISPLAY_NAME, autoBackupFileName)
-                        put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-                        put(
-                            MediaStore.MediaColumns.RELATIVE_PATH,
-                            Environment.DIRECTORY_DOWNLOADS + "/YOMI",
-                        )
+                    val targetUri = existingUri ?: run {
+                        val values = ContentValues().apply {
+                            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                            put(MediaStore.MediaColumns.MIME_TYPE, mime)
+                            put(
+                                MediaStore.MediaColumns.RELATIVE_PATH,
+                                Environment.DIRECTORY_DOWNLOADS + "/$folder",
+                            )
+                        }
+                        resolver.insert(collection, values)
                     }
-                    resolver.insert(collection, values)
-                }
-                if (targetUri != null) {
-                    resolver.openOutputStream(targetUri, "wt")?.use { out ->
-                        out.write(payload.toByteArray(Charsets.UTF_8))
-                        out.flush()
+                    if (targetUri != null) {
+                        resolver.openOutputStream(targetUri, "wt")?.use { out ->
+                            out.write(payload.toByteArray(Charsets.UTF_8))
+                            out.flush()
+                        }
+                        savedAny = true
                     }
-                    savedAny = true
                 }
             } else {
                 @Suppress("DEPRECATION")
-                val dir = File(
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "YOMI",
-                )
-                if (!dir.exists()) dir.mkdirs()
-                File(dir, autoBackupFileName).writeText(payload, Charsets.UTF_8)
-                savedAny = true
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                for ((folder, fileName) in listOf(
+                    Pair("KuroReader", autoBackupFileName),
+                    Pair("YOMI", legacyBackupFileName),
+                )) {
+                    val dir = File(downloadsDir, folder)
+                    if (!dir.exists()) dir.mkdirs()
+                    File(dir, fileName).writeText(payload, Charsets.UTF_8)
+                    savedAny = true
+                }
             }
         } catch (_: Exception) {}
 
@@ -218,43 +236,49 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun loadAutoBackupPayload(): String? {
-        // 1. Check SharedPreferences restored by YomiBackupAgent
-        try {
-            val fromPrefs = getSharedPreferences(autoBackupPrefsName, Context.MODE_PRIVATE)
-                .getString("payload", null)
-            if (!fromPrefs.isNullOrBlank()) return fromPrefs
-        } catch (_: Exception) {}
+        // 1. Check SharedPreferences (Kuro first, then legacy Yomi)
+        for (prefsName in listOf(autoBackupPrefsName, legacyBackupPrefsName)) {
+            try {
+                val fromPrefs = getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+                    .getString("payload", null)
+                if (!fromPrefs.isNullOrBlank()) return fromPrefs
+            } catch (_: Exception) {}
+        }
 
-        // 2. Check internal filesDir restored by Android Auto Backup
-        try {
-            val internalFile = File(filesDir, autoBackupFileName)
-            if (internalFile.exists()) {
-                val text = internalFile.readText(Charsets.UTF_8).trim()
-                if (text.isNotEmpty()) return text
-            }
-        } catch (_: Exception) {}
+        // 2. Check internal filesDir (Kuro first, then legacy Yomi)
+        for (fileName in listOf(autoBackupFileName, legacyBackupFileName)) {
+            try {
+                val internalFile = File(filesDir, fileName)
+                if (internalFile.exists()) {
+                    val text = internalFile.readText(Charsets.UTF_8).trim()
+                    if (text.isNotEmpty()) return text
+                }
+            } catch (_: Exception) {}
+        }
 
-        // 3. Check shared Downloads/YOMI via MediaStore (Android 10+)
+        // 3. Check shared Downloads via MediaStore (Android 10+)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val resolver = contentResolver
                 val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-                val projection = arrayOf(MediaStore.MediaColumns._ID)
-                val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
-                val selectionArgs = arrayOf(autoBackupFileName)
-                resolver.query(
-                    collection,
-                    projection,
-                    selection,
-                    selectionArgs,
-                    "${MediaStore.MediaColumns.DATE_MODIFIED} DESC",
-                )?.use { cursor ->
-                    while (cursor.moveToNext()) {
-                        val id = cursor.getLong(0)
-                        val uri = ContentUris.withAppendedId(collection, id)
-                        resolver.openInputStream(uri)?.use { input ->
-                            val text = input.bufferedReader(Charsets.UTF_8).readText().trim()
-                            if (text.isNotEmpty()) return text
+                for (targetName in listOf(autoBackupFileName, legacyBackupFileName)) {
+                    val projection = arrayOf(MediaStore.MediaColumns._ID)
+                    val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
+                    val selectionArgs = arrayOf(targetName)
+                    resolver.query(
+                        collection,
+                        projection,
+                        selection,
+                        selectionArgs,
+                        "${MediaStore.MediaColumns.DATE_MODIFIED} DESC",
+                    )?.use { cursor ->
+                        while (cursor.moveToNext()) {
+                            val id = cursor.getLong(0)
+                            val uri = ContentUris.withAppendedId(collection, id)
+                            resolver.openInputStream(uri)?.use { input ->
+                                val text = input.bufferedReader(Charsets.UTF_8).readText().trim()
+                                if (text.isNotEmpty()) return text
+                            }
                         }
                     }
                 }
@@ -264,13 +288,13 @@ class MainActivity : FlutterActivity() {
         // 4. Fallback public directory check
         try {
             @Suppress("DEPRECATION")
-            val legacyFile = File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "YOMI/$autoBackupFileName",
-            )
-            if (legacyFile.exists()) {
-                val text = legacyFile.readText(Charsets.UTF_8).trim()
-                if (text.isNotEmpty()) return text
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            for (relativePath in listOf("KuroReader/$autoBackupFileName", "YOMI/$legacyBackupFileName")) {
+                val file = File(downloadsDir, relativePath)
+                if (file.exists()) {
+                    val text = file.readText(Charsets.UTF_8).trim()
+                    if (text.isNotEmpty()) return text
+                }
             }
         } catch (_: Exception) {}
 
