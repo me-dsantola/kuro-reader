@@ -2,6 +2,7 @@ import 'dart:async';
 import 'widgets/app_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'screens/auth_screen.dart';
 import 'screens/home_overview_screen.dart';
 import 'screens/storage_recovery_screen.dart';
 import 'screens/home_tabs.dart';
@@ -289,13 +290,31 @@ class _MainNavigationShellState extends State<MainNavigationShell>
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: Listenable.merge([
+        CloudAuthService.currentUser,
         StorageService.profileNotifier,
         ProfilePaletteService.paletteNotifier,
       ]),
       builder: (context, _) {
+        final user = CloudAuthService.currentUser.value;
+        if (CloudAuthService.isAuthRequired && user == null) {
+          return KuroAuthScreen(
+            onAuthenticated: () {
+              setState(() {
+                _refreshGeneration++;
+              });
+            },
+          );
+        }
+
         final profile = StorageService.profileNotifier.value;
         if (!profile.isConfigured) {
-          return const FirstTimeProfileOnboardingScreen();
+          return FirstTimeProfileOnboardingScreen(
+            onCompleted: () {
+              setState(() {
+                _refreshGeneration++;
+              });
+            },
+          );
         }
 
         final palette = ProfilePaletteService.paletteNotifier.value;

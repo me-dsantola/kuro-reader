@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "885390508088",
+    "project_id": "kuro-reader",
+    "storage_bucket": "kuro-reader.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:885390508088:android:d56224a2dea9c2a758e6cd",
+        "android_client_info": {
+          "package_name": "com.kuroreader.kuro_reader"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "885390508088-7jdot504q1cenb04jr44ht3vpift77el.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kuroreader.kuro_reader",
+            "certificate_hash": "4410afa789365ed4cc809b3946ee94484eb8b9f9"
+          }
+        },
+        {
+          "client_id": "885390508088-b5pr402180a4u7l0jtacutvgnd1depuf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpt30WLATz1vAtOIsJLnLCIyz8jNW3V-s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "885390508088-b5pr402180a4u7l0jtacutvgnd1depuf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

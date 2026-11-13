@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,6 +13,16 @@ class CloudAuthService {
   static final ValueNotifier<bool> isFirebaseAvailable = ValueNotifier<bool>(false);
   static final ValueNotifier<bool> isSigningIn = ValueNotifier<bool>(false);
   static final ValueNotifier<String?> lastAuthError = ValueNotifier<String?>(null);
+
+  /// Allows automated widget tests to bypass the interactive Google prompt.
+  static bool bypassAuthForTesting = true;
+
+  static bool get isAuthRequired {
+    if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
+      return !bypassAuthForTesting;
+    }
+    return true;
+  }
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],

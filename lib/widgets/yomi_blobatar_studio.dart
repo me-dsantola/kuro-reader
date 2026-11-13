@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'app_feedback.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../blobatar/flutter.dart' as blob;
 import '../models/manga_models.dart';
+import '../services/cloud_auth_service.dart';
+import '../services/cloud_sync_service.dart';
 import '../services/profile_palette_service.dart';
 import '../services/storage_service.dart';
 
@@ -2269,6 +2272,10 @@ class _FirstTimeProfileOnboardingScreenState
   @override
   void initState() {
     super.initState();
+    final googleName = CloudAuthService.currentUser.value?.displayName;
+    if (googleName != null && googleName.trim().isNotEmpty) {
+      _nameCtrl.text = googleName.trim();
+    }
     _updatePalette();
   }
 
@@ -2322,6 +2329,7 @@ class _FirstTimeProfileOnboardingScreenState
     await StorageService.setPrivacyProtectionEnabled(_privacyProtection);
     await StorageService.updateUserProfile(profile);
     await ProfilePaletteService.refreshGlobalPalette(profile);
+    unawaited(CloudSyncService.backupToCloud(silent: true));
     widget.onCompleted?.call();
   }
 
@@ -2343,7 +2351,7 @@ class _FirstTimeProfileOnboardingScreenState
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text(
-                    'Bem-vindo ao YOMI',
+                    'Bem-vindo ao Kuro Reader',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
