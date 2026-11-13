@@ -173,40 +173,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: Colors.white.withValues(alpha: 0.08),
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const AppearanceSettings(),
-                            const Divider(color: Colors.white10, height: 24),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text(
-                                'Abrir o Perfil ao iniciar',
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w600,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const AppearanceSettings(),
+                              const Divider(color: Colors.white10, height: 24),
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text(
+                                  'Abrir o Perfil ao iniciar',
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                              subtitle: const Text(
-                                'Desative para iniciar diretamente pela tela inicial de destaques.',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: Colors.white60,
+                                subtitle: const Text(
+                                  'Desative para iniciar diretamente pela tela inicial de destaques.',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: Colors.white60,
+                                  ),
                                 ),
+                                activeThumbColor: palette.primary,
+                                value: StorageService
+                                    .profileNotifier
+                                    .value
+                                    .openOnProfileByDefault,
+                                onChanged: (enabled) async {
+                                  final current = StorageService.profileNotifier.value;
+                                  await StorageService.updateUserProfile(
+                                    current.copyWith(openOnProfileByDefault: enabled),
+                                  );
+                                },
                               ),
-                              activeThumbColor: palette.primary,
-                              value: StorageService
-                                  .profileNotifier
-                                  .value
-                                  .openOnProfileByDefault,
-                              onChanged: (enabled) async {
-                                final current = StorageService.profileNotifier.value;
-                                await StorageService.updateUserProfile(
-                                  current.copyWith(openOnProfileByDefault: enabled),
-                                );
-                              },
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
 
@@ -224,52 +227,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: Colors.white.withValues(alpha: 0.08),
                           ),
                         ),
-                        child: Column(
-                          children: [
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              activeThumbColor: palette.primary,
-                              title: const Text(
-                                'Ocultar obras "Só Capa" (0 capítulos)',
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w600,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Column(
+                            children: [
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                activeThumbColor: palette.primary,
+                                title: const Text(
+                                  'Ocultar obras "Só Capa" (0 capítulos)',
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                              subtitle: const Text(
-                                'Oculta obras do catálogo que não possuem capítulos confirmados nesta fonte.',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: Colors.white54,
+                                subtitle: const Text(
+                                  'Oculta obras do catálogo que não possuem capítulos confirmados nesta fonte.',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: Colors.white54,
+                                  ),
                                 ),
+                                value: hideZero,
+                                onChanged: (val) =>
+                                    StorageService.setHideZeroChapterTitles(val),
                               ),
-                              value: hideZero,
-                              onChanged: (val) =>
-                                  StorageService.setHideZeroChapterTitles(val),
-                            ),
-                            const Divider(color: Colors.white10, height: 20),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              activeThumbColor: palette.primary,
-                              title: const Text(
-                                'Economia de Dados (Data Saver)',
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w600,
+                              const Divider(color: Colors.white10, height: 20),
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                activeThumbColor: palette.primary,
+                                title: const Text(
+                                  'Economia de Dados (Data Saver)',
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                              subtitle: const Text(
-                                'Prioriza imagens comprimidas da fonte para economizar internet.',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: Colors.white54,
+                                subtitle: const Text(
+                                  'Prioriza imagens comprimidas da fonte para economizar internet.',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: Colors.white54,
+                                  ),
                                 ),
+                                value: dataSaver,
+                                onChanged: (val) =>
+                                    StorageService.setDataSaverEnabled(val),
                               ),
-                              value: dataSaver,
-                              onChanged: (val) =>
-                                  StorageService.setDataSaverEnabled(val),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
 
@@ -287,58 +293,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: Colors.white.withValues(alpha: 0.08),
                           ),
                         ),
-                        child: Column(
-                          children: [
-                            for (final mode in NsfwDisplayMode.values)
-                              ListTile(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Column(
+                            children: [
+                              for (final mode in NsfwDisplayMode.values)
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: Icon(
+                                    nsfwMode == mode
+                                        ? Icons.radio_button_checked_rounded
+                                        : Icons.radio_button_unchecked_rounded,
+                                    color: nsfwMode == mode
+                                        ? palette.primary
+                                        : Colors.white54,
+                                  ),
+                                  title: Text(
+                                    mode.label,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13.5,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    mode.subtitle,
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      color: Colors.white60,
+                                    ),
+                                  ),
+                                  onTap: () => StorageService.setNsfwMode(mode),
+                                ),
+                              const Divider(color: Colors.white10, height: 16),
+                              SwitchListTile(
                                 contentPadding: EdgeInsets.zero,
-                                leading: Icon(
-                                  nsfwMode == mode
-                                      ? Icons.radio_button_checked_rounded
-                                      : Icons.radio_button_unchecked_rounded,
-                                  color: nsfwMode == mode
-                                      ? palette.primary
-                                      : Colors.white54,
-                                ),
-                                title: Text(
-                                  mode.label,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                activeThumbColor: palette.primary,
+                                title: const Text(
+                                  'Sempre iniciar com Conteúdo Adulto Desligado',
+                                  style: TextStyle(
                                     fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                subtitle: Text(
-                                  mode.subtitle,
-                                  style: const TextStyle(
+                                subtitle: const Text(
+                                  'Ao reiniciar o Yomi, o filtro 18+ volta para Seguro.',
+                                  style: TextStyle(
                                     fontSize: 11.5,
-                                    color: Colors.white60,
+                                    color: Colors.white54,
                                   ),
                                 ),
-                                onTap: () => StorageService.setNsfwMode(mode),
+                                value: lockNsfwStartup,
+                                onChanged: (val) =>
+                                    StorageService.setLockNsfwOnStartup(val),
                               ),
-                            const Divider(color: Colors.white10, height: 16),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              activeThumbColor: palette.primary,
-                              title: const Text(
-                                'Sempre iniciar com Conteúdo Adulto Desligado',
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: const Text(
-                                'Ao reiniciar o Yomi, o filtro 18+ volta para Seguro.',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: Colors.white54,
-                                ),
-                              ),
-                              value: lockNsfwStartup,
-                              onChanged: (val) =>
-                                  StorageService.setLockNsfwOnStartup(val),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
 
