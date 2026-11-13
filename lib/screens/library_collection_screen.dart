@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../widgets/yomi_blobatar_studio.dart';
+import '../widgets/yomi_library_ambient_blob.dart';
 import '../widgets/floating_continue_cover.dart';
 import '../models/manga_models.dart';
 import '../services/storage_service.dart';
@@ -189,26 +190,10 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Positioned(
+                const Positioned(
                   top: -24,
                   right: -10,
-                  child: IgnorePointer(
-                    child: Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            palette.primary.withValues(alpha: 0.28),
-                            palette.primary.withValues(alpha: 0.08),
-                            Colors.transparent,
-                          ],
-                          stops: const [0.0, 0.5, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: YomiLibraryAmbientBlob(size: 146),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

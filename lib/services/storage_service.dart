@@ -1022,6 +1022,18 @@ class StorageService {
     return downloadsBox.containsKey(chapterId);
   }
 
+  static Future<void> deleteDownloadedChapter(String chapterId) async {
+    if (!Hive.isBoxOpen(downloadsBoxName)) return;
+    final paths = getDownloadedChapterPaths(chapterId);
+    for (final p in paths) {
+      try {
+        final f = File(p);
+        if (await f.exists()) await f.delete();
+      } catch (_) {}
+    }
+    await downloadsBox.delete(chapterId);
+  }
+
   static List<String> getDownloadedChapterPaths(String chapterId) {
     final raw = downloadsBox.get(chapterId);
     if (raw is! Map) return [];

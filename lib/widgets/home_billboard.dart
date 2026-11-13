@@ -27,138 +27,159 @@ class HomeBillboard extends StatelessWidget {
     const background = Color(0xFF070709);
     final wide = MediaQuery.sizeOf(context).width >= 700;
     final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
-    return Stack(
-      children: [
-        Positioned.fill(child: ExcludeSemantics(child: artwork)),
-        const Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: [0, 0.25, 0.55, 0.8, 1],
-                colors: [
-                  Color(0x99070709),
-                  Color(0x33070709),
-                  Color(0xCC070709),
-                  Color(0xF5070709),
-                  background,
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (wide)
+    final totalHeight = wide ? 520.0 : 490.0;
+
+    return SizedBox(
+      height: totalHeight,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(child: ExcludeSemantics(child: artwork)),
           const Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xF0070709), Color(0x66070709)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0, 0.25, 0.55, 0.8, 1],
+                  colors: [
+                    Color(0x99070709),
+                    Color(0x33070709),
+                    Color(0xCC070709),
+                    Color(0xF5070709),
+                    background,
+                  ],
                 ),
               ),
             ),
           ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(20, wide ? 200 : 250, 20, 28),
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 580),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xCC070709),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: accent.withValues(alpha: 0.35),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      'DESTAQUE NO YOMI',
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2,
-                      ),
-                    ),
+          if (wide)
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xF0070709), Color(0x66070709)],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    manga.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: wide ? 52 : 38,
-                      fontWeight: FontWeight.w900,
-                      height: 1.04,
-                      letterSpacing: -1.4,
-                      shadows: const [
-                        Shadow(
-                          color: Color(0xDD000000),
-                          offset: Offset(0, 3),
-                          blurRadius: 16,
+                ),
+              ),
+            ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 580),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
                         ),
-                        Shadow(
-                          color: Color(0xFF070709),
-                          offset: Offset(0, 1),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  if (manga.tags.isNotEmpty) ...[
-                    Text(
-                      manga.tags.take(3).join('  •  '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        shadows: [
-                          Shadow(
-                            color: Color(0xEE000000),
-                            offset: Offset(0, 1),
-                            blurRadius: 8,
+                        decoration: BoxDecoration(
+                          color: const Color(0xCC070709),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: accent.withValues(alpha: 0.35),
+                            width: 1,
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                  Text(
-                    manga.description.trim().isEmpty
-                        ? 'Conheça esta história e descubra sua próxima leitura.'
-                        : manga.description
-                              .replaceAll(RegExp(r'\s+'), ' ')
-                              .trim(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xDDFFFFFF),
-                      fontSize: 14,
-                      height: 1.5,
-                      shadows: [
-                        Shadow(
-                          color: Color(0xFF000000),
-                          offset: Offset(0, 1),
-                          blurRadius: 8,
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                        child: Text(
+                          'DESTAQUE NO YOMI',
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: wide ? 116 : 88,
+                        child: Align(
+                          alignment: Alignment.bottomLeft,
+                          child: Text(
+                            manga.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: wide ? 52 : 38,
+                              fontWeight: FontWeight.w900,
+                              height: 1.04,
+                              letterSpacing: -1.4,
+                              shadows: const [
+                                Shadow(
+                                  color: Color(0xDD000000),
+                                  offset: Offset(0, 3),
+                                  blurRadius: 16,
+                                ),
+                                Shadow(
+                                  color: Color(0xFF070709),
+                                  offset: Offset(0, 1),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 18,
+                        child: manga.tags.isNotEmpty
+                            ? Text(
+                                manga.tags.take(3).join('  •  '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  shadows: [
+                                    Shadow(
+                                      color: Color(0xEE000000),
+                                      offset: Offset(0, 1),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        height: 42,
+                        child: Text(
+                          manga.description.trim().isEmpty
+                              ? 'Conheça esta história e descubra sua próxima leitura.'
+                              : manga.description
+                                    .replaceAll(RegExp(r'\s+'), ' ')
+                                    .trim(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xDDFFFFFF),
+                            fontSize: 14,
+                            height: 1.4,
+                            shadows: [
+                              Shadow(
+                                color: Color(0xFF000000),
+                                offset: Offset(0, 1),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final read = FilledButton.icon(
@@ -224,9 +245,11 @@ class HomeBillboard extends StatelessWidget {
             ),
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  ),
+);
+}
 }
 
 /// Three complete covers and a glimpse of the fourth on phone screens.

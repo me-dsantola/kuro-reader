@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/appearance_controller.dart';
 import '../services/profile_palette_service.dart';
 import '../services/storage_service.dart';
+import '../services/yomi_theme_system.dart';
 
 class AppearanceSettings extends StatelessWidget {
   const AppearanceSettings({super.key});
@@ -29,15 +30,130 @@ class AppearanceSettings extends StatelessWidget {
       AppearanceController.instance,
       StorageService.privacyProtectionNotifier,
       ProfilePaletteService.paletteNotifier,
+      YomiThemeController.instance,
     ]),
     builder: (context, _) {
       final preferences = AppearanceController.instance.value;
       final privacyEnabled = StorageService.privacyProtectionEnabled;
       final palette = ProfilePaletteService.paletteNotifier.value;
+      final themeTokens = YomiThemeController.instance.value;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'Tema da Interface',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: palette.soft,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Column(
+            children: [
+              for (
+                var row = 0;
+                row < (YomiThemeId.values.length / 2).ceil();
+                row++
+              ) ...[
+                if (row > 0) const SizedBox(height: 8),
+                Row(
+                  children: [
+                    for (var col = 0; col < 2; col++) ...[
+                      if (col > 0) const SizedBox(width: 8),
+                      Expanded(
+                        child: Builder(
+                          builder: (context) {
+                            final index = row * 2 + col;
+                            if (index >= YomiThemeId.values.length) {
+                              return const SizedBox.shrink();
+                            }
+                            final id = YomiThemeId.values[index];
+                            final tokens = YomiThemeTokens.forId(id);
+                            final isSelected = themeTokens.id == id;
+                            return Material(
+                              color: tokens.cardSurface,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? tokens.accentPrimary
+                                      : tokens.border,
+                                  width: isSelected ? 2.0 : 1.0,
+                                ),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: InkWell(
+                                onTap: () => _save(
+                                  context,
+                                  YomiThemeController.instance.setTheme(id),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 10,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          color: tokens.background,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: tokens.border,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Container(
+                                            width: 9,
+                                            height: 9,
+                                            decoration: BoxDecoration(
+                                              color: tokens.accentPrimary,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          tokens.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: isSelected
+                                                ? FontWeight.w800
+                                                : FontWeight.w600,
+                                            color: tokens.textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 16,
+                                          color: tokens.accentPrimary,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 20),
           Text(
             'Aparência, privacidade e movimento',
             style: TextStyle(
@@ -56,6 +172,32 @@ class AppearanceSettings extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
+                SwitchListTile.adaptive(
+                  title: const Text('Reatividade de Cores Inteligente'),
+                  subtitle: const Text(
+                    'Adapta os detalhes e acentos à obra em destaque, preservando o fundo do tema.',
+                  ),
+                  activeThumbColor: themeTokens.accentPrimary,
+                  value: YomiThemeController.instance.reactiveColorsEnabled,
+                  onChanged: (enabled) => _save(
+                    context,
+                    YomiThemeController.instance.setReactiveColors(enabled),
+                  ),
+                ),
+                const Divider(height: 1, color: Colors.white10),
+                SwitchListTile.adaptive(
+                  title: const Text('Efeito Ambilight na Home'),
+                  subtitle: const Text(
+                    'Aura difusa e cinematográfica ao redor da obra em destaque.',
+                  ),
+                  activeThumbColor: themeTokens.accentPrimary,
+                  value: YomiThemeController.instance.ambilightEnabled,
+                  onChanged: (enabled) => _save(
+                    context,
+                    YomiThemeController.instance.setAmbilight(enabled),
+                  ),
+                ),
+                const Divider(height: 1, color: Colors.white10),
                 SwitchListTile.adaptive(
                   title: const Text('Efeito de vidro flutuante'),
                   subtitle: const Text(

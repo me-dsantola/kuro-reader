@@ -64,6 +64,8 @@ flutter:
   assets:
     - yomi_hqs_catalog.json
     - assets/banners/
+    - assets/images/
+    - assets/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -10,6 +10,7 @@ import 'services/profile_palette_service.dart';
 import 'services/scroll_chrome_controller.dart';
 import 'services/storage_service.dart';
 import 'services/mangadex_service.dart';
+import 'services/yomi_theme_system.dart';
 import 'widgets/adaptive_app_shell.dart';
 import 'widgets/frosted_surface.dart';
 import 'widgets/privacy_shield.dart';
@@ -29,6 +30,7 @@ void main() async {
   try {
     await StorageService.init();
     AppearanceController.instance.start();
+    YomiThemeController.instance.start();
     ProfilePaletteService.bindToProfileNotifier(StorageService.profileNotifier);
     storageReady = true;
   } catch (_) {
@@ -57,15 +59,16 @@ class _YomiAppState extends State<YomiApp> {
 
   void _onStorageRecovered() {
     AppearanceController.instance.start();
+    YomiThemeController.instance.start();
     ProfilePaletteService.bindToProfileNotifier(StorageService.profileNotifier);
     setState(() => _storageReady = true);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ProfileAdaptivePalette>(
-      valueListenable: ProfilePaletteService.paletteNotifier,
-      builder: (context, palette, _) {
+    return ValueListenableBuilder<YomiThemeTokens>(
+      valueListenable: YomiThemeController.instance,
+      builder: (context, themeTokens, _) {
         return MaterialApp(
           title: 'YOMI',
           debugShowCheckedModeBanner: false,
@@ -73,46 +76,50 @@ class _YomiAppState extends State<YomiApp> {
             slowDisplayDelay: const Duration(milliseconds: 900),
             child: PrivacyShield(child: child ?? const SizedBox.shrink()),
           ),
-          themeMode: ThemeMode.dark,
-          darkTheme: ThemeData(
+          themeMode: themeTokens.isLight ? ThemeMode.light : ThemeMode.dark,
+          theme: ThemeData(
             useMaterial3: true,
-            brightness: Brightness.dark,
-            scaffoldBackgroundColor: YomiPalette.pitchBlack,
-            colorScheme: ColorScheme.dark(
-              primary: palette.primary,
-              onPrimary: YomiPalette.pureWhite,
-              secondary: palette.secondary,
-              surface: YomiPalette.surface,
-              onSurface: YomiPalette.pureWhite,
+            brightness: themeTokens.brightness,
+            scaffoldBackgroundColor: themeTokens.background,
+            colorScheme: ColorScheme(
+              brightness: themeTokens.brightness,
+              primary: themeTokens.accentPrimary,
+              onPrimary: Colors.white,
+              secondary: themeTokens.accentSecondary,
+              onSecondary: Colors.white,
+              error: Colors.redAccent,
+              onError: Colors.white,
+              surface: themeTokens.surface,
+              onSurface: themeTokens.textPrimary,
             ),
             progressIndicatorTheme: ProgressIndicatorThemeData(
-              color: palette.primary,
+              color: themeTokens.accentPrimary,
             ),
             filledButtonTheme: FilledButtonThemeData(
               style: FilledButton.styleFrom(
-                backgroundColor: palette.primary,
-                foregroundColor: YomiPalette.pureWhite,
+                backgroundColor: themeTokens.accentPrimary,
+                foregroundColor: Colors.white,
               ),
             ),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: YomiPalette.pitchBlack,
+            appBarTheme: AppBarTheme(
+              backgroundColor: themeTokens.background,
               elevation: 0,
               scrolledUnderElevation: 0,
               surfaceTintColor: Colors.transparent,
               centerTitle: false,
               titleTextStyle: TextStyle(
-                color: YomiPalette.pureWhite,
+                color: themeTokens.textPrimary,
                 fontSize: 21,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
               ),
             ),
             cardTheme: CardThemeData(
-              color: YomiPalette.surface,
+              color: themeTokens.cardSurface,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
-                side: const BorderSide(color: Colors.white10, width: 1),
+                side: BorderSide(color: themeTokens.border, width: 1),
               ),
             ),
           ),
@@ -135,7 +142,10 @@ class MainNavigationShell extends StatefulWidget {
 class _MainNavigationShellState extends State<MainNavigationShell>
     with SingleTickerProviderStateMixin {
   late int _currentIndex;
+  int? _previousIndex;
+  bool _isForward = true;
   final _visitedTabs = <int>{};
+  final List<int> _backHistory = [];
   final _chrome = ScrollChromeController();
   late final AnimationController _transition;
   late InternetState _lastInternet;
@@ -182,9 +192,18 @@ class _MainNavigationShellState extends State<MainNavigationShell>
     super.initState();
     _transition = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 180),
-      value: 1,
+      duration: const Duration(milliseconds: 380),
+      value: 1.0,
     );
+    _transition.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        if (mounted && _previousIndex != null) {
+          setState(() {
+            _previousIndex = null;
+          });
+        }
+      }
+    });
     _lastInternet = DeviceStateService.instance.value.internet;
     DeviceStateService.instance.addListener(_syncNetwork);
     ProfilePaletteService.bindToProfileNotifier(StorageService.profileNotifier);
@@ -194,6 +213,7 @@ class _MainNavigationShellState extends State<MainNavigationShell>
         StorageService.userProfile.openOnProfileByDefault == true;
     _currentIndex = openOnProfile ? 3 : (_offline ? 1 : 0);
     _visitedTabs.add(_currentIndex);
+    _backHistory.add(_currentIndex);
     AppearanceController.instance.addListener(_syncChrome);
   }
 
@@ -213,15 +233,35 @@ class _MainNavigationShellState extends State<MainNavigationShell>
     super.dispose();
   }
 
-  void _switchTab(int index) {
+  void _switchTab(int index, {bool fromBack = false}) {
     if (_offline && index != 1 && index != 3) return;
     if (index == _currentIndex) return;
-    _transition.forward(from: 0);
+
+    if (!fromBack) {
+      if (_backHistory.isEmpty || _backHistory.last != _currentIndex) {
+        _backHistory.add(_currentIndex);
+      }
+      _backHistory.add(index);
+    }
+
+    _isForward = fromBack ? false : (index > _currentIndex);
+    _previousIndex = _currentIndex;
+    _currentIndex = index;
+    _visitedTabs.add(index);
     _chrome.show();
-    setState(() {
-      _visitedTabs.add(index);
-      _currentIndex = index;
-    });
+
+    final disableAnimations =
+        (MediaQuery.maybeDisableAnimationsOf(context) ?? false) ||
+        !AppearanceController.instance.value.tabTransitions;
+
+    if (disableAnimations) {
+      _transition.value = 1.0;
+      _previousIndex = null;
+      setState(() {});
+    } else {
+      _transition.forward(from: 0.0);
+      setState(() {});
+    }
   }
 
   static const List<_FloatingNavItem> _primaryNavItems = [
@@ -285,80 +325,91 @@ class _MainNavigationShellState extends State<MainNavigationShell>
         ];
 
         final disableAnimations = MediaQuery.disableAnimationsOf(context);
-        return Scaffold(
-          extendBody: true,
-          body: NotificationListener<ScrollNotification>(
-            onNotification: (notification) =>
-                AppearanceController.instance.value.autoHideMenus
-                ? _chrome.onScroll(notification)
-                : false,
-            child: Column(
-              children: [
-                if (_offline)
-                  SafeArea(
-                    bottom: false,
-                    child: Material(
-                      color: palette.primary.withValues(alpha: 0.16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.wifi_off_rounded,
-                              color: palette.secondary,
-                            ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Text(
-                                'Modo offline · funcionalidades reduzidas\nPerfil, Biblioteca e capítulos baixados disponíveis.',
-                                style: TextStyle(fontSize: 12, height: 1.4),
+        return PopScope(
+          canPop: _backHistory.length <= 1,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            if (_backHistory.length > 1) {
+              _backHistory.removeLast();
+              final previous = _backHistory.last;
+              _switchTab(previous, fromBack: true);
+            }
+          },
+          child: Scaffold(
+            extendBody: true,
+            body: NotificationListener<ScrollNotification>(
+              onNotification: (notification) =>
+                  AppearanceController.instance.value.autoHideMenus
+                  ? _chrome.onScroll(notification)
+                  : false,
+              child: Column(
+                children: [
+                  if (_offline)
+                    SafeArea(
+                      bottom: false,
+                      child: Material(
+                        color: palette.primary.withValues(alpha: 0.16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.wifi_off_rounded,
+                                color: palette.secondary,
                               ),
-                            ),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Text(
+                                  'Modo offline · funcionalidades reduzidas\nPerfil, Biblioteca e capítulos baixados disponíveis.',
+                                  style: TextStyle(fontSize: 12, height: 1.4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  Expanded(
+                    child: FadeTransition(
+                      opacity: disableAnimations ||
+                              !AppearanceController
+                                  .instance
+                                  .value
+                                  .tabTransitions
+                          ? const AlwaysStoppedAnimation(1.0)
+                          : _transition,
+                      child: SlideTransition(
+                        position: disableAnimations ||
+                                !AppearanceController
+                                    .instance
+                                    .value
+                                    .tabTransitions
+                            ? const AlwaysStoppedAnimation(Offset.zero)
+                            : Tween<Offset>(
+                                begin: Offset(_isForward ? 0.18 : -0.18, 0),
+                                end: Offset.zero,
+                              )
+                                .chain(CurveTween(curve: Curves.easeOutCubic))
+                                .animate(_transition),
+                        child: IndexedStack(
+                          index: _currentIndex,
+                          children: [
+                            for (var i = 0; i < pages.length; i++)
+                              _visitedTabs.contains(i)
+                                  ? TickerMode(
+                                      enabled: i == _currentIndex,
+                                      child: pages[i],
+                                    )
+                                  : const SizedBox.shrink(),
                           ],
                         ),
                       ),
                     ),
                   ),
-                Expanded(
-                  child: FadeTransition(
-                    opacity:
-                        disableAnimations ||
-                            !AppearanceController.instance.value.tabTransitions
-                        ? const AlwaysStoppedAnimation(1.0)
-                        : _transition,
-                    child: SlideTransition(
-                      position:
-                          disableAnimations ||
-                              !AppearanceController
-                                  .instance
-                                  .value
-                                  .tabTransitions
-                          ? const AlwaysStoppedAnimation(Offset.zero)
-                          : Tween<Offset>(
-                                  begin: const Offset(0, 0.025),
-                                  end: Offset.zero,
-                                )
-                                .chain(CurveTween(curve: Curves.easeOutCubic))
-                                .animate(_transition),
-                      child: IndexedStack(
-                        index: _currentIndex,
-                        children: [
-                          for (var i = 0; i < pages.length; i++)
-                            _visitedTabs.contains(i)
-                                ? TickerMode(
-                                    enabled: i == _currentIndex,
-                                    child: pages[i],
-                                  )
-                                : const SizedBox.shrink(),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          bottomNavigationBar: ListenableBuilder(
+            bottomNavigationBar: ListenableBuilder(
             listenable: _chrome,
             builder: (context, _) {
               final visible = _chrome.visible;
@@ -401,10 +452,11 @@ class _MainNavigationShellState extends State<MainNavigationShell>
               );
             },
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   int get _activeVisualSlot {
     final mappedTab = _currentIndex == 4 ? 3 : _currentIndex;

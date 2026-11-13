@@ -12,10 +12,11 @@ import '../services/mangadex_service.dart';
 import '../services/profile_palette_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/app_feedback.dart';
-import '../widgets/frosted_surface.dart';
 import '../widgets/home_billboard.dart';
+import '../widgets/individual_glass_capsule.dart';
 import '../widgets/yomi_blobatar_studio.dart';
 import '../widgets/floating_continue_cover.dart';
+import '../services/yomi_theme_system.dart';
 import 'favorite_updates_screen.dart';
 import 'home_tabs.dart';
 import 'manga_detail_screen.dart';
@@ -232,7 +233,14 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
 
   void _syncGlobalPaletteProgress() {
     if (!mounted) return;
-    ProfilePaletteService.paletteNotifier.value = _currentInterpolatedPalette;
+    if (_waveController.status == AnimationStatus.completed ||
+        _waveController.value >= 1.0) {
+      if (YomiThemeController.instance.reactiveColorsEnabled) {
+        YomiThemeController.instance.updateReactiveAccent(
+          _toPalette.primary,
+        );
+      }
+    }
   }
 
   void _selectFeatured(int index, {bool manual = false}) {
@@ -542,59 +550,65 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
         translation: Offset(0, slideY),
         child: Opacity(
           opacity: (1.0 - collapse * 0.9).clamp(0.0, 1.0),
-          child: FrostedSurface(
-            palette: palette,
-            borderRadius: BorderRadius.zero,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: palette.surfaceTint.withValues(alpha: 0.90),
-                border: Border(
-                  bottom: BorderSide(
-                    color: palette.primary.withValues(alpha: 0.32),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Padding(
-                padding: EdgeInsets.only(
-                  top: topPad,
-                  left: 16,
-                  right: 10,
-                ),
-                child: SizedBox(
-                  height: barHeight,
-                  child: Row(
-                    children: [
-                      YomiEnsoLogo(fontSize: logoSize, palette: palette),
-                      const Spacer(),
-                      IconButton(
-                        constraints: const BoxConstraints(
-                          minWidth: 48,
-                          minHeight: 48,
-                        ),
-                        tooltip: 'Buscar mangás',
-                        onPressed: widget.onExplore,
-                        icon: Icon(
-                          Icons.search_rounded,
-                          size: 24,
-                          color: fgColor,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: topPad + 4,
+              left: 16,
+              right: 16,
+            ),
+            child: SizedBox(
+              height: barHeight,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: IndividualGlassCapsule(
+                      borderRadius: BorderRadius.circular(18),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      surfaceTint: palette.surfaceTint,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: YomiEnsoLogo(
+                          fontSize: logoSize,
+                          palette: palette,
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4, left: 4),
-                        child: Center(
-                          child: YomiProfileAvatarView(
-                            profile: profile,
-                            size: 34 - (4 * collapse),
-                            borderColor: palette.primary,
-                            adaptiveHue: palette.hue,
-                            onTap: widget.onProfile ?? widget.onLibrary,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const Spacer(),
+                  IndividualGlassCapsule(
+                    isCircle: true,
+                    width: 48,
+                    height: 48,
+                    surfaceTint: palette.surfaceTint,
+                    tooltip: 'Buscar mangás',
+                    onTap: widget.onExplore,
+                    child: Icon(
+                      Icons.search_rounded,
+                      size: 22,
+                      color: fgColor,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IndividualGlassCapsule(
+                    isCircle: true,
+                    width: 48,
+                    height: 48,
+                    surfaceTint: palette.surfaceTint,
+                    child: Center(
+                      child: YomiProfileAvatarView(
+                        profile: profile,
+                        size: 34 - (4 * collapse),
+                        borderColor: palette.primary,
+                        adaptiveHue: palette.hue,
+                        onTap: widget.onProfile ?? widget.onLibrary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -660,7 +674,40 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
         child: Column(
           children: [
             Stack(
+              clipBehavior: Clip.none,
               children: [
+                // Efeito Ambilight: aura luminosa ambiental difusa ao redor do destaque
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AnimatedBuilder(
+                      animation: _waveController,
+                      builder: (context, _) {
+                        final currentPalette = _currentInterpolatedPalette;
+                        final enabled =
+                            YomiThemeController.instance.ambilightEnabled;
+                        if (!enabled) return const SizedBox.shrink();
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              center: const Alignment(0.0, -0.15),
+                              radius: 1.15,
+                              colors: [
+                                currentPalette.primary.withValues(alpha: 0.38),
+                                currentPalette.secondary.withValues(
+                                  alpha: 0.18,
+                                ),
+                                currentPalette.primary.withValues(alpha: 0.05),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.38, 0.72, 1.0],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
                 if (!reduceMotion &&
                     waveProgress < 1.0 &&
                     prevManga.compositeId != currentManga.compositeId)

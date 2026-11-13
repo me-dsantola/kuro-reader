@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/individual_glass_capsule.dart';
 import 'featured_preload_controller.dart';
 
 /// Filtra notificações de rolagem vertical da Home para coordenar o header e a barra de navegação.
@@ -72,70 +73,91 @@ class HomeCollapsibleHeader extends StatelessWidget {
             maxHeaderHeight - (maxHeaderHeight - minHeaderHeight) * collapse;
 
         return Material(
-          color: palette.surface,
-          elevation: 2.0 + (2.0 * collapse),
-          shadowColor: Colors.black54,
-          shape: Border(
-            bottom: BorderSide(
-              color: palette.onSurface.withOpacity(0.12),
-              width: 1.0,
-            ),
-          ),
+          color: Colors.transparent,
+          elevation: 0,
           child: Padding(
             padding: EdgeInsets.only(
-              top: topPadding,
+              top: topPadding + 4,
               left: 16.0,
-              right: 12.0,
+              right: 16.0,
             ),
             child: SizedBox(
               height: currentHeight,
               child: Row(
                 children: [
-                  // Logo sincronizada com a paleta ativa e contraste garantido
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 28 - (4 * collapse),
-                        height: 28 - (4 * collapse),
-                        decoration: BoxDecoration(
-                          color: palette.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Y',
-                          style: TextStyle(
-                            color: palette.primary.computeLuminance() > 0.5
-                                ? Colors.black
-                                : Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16 - (2 * collapse),
+                  Flexible(
+                    child: IndividualGlassCapsule(
+                      borderRadius: BorderRadius.circular(18),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      surfaceTint: palette.surface,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                        Container(
+                          width: 26 - (4 * collapse),
+                          height: 26 - (4 * collapse),
+                          decoration: BoxDecoration(
+                            color: palette.primary,
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Y',
+                            style: TextStyle(
+                              color: palette.primary.computeLuminance() > 0.5
+                                  ? Colors.black
+                                  : Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15 - (2 * collapse),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'YOMI',
-                        style: TextStyle(
-                          color: palette.onSurface,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.4,
-                          fontSize: 19 - (2 * collapse),
+                        const SizedBox(width: 8),
+                        Text(
+                          'YOMI',
+                          style: TextStyle(
+                            color: palette.onSurface,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.4,
+                            fontSize: 18 - (2 * collapse),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                ),
+              ),
                   const Spacer(),
                   if (onSearchTap != null)
-                    IconButton(
-                      constraints:
-                          const BoxConstraints(minWidth: 48, minHeight: 48),
-                      icon: Icon(Icons.search_rounded, color: palette.onSurface),
+                    IndividualGlassCapsule(
+                      isCircle: true,
+                      width: 48,
+                      height: 48,
+                      surfaceTint: palette.surface,
                       tooltip: 'Buscar obras',
-                      onPressed: onSearchTap,
+                      onTap: onSearchTap,
+                      child: Icon(
+                        Icons.search_rounded,
+                        color: palette.onSurface,
+                        size: 22,
+                      ),
                     ),
-                  ?trailingAction,
+                  if (trailingAction != null) ...[
+                    const SizedBox(width: 8),
+                    IndividualGlassCapsule(
+                      isCircle: true,
+                      width: 48,
+                      height: 48,
+                      surfaceTint: palette.surface,
+                      child: trailingAction!,
+                    ),
+                  ],
                 ],
               ),
             ),

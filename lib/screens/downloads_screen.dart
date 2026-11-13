@@ -6,9 +6,8 @@ import '../services/profile_palette_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/yomi_blobatar_studio.dart';
-import 'home_overview_screen.dart';
 import 'home_tabs.dart';
-import 'reader_screen.dart';
+import 'offline_manga_detail_screen.dart';
 
 class DownloadsScreen extends StatelessWidget {
   const DownloadsScreen({super.key});
@@ -174,112 +173,84 @@ class DownloadsScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                           side: const BorderSide(color: Colors.white10),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
-                              child: Row(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: YomiCoverImage(
-                                      manga: manga,
-                                      width: 52,
-                                      height: 74,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          manga.title,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 15.5,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          batchStatus != null
-                                              ? 'Baixando ${batchStatus.completed}/${batchStatus.total} capítulos…'
-                                              : '${chapters.length} ${chapters.length == 1 ? 'capítulo salvo' : 'capítulos salvos'} • Offline pronto',
-                                          style: TextStyle(
-                                            color: palette.secondary,
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'Apagar todos os capítulos da obra',
-                                    icon: const Icon(
-                                      Icons.delete_sweep_rounded,
-                                      color: Colors.white54,
-                                    ),
-                                    onPressed: () =>
-                                        _delete(context, mangaGroup: manga),
-                                  ),
-                                ],
-                              ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: YomiCoverImage(
+                              manga: manga,
+                              width: 52,
+                              height: 76,
                             ),
-                            const Divider(color: Colors.white10, height: 1),
-                            for (final chapter in chapters)
-                              ListTile(
-                                dense: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 2,
+                          ),
+                          title: Text(
+                            manga.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15.5,
+                              height: 1.2,
+                            ),
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.offline_pin_rounded,
+                                  size: 15,
+                                  color: palette.secondary,
                                 ),
-                                title: Text(
-                                  'Cap. ${chapter.chapterNumber} (${chapter.language})',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13.5,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  '${StorageService.getDownloadedChapterPaths(chapter.id).length} págs',
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.white54,
-                                    size: 20,
-                                  ),
-                                  tooltip: 'Apagar capítulo',
-                                  onPressed: () =>
-                                      _delete(context, chapter: chapter),
-                                ),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ReaderScreen(
-                                        manga: manga,
-                                        chapter: chapter,
-                                        allChapters: HomeOverviewScreen
-                                            .buildSortedChapterList(
-                                          manga,
-                                          chapter,
-                                        ),
-                                      ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    batchStatus != null
+                                        ? 'Baixando ${batchStatus.completed}/${batchStatus.total}…'
+                                        : '${chapters.length} ${chapters.length == 1 ? 'capítulo salvo' : 'capítulos salvos'} • Offline',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: palette.secondary,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
                                     ),
-                                  );
-                                },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Apagar todos os capítulos da obra',
+                                icon: const Icon(
+                                  Icons.delete_sweep_rounded,
+                                  color: Colors.white38,
+                                ),
+                                onPressed: () =>
+                                    _delete(context, mangaGroup: manga),
                               ),
-                          ],
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.white54,
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => OfflineMangaDetailScreen(
+                                  manga: manga,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       );
                     },
