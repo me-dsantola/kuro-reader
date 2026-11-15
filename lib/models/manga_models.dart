@@ -572,7 +572,10 @@ class Manga {
           .replaceFirst('cmk_mdx_', '')
           .replaceFirst('hq_mdx_', '')
           .replaceFirst('ani_mdx_', '')
-          .replaceFirst('mal_mdx_', '');
+          .replaceFirst('mal_mdx_', '')
+          .replaceFirst('cmk_title_', '')
+          .replaceFirst('ani_title_', '')
+          .replaceFirst('mal_title_', '');
       final suffix = highRes ? '.512.jpg' : '.256.jpg';
       raw =
           'https://uploads.mangadex.org/covers/$cleanId/$coverFileName$suffix';

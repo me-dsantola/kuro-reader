@@ -1561,7 +1561,12 @@ class MangaDexService {
       );
     }
 
-    final url = '$_baseUrl/at-home/server/${chapter.id}';
+    final cleanChapterId = chapter.id
+        .replaceFirst('cmk_mdx_', '')
+        .replaceFirst('hq_mdx_', '')
+        .replaceFirst('ani_mdx_', '')
+        .replaceFirst('mal_mdx_', '');
+    final url = '$_baseUrl/at-home/server/$cleanChapterId?forcePort443=true';
     final response = await safeHttpGet(url);
 
     final data = jsonDecode(response.body);
