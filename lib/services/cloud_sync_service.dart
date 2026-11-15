@@ -81,7 +81,36 @@ class CloudSyncService {
     }
   }
 
-  /// Sends full local backup payload to Cloud Firestore.
+  static const int _maxCloudImageBytes = 250 * 1024;
+  static const int _maxFirestoreBudgetBytes = 800 * 1024;
+
+  static Future<String?> _readEncodedMediaUnderLimit(
+    String? rawPath, {
+    bool ignorePreset = false,
+  }) async {
+    if (kIsWeb) return null;
+    final path = rawPath?.trim();
+    if (path == null ||
+        path.isEmpty ||
+        path.startsWith('http://') ||
+        path.startsWith('https://') ||
+        (ignorePreset && path.startsWith('preset:'))) {
+      return null;
+    }
+    try {
+      final file = File(path);
+      if (!file.existsSync()) return null;
+      final bytes = await file.readAsBytes();
+      if (bytes.lengthInBytes > _maxCloudImageBytes) return null;
+      return base64Encode(bytes);
+    } catch (e) {
+      debugPrint('Erro ao ler mídia de perfil para nuvem: $e');
+      return null;
+    }
+  }
+
+  /// Sends full local backup payload to Cloud Firestore with conflict-safe
+  /// timestamp merge and size protection for the 1 MB Firestore limit.
   static Future<bool> backupToCloud({bool silent = false}) async {
     if (_restoringCloud) return false;
     final user = CloudAuthService.currentUser.value;
@@ -96,58 +125,99 @@ class CloudSyncService {
 
     try {
       if (!silent) syncStatus.value = CloudSyncStatus.syncing;
-      final rawPayload = StorageService.exportFullBackupJson();
-      final decoded = BackupCodec.decode(rawPayload);
+      final localRawPayload = StorageService.exportFullBackupJson();
+      final localDecoded = BackupCodec.decode(localRawPayload);
 
-      final profile = StorageService.userProfile;
-      String? avatarBase64;
-      String? bannerBase64;
+      final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final existingSnap = await docRef.get();
 
-      if (!kIsWeb) {
-        // Encode custom avatar image to Base64 (up to 600KB)
-        final avPath = profile.avatarImagePath?.trim();
-        if (avPath != null &&
-            avPath.isNotEmpty &&
-            !avPath.startsWith('http://') &&
-            !avPath.startsWith('https://')) {
-          try {
-            final avFile = File(avPath);
-            if (avFile.existsSync()) {
-              final bytes = await avFile.readAsBytes();
-              if (bytes.lengthInBytes <= 600 * 1024) {
-                avatarBase64 = base64Encode(bytes);
-              }
-            }
-          } catch (e) {
-            debugPrint('Erro ao ler foto de perfil para nuvem: $e');
+      Map<String, dynamic> mergedDecoded = localDecoded;
+      bool cloudIsNewer = false;
+
+      if (existingSnap.exists && existingSnap.data() != null) {
+        final existingData = existingSnap.data()!;
+        if (existingData['userEmail'] != null &&
+            user.email != null &&
+            (existingData['userEmail'] as String).toLowerCase() !=
+                user.email!.toLowerCase()) {
+          if (!silent) {
+            syncStatus.value = CloudSyncStatus.error;
+            syncErrorMessage.value =
+                'Os dados na nuvem pertencem a outra conta de email.';
           }
+          return false;
         }
 
-        // Encode custom banner image to Base64 (up to 600KB)
-        final banPath = profile.bannerImagePath?.trim();
-        if (banPath != null &&
-            banPath.isNotEmpty &&
-            !banPath.startsWith('http://') &&
-            !banPath.startsWith('https://') &&
-            !banPath.startsWith('preset:')) {
+        final existingPayload = existingData['payload'];
+        if (existingPayload is String && existingPayload.trim().isNotEmpty) {
           try {
-            final banFile = File(banPath);
-            if (banFile.existsSync()) {
-              final bytes = await banFile.readAsBytes();
-              if (bytes.lengthInBytes <= 600 * 1024) {
-                bannerBase64 = base64Encode(bytes);
-              }
-            }
+            final cloudDecoded = BackupCodec.decode(existingPayload);
+            final remoteAt = DateTime.tryParse(
+              (existingData['updatedAtLocal'] ?? '').toString(),
+            );
+            final localSyncAt = lastCloudSyncTime.value;
+            cloudIsNewer =
+                remoteAt != null &&
+                (localSyncAt == null || remoteAt.isAfter(localSyncAt));
+
+            mergedDecoded = BackupCodec.mergeCloudAndLocal(
+              cloudDecoded,
+              localDecoded,
+              cloudIsNewer: cloudIsNewer,
+            );
           } catch (e) {
-            debugPrint('Erro ao ler banner para nuvem: $e');
+            debugPrint('Aviso ao mesclar backup existente na nuvem: $e');
           }
         }
       }
 
-      final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final compacted = BackupCodec.stripEphemeralCacheForCloud(mergedDecoded);
+      final mergedRawPayload = BackupCodec.encode(compacted);
+
+      if (cloudIsNewer) {
+        _restoringCloud = true;
+        try {
+          await StorageService.importFullBackupJson(
+            mergedRawPayload,
+            clearExisting: false,
+          );
+          await ProfilePaletteService.refreshGlobalPalette(
+            StorageService.userProfile,
+          );
+        } finally {
+          _restoringCloud = false;
+        }
+      }
+
+      final profile = StorageService.userProfile;
+      String? avatarBase64 = await _readEncodedMediaUnderLimit(
+        profile.avatarImagePath,
+      );
+      String? bannerBase64 = await _readEncodedMediaUnderLimit(
+        profile.bannerImagePath,
+        ignorePreset: true,
+      );
+
+      final payloadBytes = utf8.encode(mergedRawPayload).length;
+      if (payloadBytes +
+              (avatarBase64?.length ?? 0) +
+              (bannerBase64?.length ?? 0) >
+          _maxFirestoreBudgetBytes) {
+        bannerBase64 = null;
+      }
+      if (payloadBytes + (avatarBase64?.length ?? 0) >
+          _maxFirestoreBudgetBytes) {
+        avatarBase64 = null;
+      }
+
       final now = DateTime.now();
-      final settings = decoded['settings'] as Map? ?? {};
+      final settings = compacted['settings'] as Map? ?? {};
       final readingLists = settings['user_reading_lists'] as List? ?? [];
+      final profileMap = compacted['profile'] as Map?;
+      final mascotName =
+          profileMap?['blobatarName']?.toString().trim().isNotEmpty == true
+              ? profileMap!['blobatarName'].toString().trim()
+              : profile.effectiveBlobatarName;
 
       await docRef.set({
         'updatedAt': FieldValue.serverTimestamp(),
@@ -157,16 +227,16 @@ class CloudSyncService {
         'uid': user.uid,
         'userEmail': user.email,
         'userDisplayName': user.displayName,
-        'payload': rawPayload,
-        'profile': decoded['profile'],
+        'payload': mergedRawPayload,
+        'profile': compacted['profile'],
         'avatarBase64': ?avatarBase64,
         'bannerBase64': ?bannerBase64,
         'hasCustomAvatar': avatarBase64 != null,
         'hasCustomBanner': bannerBase64 != null,
-        'favoritesCount': (decoded['favorites'] as Map?)?.length ?? 0,
-        'historyCount': (decoded['history'] as Map?)?.length ?? 0,
+        'favoritesCount': (compacted['favorites'] as Map?)?.length ?? 0,
+        'historyCount': (compacted['history'] as Map?)?.length ?? 0,
         'readingListsCount': readingLists.length,
-        'mascotName': profile.effectiveBlobatarName,
+        'mascotName': mascotName,
       }, SetOptions(merge: true));
 
       await StorageService.setActiveUserUid(user.uid);

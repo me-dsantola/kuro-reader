@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 /// Validates local exports before any Hive writes. Base64 is not encryption.
 class BackupCodec {
@@ -261,6 +262,337 @@ class BackupCodec {
       }
     }
     // Preserve unknown legacy keys; their JSON structure was checked above.
+  }
+
+  /// Remove caches efêmeros de capítulos e limita históricos extensos antes de
+  /// enviar para a nuvem, mantendo o payload compacto abaixo do limite do Firestore.
+  static Map<String, dynamic> stripEphemeralCacheForCloud(
+    Map<String, dynamic> data,
+  ) {
+    final result = Map<String, dynamic>.from(data);
+    final rawHistory = data['history'];
+    if (rawHistory is Map) {
+      final cleanHistory = <String, dynamic>{};
+      for (final entry in rawHistory.entries) {
+        final key = entry.key.toString();
+        if (key.startsWith('chapters_') && !key.startsWith('chapters_count_')) {
+          continue;
+        }
+        if (key == 'recent_reading_list' && entry.value is List) {
+          final list = List<dynamic>.from(entry.value as List);
+          cleanHistory[key] = list.length > 30 ? list.sublist(0, 30) : list;
+          continue;
+        }
+        if (key == 'reading_events_log' && entry.value is List) {
+          final list = List<dynamic>.from(entry.value as List);
+          cleanHistory[key] = list.length > 150
+              ? list.sublist(list.length - 150)
+              : list;
+          continue;
+        }
+        cleanHistory[key] = entry.value;
+      }
+      result['history'] = cleanHistory;
+    }
+    return result;
+  }
+
+  /// Mescla o snapshot da nuvem com o snapshot local preservando favoritos,
+  /// capas, progresso de páginas, capítulos lidos, coleções e perfil mais recente.
+  static Map<String, dynamic> mergeCloudAndLocal(
+    Map<String, dynamic> cloud,
+    Map<String, dynamic> local, {
+    required bool cloudIsNewer,
+  }) {
+    final older = cloudIsNewer ? local : cloud;
+    final newer = cloudIsNewer ? cloud : local;
+    final merged = <String, dynamic>{...older, ...newer};
+    merged['version'] = currentVersion;
+
+    // 1. Favoritos
+    final olderFavs = _asStringMap(older['favorites']);
+    final newerFavs = _asStringMap(newer['favorites']);
+    final mergedFavs = <String, dynamic>{};
+    for (final key in {...olderFavs.keys, ...newerFavs.keys}) {
+      final oVal = olderFavs[key];
+      final nVal = newerFavs[key];
+      if (oVal is Map && nVal is Map) {
+        mergedFavs[key] = _mergeMangaEntry(
+          _asStringMap(oVal),
+          _asStringMap(nVal),
+        );
+      } else {
+        mergedFavs[key] = nVal ?? oVal;
+      }
+    }
+    merged['favorites'] = mergedFavs;
+
+    // 2. Histórico & Progresso de Leitura
+    final cloudHist = _asStringMap(cloud['history']);
+    final localHist = _asStringMap(local['history']);
+    final olderHist = cloudIsNewer ? localHist : cloudHist;
+    final newerHist = cloudIsNewer ? cloudHist : localHist;
+    final mergedHist = <String, dynamic>{};
+
+    for (final key in {...olderHist.keys, ...newerHist.keys}) {
+      if (key.startsWith('read_')) {
+        mergedHist[key] = (cloudHist[key] == true) || (localHist[key] == true);
+      } else if (key.startsWith('page_')) {
+        final cPage = cloudHist[key] is int ? cloudHist[key] as int : -1;
+        final lPage = localHist[key] is int ? localHist[key] as int : -1;
+        final maxPage = math.max(cPage, lPage);
+        if (maxPage >= 0) mergedHist[key] = maxPage;
+      } else if (key == 'recent_reading_list') {
+        mergedHist[key] = _mergeRecentReadingLists(
+          olderHist[key],
+          newerHist[key],
+        );
+      } else if (key == 'reading_events_log') {
+        mergedHist[key] = _mergeReadingEvents(olderHist[key], newerHist[key]);
+      } else if (key.startsWith('manga_meta_')) {
+        final oMeta = olderHist[key];
+        final nMeta = newerHist[key];
+        if (oMeta is Map && nMeta is Map) {
+          mergedHist[key] = _mergeMangaEntry(
+            _asStringMap(oMeta),
+            _asStringMap(nMeta),
+          );
+        } else {
+          mergedHist[key] = nMeta ?? oMeta;
+        }
+      } else {
+        mergedHist[key] = newerHist.containsKey(key)
+            ? newerHist[key]
+            : olderHist[key];
+      }
+    }
+    merged['history'] = mergedHist;
+
+    // 3. Configurações & Coleções Personalizadas
+    final olderSettings = _asStringMap(older['settings']);
+    final newerSettings = _asStringMap(newer['settings']);
+    final mergedSettings = <String, dynamic>{
+      ...olderSettings,
+      ...newerSettings,
+    };
+    if (olderSettings.containsKey('user_reading_lists') ||
+        newerSettings.containsKey('user_reading_lists')) {
+      mergedSettings['user_reading_lists'] = _mergeReadingLists(
+        olderSettings['user_reading_lists'],
+        newerSettings['user_reading_lists'],
+      );
+    }
+    merged['settings'] = mergedSettings;
+
+    // 4. Perfil & Blobatar
+    final olderProfile = _asStringMap(older['profile']);
+    final newerProfile = _asStringMap(newer['profile']);
+    if (olderProfile.isNotEmpty || newerProfile.isNotEmpty) {
+      final mergedProfile = <String, dynamic>{...olderProfile};
+      for (final entry in newerProfile.entries) {
+        if (entry.value != null) {
+          mergedProfile[entry.key] = entry.value;
+        }
+      }
+      if (olderProfile['isConfigured'] == true ||
+          newerProfile['isConfigured'] == true) {
+        mergedProfile['isConfigured'] = true;
+      }
+      merged['profile'] = mergedProfile;
+    }
+
+    return merged;
+  }
+
+  static Map<String, dynamic> _asStringMap(Object? raw) {
+    if (raw is! Map) return <String, dynamic>{};
+    final out = <String, dynamic>{};
+    for (final entry in raw.entries) {
+      if (entry.key != null) {
+        out[entry.key.toString()] = entry.value;
+      }
+    }
+    return out;
+  }
+
+  static Map<String, dynamic> _mergeMangaEntry(
+    Map<String, dynamic> older,
+    Map<String, dynamic> newer,
+  ) {
+    final result = <String, dynamic>{...older, ...newer};
+    for (final field in const [
+      'coverFileName',
+      'directCoverUrl',
+      'directHighResCoverUrl',
+    ]) {
+      final newerVal = result[field]?.toString().trim() ?? '';
+      final olderVal = older[field]?.toString().trim() ?? '';
+      if (newerVal.isEmpty && olderVal.isNotEmpty) {
+        result[field] = older[field];
+      }
+    }
+    final newerTags = result['tags'];
+    final olderTags = older['tags'];
+    if ((newerTags is! List || newerTags.isEmpty) &&
+        olderTags is List &&
+        olderTags.isNotEmpty) {
+      result['tags'] = olderTags;
+    }
+    return result;
+  }
+
+  static List<Map<String, dynamic>> _mergeRecentReadingLists(
+    Object? olderRaw,
+    Object? newerRaw,
+  ) {
+    final olderList = olderRaw is List ? olderRaw : const [];
+    final newerList = newerRaw is List ? newerRaw : const [];
+    final byMangaId = <String, Map<String, dynamic>>{};
+
+    void ingest(Object? item, bool isNewerSide) {
+      if (item is! Map) return;
+      final map = _asStringMap(item);
+      final manga = _asStringMap(map['manga']);
+      final mangaId = manga['id']?.toString().trim() ?? '';
+      if (mangaId.isEmpty) return;
+
+      final existing = byMangaId[mangaId];
+      if (existing == null) {
+        byMangaId[mangaId] = {
+          ...map,
+          'manga': manga,
+        };
+        return;
+      }
+
+      final existingTs =
+          DateTime.tryParse(existing['timestamp']?.toString() ?? '');
+      final candidateTs =
+          DateTime.tryParse(map['timestamp']?.toString() ?? '');
+      final pickCandidate = switch ((existingTs, candidateTs)) {
+        (final e?, final c?) => c.isAfter(e) || (c == e && isNewerSide),
+        (null, _?) => true,
+        (_?, null) => false,
+        (null, null) => isNewerSide,
+      };
+
+      final existingManga = _asStringMap(existing['manga']);
+      if (pickCandidate) {
+        byMangaId[mangaId] = {
+          ...map,
+          'manga': _mergeMangaEntry(existingManga, manga),
+        };
+      } else {
+        byMangaId[mangaId] = {
+          ...existing,
+          'manga': _mergeMangaEntry(manga, existingManga),
+        };
+      }
+    }
+
+    for (final item in olderList) {
+      ingest(item, false);
+    }
+    for (final item in newerList) {
+      ingest(item, true);
+    }
+
+    final sorted = byMangaId.values.toList()
+      ..sort((a, b) {
+        final aTs = DateTime.tryParse(a['timestamp']?.toString() ?? '');
+        final bTs = DateTime.tryParse(b['timestamp']?.toString() ?? '');
+        if (aTs != null && bTs != null) return bTs.compareTo(aTs);
+        if (bTs != null) return 1;
+        if (aTs != null) return -1;
+        return 0;
+      });
+    return sorted.length > 30 ? sorted.sublist(0, 30) : sorted;
+  }
+
+  static List<Map<String, dynamic>> _mergeReadingEvents(
+    Object? olderRaw,
+    Object? newerRaw,
+  ) {
+    final olderList = olderRaw is List ? olderRaw : const [];
+    final newerList = newerRaw is List ? newerRaw : const [];
+    final merged = <Map<String, dynamic>>[];
+    final seenChapterIds = <String>{};
+
+    for (final raw in [...olderList, ...newerList]) {
+      if (raw is! Map) continue;
+      final item = _asStringMap(raw);
+      final chapterId = item['chapterId']?.toString().trim() ?? '';
+      if (chapterId.isNotEmpty && !seenChapterIds.add(chapterId)) {
+        continue;
+      }
+      merged.add(item);
+    }
+    return merged.length > 150
+        ? merged.sublist(merged.length - 150)
+        : merged;
+  }
+
+  static List<Map<String, dynamic>> _mergeReadingLists(
+    Object? olderRaw,
+    Object? newerRaw,
+  ) {
+    final olderList = olderRaw is List ? olderRaw : const [];
+    final newerList = newerRaw is List ? newerRaw : const [];
+    final byId = <String, Map<String, dynamic>>{};
+
+    void absorbList(Object? raw, bool preferMeta) {
+      if (raw is! Map) return;
+      final listMap = _asStringMap(raw);
+      final id = listMap['id']?.toString().trim() ?? '';
+      if (id.isEmpty) return;
+
+      final existing = byId[id];
+      final incomingMangas = listMap['mangas'] is List
+          ? (listMap['mangas'] as List).whereType<Map>().map(_asStringMap).toList()
+          : <Map<String, dynamic>>[];
+
+      if (existing == null) {
+        byId[id] = {
+          ...listMap,
+          'mangas': incomingMangas,
+        };
+        return;
+      }
+
+      final existingMangas = existing['mangas'] is List
+          ? (existing['mangas'] as List).whereType<Map>().map(_asStringMap).toList()
+          : <Map<String, dynamic>>[];
+
+      final combinedByMangaId = <String, Map<String, dynamic>>{};
+      for (final m in existingMangas) {
+        final mid = m['id']?.toString() ?? '';
+        if (mid.isNotEmpty) combinedByMangaId[mid] = m;
+      }
+      for (final m in incomingMangas) {
+        final mid = m['id']?.toString() ?? '';
+        if (mid.isEmpty) continue;
+        final prev = combinedByMangaId[mid];
+        combinedByMangaId[mid] = prev == null
+            ? m
+            : preferMeta
+                ? _mergeMangaEntry(prev, m)
+                : _mergeMangaEntry(m, prev);
+      }
+
+      byId[id] = {
+        ...(preferMeta ? {...existing, ...listMap} : {...listMap, ...existing}),
+        'mangas': combinedByMangaId.values.toList(),
+      };
+    }
+
+    for (final raw in newerList) {
+      absorbList(raw, true);
+    }
+    for (final raw in olderList) {
+      absorbList(raw, false);
+    }
+
+    return byId.values.toList();
   }
 
   static String encode(Map<String, dynamic> data) =>

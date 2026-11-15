@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/manga_models.dart';
 import '../services/cloud_auth_service.dart';
@@ -25,6 +26,64 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
   bool _isLoading = false;
   String? _statusMessage;
 
+  Future<void> _completePostSignIn(User user) async {
+    final previousUid = StorageService.activeUserUid;
+    final isSwitchingAccount = previousUid != null && previousUid != user.uid;
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _statusMessage = 'Verificando dados na nuvem...';
+      });
+    }
+
+    // Check if user has an existing cloud backup in Firestore
+    Map<String, dynamic>? meta;
+    try {
+      meta = await CloudSyncService.checkCloudBackupMetadata();
+    } catch (_) {}
+
+    if (meta != null) {
+      // Se trocou de conta ou é uma sessão nova, limpa o estado residual
+      if (isSwitchingAccount || previousUid == null) {
+        await StorageService.clearUserDataForNewSession();
+      }
+      if (mounted) {
+        setState(() {
+          _statusMessage = 'Restaurando sua biblioteca da nuvem...';
+        });
+      }
+      await CloudSyncService.restoreFromCloud();
+      await StorageService.setActiveUserUid(user.uid);
+    } else {
+      // Novo usuário ou usuário sem backup em nuvem:
+      // JAMAIS herda favoritos, histórico ou perfil de outros usuários do aparelho.
+      if (mounted) {
+        setState(() {
+          _statusMessage = 'Preparando seu novo perfil...';
+        });
+      }
+      await StorageService.clearUserDataForNewSession();
+      final displayName = user.displayName?.trim() ?? '';
+      final emailPrefix = user.email?.split('@').first.trim() ?? '';
+      final resolvedName = displayName.isNotEmpty
+          ? displayName
+          : (emailPrefix.isNotEmpty ? emailPrefix : 'Leitor YOMI');
+      final freshProfile = UserProfile(
+        name: resolvedName,
+        avatarImagePath: user.photoURL,
+        isConfigured: false,
+      );
+      await StorageService.updateUserProfile(freshProfile);
+      await ProfilePaletteService.refreshGlobalPalette(freshProfile);
+      await StorageService.setActiveUserUid(user.uid);
+    }
+
+    if (mounted) {
+      widget.onAuthenticated();
+    }
+  }
+
   Future<void> _handleGoogleSignIn() async {
     setState(() {
       _isLoading = true;
@@ -43,60 +102,34 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
         return;
       }
 
-      final previousUid = StorageService.activeUserUid;
-      final isSwitchingAccount = previousUid != null && previousUid != user.uid;
-
+      await _completePostSignIn(user);
+    } catch (e) {
       if (mounted) {
         setState(() {
-          _statusMessage = 'Verificando dados na nuvem...';
+          _statusMessage = null;
         });
       }
-
-      // Check if user has an existing cloud backup in Firestore
-      Map<String, dynamic>? meta;
-      try {
-        meta = await CloudSyncService.checkCloudBackupMetadata();
-      } catch (_) {}
-
-      if (meta != null) {
-        // Se trocou de conta ou é uma sessão nova, limpa o estado residual
-        if (isSwitchingAccount || previousUid == null) {
-          await StorageService.clearUserDataForNewSession();
-        }
-        if (mounted) {
-          setState(() {
-            _statusMessage = 'Restaurando sua biblioteca da nuvem...';
-          });
-        }
-        await CloudSyncService.restoreFromCloud();
-        await StorageService.setActiveUserUid(user.uid);
-      } else {
-        // Novo usuário ou usuário sem backup em nuvem:
-        // JAMAIS herda favoritos, histórico ou perfil de outros usuários do aparelho.
-        // Limpa tudo, inicia perfil limpo com o nome e foto do Google, mantendo isConfigured = false.
-        if (mounted) {
-          setState(() {
-            _statusMessage = 'Preparando seu novo perfil...';
-          });
-        }
-        await StorageService.clearUserDataForNewSession();
-        final googleName = (user.displayName != null && user.displayName!.trim().isNotEmpty)
-            ? user.displayName!.trim()
-            : 'Leitor YOMI';
-        final freshProfile = UserProfile(
-          name: googleName,
-          avatarImagePath: user.photoURL,
-          isConfigured: false,
-        );
-        await StorageService.updateUserProfile(freshProfile);
-        await ProfilePaletteService.refreshGlobalPalette(freshProfile);
-        await StorageService.setActiveUserUid(user.uid);
-      }
-
+    } finally {
       if (mounted) {
-        widget.onAuthenticated();
+        setState(() {
+          _isLoading = false;
+        });
       }
-    } catch (e) {
+    }
+  }
+
+  Future<void> _openEmailAuthSheet(ProfileAdaptivePalette palette) async {
+    CloudAuthService.lastAuthError.value = null;
+    final User? signedUser = await showModalBottomSheet<User>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _EmailAuthModalSheet(palette: palette),
+    );
+    if (signedUser == null || !mounted) return;
+    try {
+      await _completePostSignIn(signedUser);
+    } catch (_) {
       if (mounted) {
         setState(() {
           _statusMessage = null;
@@ -304,6 +337,39 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
                                 ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+
+                      // Subtle Secondary Email & Password Option
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.16),
+                            ),
+                            backgroundColor: Colors.white.withValues(alpha: 0.04),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                          onPressed: _isLoading
+                              ? null
+                              : () => _openEmailAuthSheet(palette),
+                          icon: const Icon(
+                            Icons.mail_outline_rounded,
+                            size: 18,
+                          ),
+                          label: const Text(
+                            'Entrar com E-mail e Senha',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 18),
 
                       // Subtle Security & Sync Footer
@@ -407,4 +473,312 @@ class _GoogleGLogoPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _EmailAuthModalSheet extends StatefulWidget {
+  final ProfileAdaptivePalette palette;
+
+  const _EmailAuthModalSheet({required this.palette});
+
+  @override
+  State<_EmailAuthModalSheet> createState() => _EmailAuthModalSheetState();
+}
+
+class _EmailAuthModalSheetState extends State<_EmailAuthModalSheet> {
+  final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+
+  bool _isRegister = false;
+  bool _obscurePassword = true;
+  bool _submitting = false;
+  String? _localError;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    final name = _nameCtrl.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _localError = 'Informe um endereço de e-mail válido.');
+      return;
+    }
+    if (password.length < 6) {
+      setState(() => _localError = 'A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _localError = null;
+    });
+
+    final User? user = _isRegister
+        ? await CloudAuthService.registerWithEmailPassword(
+            name: name.isNotEmpty ? name : email.split('@').first,
+            email: email,
+            password: password,
+          )
+        : await CloudAuthService.signInWithEmailPassword(email, password);
+
+    if (!mounted) return;
+    if (user != null) {
+      Navigator.of(context).pop(user);
+      return;
+    }
+
+    setState(() {
+      _submitting = false;
+      _localError =
+          CloudAuthService.lastAuthError.value ??
+          'Não foi possível autenticar com este e-mail.';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final accent = widget.palette.primary;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0E0E14),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(
+            top: BorderSide(color: Colors.white12),
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              _isRegister ? 'Criar conta YOMI' : 'Entrar com E-mail',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Use a mesma conta do portal web para sincronizar sua biblioteca.',
+              style: TextStyle(fontSize: 12.5, color: Colors.white60),
+            ),
+            const SizedBox(height: 16),
+
+            // Mode toggle pills
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF161620),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ModeTabButton(
+                      label: 'Entrar',
+                      selected: !_isRegister,
+                      accent: accent,
+                      onTap: () => setState(() {
+                        _isRegister = false;
+                        _localError = null;
+                      }),
+                    ),
+                  ),
+                  Expanded(
+                    child: _ModeTabButton(
+                      label: 'Criar conta',
+                      selected: _isRegister,
+                      accent: accent,
+                      onTap: () => setState(() {
+                        _isRegister = true;
+                        _localError = null;
+                      }),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            if (_isRegister) ...[
+              TextField(
+                controller: _nameCtrl,
+                textInputAction: TextInputAction.next,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: _fieldDecoration('Nome ou apelido', Icons.person_outline_rounded),
+              ),
+              const SizedBox(height: 12),
+            ],
+            TextField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              textInputAction: TextInputAction.next,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: _fieldDecoration('E-mail', Icons.mail_outline_rounded),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _passwordCtrl,
+              obscureText: _obscurePassword,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submitting ? null : _submit(),
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: _fieldDecoration(
+                'Senha',
+                Icons.lock_outline_rounded,
+                suffix: IconButton(
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    size: 18,
+                    color: Colors.white54,
+                  ),
+                ),
+              ),
+            ),
+
+            if (_localError != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.28)),
+                ),
+                child: Text(
+                  _localError!,
+                  style: const TextStyle(fontSize: 12, color: Colors.redAccent),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 18),
+            SizedBox(
+              height: 48,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                onPressed: _submitting ? null : _submit,
+                child: _submitting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        _isRegister ? 'Criar Conta e Entrar' : 'Entrar',
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration(
+    String label,
+    IconData icon, {
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+      prefixIcon: Icon(icon, size: 18, color: Colors.white54),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: const Color(0xFF14141E),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: widget.palette.primary),
+      ),
+    );
+  }
+}
+
+class _ModeTabButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final Color accent;
+  final VoidCallback onTap;
+
+  const _ModeTabButton({
+    required this.label,
+    required this.selected,
+    required this.accent,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? accent : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : Colors.white60,
+          ),
+        ),
+      ),
+    );
+  }
 }

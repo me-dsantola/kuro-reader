@@ -158,6 +158,114 @@ class CloudAuthService {
     }
   }
 
+  static String _mapFirebaseAuthErrorPt(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-email':
+        return 'E-mail inválido. Verifique o endereço digitado.';
+      case 'user-disabled':
+        return 'Esta conta foi desativada.';
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'E-mail ou senha incorretos.';
+      case 'email-already-in-use':
+        return 'Já existe uma conta cadastrada com este e-mail.';
+      case 'weak-password':
+        return 'A senha deve ter pelo menos 6 caracteres.';
+      case 'network-request-failed':
+        return 'Sem conexão com a internet. Tente novamente.';
+      case 'too-many-requests':
+        return 'Muitas tentativas seguidas. Aguarde alguns instantes.';
+      default:
+        return (e.message?.isNotEmpty ?? false)
+            ? 'Erro Firebase (${e.code}): ${e.message}'
+            : 'Não foi possível concluir a autenticação (${e.code}).';
+    }
+  }
+
+  static Future<bool> _ensureFirebaseReadyForAuth() async {
+    if (isFirebaseAvailable.value) return true;
+    await initialize();
+    if (!isFirebaseAvailable.value) {
+      lastAuthError.value =
+          'Serviço de autenticação temporariamente indisponível. Tente novamente.';
+      return false;
+    }
+    return true;
+  }
+
+  /// Signs in with an existing email and password (shared with the YOMI Web portal).
+  static Future<User?> signInWithEmailPassword(
+    String email,
+    String password,
+  ) async {
+    if (!await _ensureFirebaseReadyForAuth()) return null;
+
+    try {
+      isSigningIn.value = true;
+      lastAuthError.value = null;
+
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      currentUser.value = credential.user;
+      return credential.user;
+    } on FirebaseAuthException catch (e) {
+      lastAuthError.value = _mapFirebaseAuthErrorPt(e);
+      return null;
+    } catch (e, stack) {
+      debugPrint('Erro Email Sign-In: $e\n$stack');
+      lastAuthError.value = 'Não foi possível entrar com e-mail e senha.';
+      return null;
+    } finally {
+      isSigningIn.value = false;
+    }
+  }
+
+  /// Registers a new account with name, email and password.
+  static Future<User?> registerWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    if (!await _ensureFirebaseReadyForAuth()) return null;
+
+    try {
+      isSigningIn.value = true;
+      lastAuthError.value = null;
+
+      final credential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      final cleanName = name.trim();
+      User? user = credential.user;
+      if (user != null && cleanName.isNotEmpty) {
+        try {
+          await user.updateDisplayName(cleanName);
+          await user.reload();
+          user = FirebaseAuth.instance.currentUser ?? user;
+        } catch (e) {
+          debugPrint('Aviso ao definir displayName: $e');
+        }
+      }
+      currentUser.value = user;
+      return user;
+    } on FirebaseAuthException catch (e) {
+      lastAuthError.value = _mapFirebaseAuthErrorPt(e);
+      return null;
+    } catch (e, stack) {
+      debugPrint('Erro Email Sign-Up: $e\n$stack');
+      lastAuthError.value = 'Não foi possível criar sua conta agora.';
+      return null;
+    } finally {
+      isSigningIn.value = false;
+    }
+  }
+
   /// Signs the user out of Firebase and Google Sign-In.
   static Future<void> signOut() async {
     try {
