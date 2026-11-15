@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../app_version.dart';
 import '../models/manga_models.dart';
 import 'app_directory_service.dart';
 import 'cloud_auth_service.dart';
@@ -151,7 +152,8 @@ class CloudSyncService {
       await docRef.set({
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedAtLocal': now.toIso8601String(),
-        'appVersion': '1.2.7',
+        'appVersion': kAppVersion,
+        'appBuild': kAppBuildNumber,
         'uid': user.uid,
         'userEmail': user.email,
         'userDisplayName': user.displayName,
