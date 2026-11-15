@@ -765,6 +765,8 @@ class Chapter {
   final String language;
   final int pages;
   final String scanlator;
+  final String? volume;
+  final bool isSpecial;
   final List<String>? directPageUrls;
   final String? externalArchiveId;
 
@@ -776,13 +778,63 @@ class Chapter {
     required this.language,
     required this.pages,
     this.scanlator = 'Scan Oficial / Comunidade',
+    this.volume,
+    this.isSpecial = false,
     this.directPageUrls,
     this.externalArchiveId,
   });
 
+  static String normalizeChapterNumber(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    final match = RegExp(r'^0*(\d+)(?:\.(\d+))?$').firstMatch(trimmed);
+    if (match == null) return trimmed;
+    final intPart = match.group(1) ?? '0';
+    final decRaw = match.group(2);
+    if (decRaw == null) return intPart;
+    final decTrimmed = decRaw.replaceFirst(RegExp(r'0+$'), '');
+    if (decTrimmed.isEmpty) return intPart;
+    return '$intPart.$decTrimmed';
+  }
+
+  static String normalizeLanguageTag(String? rawLang) {
+    final norm = (rawLang ?? 'en').trim().toUpperCase();
+    if (norm == 'PT' || norm == 'PT-BR' || norm == 'PT_BR') return 'PT-BR';
+    if (norm == 'ES-LA' || norm == 'ES_LA' || norm == 'ES') return 'ES';
+    if (norm.isEmpty) return 'EN';
+    return norm;
+  }
+
+  bool get isUnnumberedSpecial =>
+      isSpecial || double.tryParse(chapterNumber.trim()) == null;
+
+  /// Chave canônica para deduplicação de capítulos:
+  /// - Capítulos numerados (`01`, `1`, `1.0`) convergem para `ch:1`.
+  /// - Capítulos decimais (`10.5`) e capítulo `0` (`ch:0`) são preservados.
+  /// - Especiais/Oneshots sem número usam o próprio ID e nunca colidem com `Cap. 1`.
+  String get canonicalKey {
+    if (isUnnumberedSpecial) {
+      return 'special:$id';
+    }
+    return 'ch:${normalizeChapterNumber(chapterNumber)}';
+  }
+
+  String get displayLabel =>
+      isUnnumberedSpecial ? chapterNumber : 'Cap. $chapterNumber';
+
+  int get languagePriority {
+    final upper = language.toUpperCase();
+    if (upper.startsWith('PT')) return 3;
+    if (upper.startsWith('EN')) return 2;
+    if (upper.startsWith('ES')) return 1;
+    return 0;
+  }
+
   double get numericChapter {
-    final cleaned = chapterNumber.replaceAll(RegExp(r'[^0-9.]'), '');
-    return double.tryParse(cleaned) ?? 999999.0;
+    if (isSpecial) return 999999.0;
+    final direct = double.tryParse(chapterNumber.trim());
+    if (direct != null) return direct;
+    return 999999.0;
   }
 
   Map<String, dynamic> toMap() => {
@@ -793,6 +845,8 @@ class Chapter {
     'language': language,
     'pages': pages,
     'scanlator': scanlator,
+    if (volume != null) 'volume': volume,
+    if (isSpecial) 'isSpecial': isSpecial,
     'directPageUrls': directPageUrls,
     'externalArchiveId': externalArchiveId,
   };
@@ -805,6 +859,8 @@ class Chapter {
     language: (map['language'] ?? 'PT-BR').toString(),
     pages: map['pages'] is int && map['pages'] >= 0 ? map['pages'] as int : 0,
     scanlator: (map['scanlator'] ?? 'Comunidade').toString(),
+    volume: map['volume']?.toString(),
+    isSpecial: map['isSpecial'] == true,
     directPageUrls:
         map['directPageUrls'] is List &&
             (map['directPageUrls'] as List).every((value) => value is String)
@@ -827,18 +883,52 @@ class Chapter {
       }
     }
 
-    final chNum = (attr['chapter'] ?? '1').toString();
+    final rawChapter = attr['chapter']?.toString().trim();
+    final rawTitle = (attr['title'] ?? '').toString().trim();
+    final rawVol = attr['volume']?.toString().trim();
+    final volume = (rawVol != null && rawVol.isNotEmpty && rawVol != 'null')
+        ? rawVol
+        : null;
+
+    final bool unnumbered =
+        rawChapter == null ||
+        rawChapter.isEmpty ||
+        rawChapter.toLowerCase() == 'null';
+
+    late final String chNum;
+    late final bool isSpecial;
+    if (unnumbered) {
+      isSpecial = true;
+      final lowerTitle = rawTitle.toLowerCase();
+      chNum = (lowerTitle.contains('extra') ||
+              lowerTitle.contains('omake') ||
+              lowerTitle.contains('special') ||
+              lowerTitle.contains('especial') ||
+              lowerTitle.contains('bônus') ||
+              lowerTitle.contains('bonus'))
+          ? 'Extra'
+          : 'Oneshot';
+    } else {
+      isSpecial = false;
+      chNum = normalizeChapterNumber(rawChapter);
+    }
+
+    final resolvedTitle = rawTitle.isNotEmpty
+        ? rawTitle
+        : (unnumbered
+              ? (volume != null ? '$chNum (Vol. $volume)' : chNum)
+              : 'Capítulo $chNum');
+
     return Chapter(
       id: json['id'].toString(),
       source: source,
       chapterNumber: chNum,
-      title:
-          (attr['title'] != null && attr['title'].toString().trim().isNotEmpty)
-          ? attr['title'].toString()
-          : 'Capítulo $chNum',
-      language: (attr['translatedLanguage'] ?? 'en').toString().toUpperCase(),
+      title: resolvedTitle,
+      language: normalizeLanguageTag(attr['translatedLanguage']?.toString()),
       pages: (attr['pages'] as int?) ?? 0,
       scanlator: scanName,
+      volume: volume,
+      isSpecial: isSpecial,
     );
   }
 }

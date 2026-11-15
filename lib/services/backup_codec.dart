@@ -197,6 +197,7 @@ class BackupCodec {
       'title',
       'language',
       'scanlator',
+      'volume',
       'externalArchiveId',
     ]) {
       _optional(value, key, (v) => v is String);
@@ -204,6 +205,7 @@ class BackupCodec {
     if (value['id'] is! String || (value['id'] as String).isEmpty) {
       _invalid('id do capítulo');
     }
+    _optional(value, 'isSpecial', (v) => v is bool);
     _optional(value, 'pages', _nonNegativeInt);
     _optional(value, 'directPageUrls', _strings);
   }

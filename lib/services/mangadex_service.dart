@@ -1,11 +1,12 @@
-import 'device_state_service.dart';
-import 'observed_http.dart';
-import '../models/catalog_sort.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import '../models/manga_models.dart';
+import '../models/catalog_sort.dart';
 import '../models/content_rating.dart';
+import '../models/manga_models.dart';
+import 'device_state_service.dart';
+import 'observed_http.dart';
 import 'storage_service.dart';
 import 'telegram_vault_service.dart';
 
@@ -881,17 +882,58 @@ class MangaDexService {
           'Accept': 'application/json',
         };
 
-  /// Executa GET resiliente:
-  /// - No Android / Windows Desktop (!kIsWeb): chamada direta nativa em 0ms.
+  @visibleForTesting
+  static Duration httpRetryBaseDelay = const Duration(milliseconds: 300);
+
+  static Duration _computeRetryDelay(
+    http.Response? res,
+    int attemptIndex,
+  ) {
+    if (res != null && res.statusCode == 429) {
+      final retryAfterRaw = res.headers['retry-after'] ?? res.headers['Retry-After'];
+      final secs = int.tryParse(retryAfterRaw?.trim() ?? '');
+      if (secs != null && secs >= 0) {
+        final cappedMs = (secs * 1000).clamp(50, 3500);
+        if (httpRetryBaseDelay.inMilliseconds < 50) {
+          return httpRetryBaseDelay;
+        }
+        return Duration(milliseconds: cappedMs);
+      }
+    }
+    return httpRetryBaseDelay * (1 << attemptIndex);
+  }
+
+  /// Executa GET resiliente com retry e backoff para HTTP 429 / 502 / 503 / 504:
+  /// - No Android / Windows Desktop (!kIsWeb): chamada direta nativa.
   /// - No Chrome Web (kIsWeb): usa túnel JSON AllOrigins (/get) + CodeTabs + tentativa direta.
   static Future<http.Response> safeHttpGet(String rawUrl) async {
     if (!kIsWeb) {
-      final directRes = await ObservedHttp.get(
-        Uri.parse(rawUrl),
-        headers: headers,
-      ).timeout(const Duration(seconds: 8));
-      if (directRes.statusCode == 200) return directRes;
-      throw Exception('HTTP ${directRes.statusCode}');
+      const maxAttempts = 3;
+      for (var attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          final directRes = await ObservedHttp.get(
+            Uri.parse(rawUrl),
+            headers: headers,
+          ).timeout(const Duration(seconds: 8));
+          if (directRes.statusCode == 200) return directRes;
+
+          final retryable =
+              directRes.statusCode == 429 ||
+              directRes.statusCode == 502 ||
+              directRes.statusCode == 503 ||
+              directRes.statusCode == 504;
+          if (!retryable || attempt == maxAttempts - 1) {
+            throw Exception('HTTP ${directRes.statusCode}');
+          }
+          await Future<void>.delayed(_computeRetryDelay(directRes, attempt));
+        } on TimeoutException {
+          if (attempt == maxAttempts - 1 || DeviceStateService.instance.isOffline) {
+            rethrow;
+          }
+          await Future<void>.delayed(_computeRetryDelay(null, attempt));
+        }
+      }
+      throw Exception('Falha de conexão na fonte');
     }
 
     // 1. Tenta AllOrigins JSON envelope (/get?url=...) que sempre envia Access-Control-Allow-Origin: *
@@ -1149,10 +1191,11 @@ class MangaDexService {
   }
 
   /// Resolve um título vindo do AniList, MyAnimeList ou Kitsu para o UUID real de leitura (com cache em memória!)
-  static Future<String?> _resolveMangaDexUuidByTitle(String title) async {
+  static Future<({String? uuid, bool networkError})>
+  _resolveMangaDexUuidByTitleWithStatus(String title) async {
     final normKey = title.toLowerCase().trim();
     if (_resolvedTitleUuidCache.containsKey(normKey)) {
-      return _resolvedTitleUuidCache[normKey];
+      return (uuid: _resolvedTitleUuidCache[normKey], networkError: false);
     }
 
     try {
@@ -1166,7 +1209,7 @@ class MangaDexService {
       // title just because MangaDex returned it first.
       String normalizeTitle(String value) => normalizeMangaTitle(value);
       final requested = normalizeTitle(title);
-      if (requested.isEmpty) return null;
+      if (requested.isEmpty) return (uuid: null, networkError: false);
       for (final entry in list) {
         if (entry is! Map) continue;
         final attributes = entry['attributes'];
@@ -1192,15 +1235,15 @@ class MangaDexService {
         final foundId = entry['id']?.toString();
         if (foundId != null && foundId.isNotEmpty) {
           _resolvedTitleUuidCache[normKey] = foundId;
-          return foundId;
+          return (uuid: foundId, networkError: false);
         }
       }
-    } catch (_) {}
-    return null;
+      return (uuid: null, networkError: false);
+    } catch (_) {
+      return (uuid: null, networkError: true);
+    }
   }
 
-  /// Descoberta Unificada de Fontes com UMA ÚNICA requisição de capítulos!
-  /// Compara a quantidade de capítulos em cada fonte e seleciona de cara a mais completa.
   static final Map<String, bool> _olderChapterPages = {};
 
   static bool hasOlderChapters(String mangaId) =>
@@ -1209,6 +1252,7 @@ class MangaDexService {
   static Future<Map<MangaSourceType, List<Chapter>>> discoverAllSourcesForManga(
     Manga manga, {
     int offset = 0,
+    bool? includeSpanishFallback,
   }) async {
     final Map<MangaSourceType, List<Chapter>> sourceChaptersMap = {};
     if (DeviceStateService.instance.isOffline) {
@@ -1260,9 +1304,22 @@ class MangaDexService {
     for (final alt in manga.alternativeSources) {
       targetUuid ??= mangadexIdFor(alt);
     }
-    targetUuid ??= await _resolveMangaDexUuidByTitle(manga.title);
+
+    var titleLookupFailed = false;
+    if (targetUuid == null) {
+      final resolved = await _resolveMangaDexUuidByTitleWithStatus(manga.title);
+      targetUuid = resolved.uuid;
+      titleLookupFailed = resolved.networkError;
+    }
 
     if (targetUuid == null || targetUuid.isEmpty) {
+      if (titleLookupFailed) {
+        final existing = StorageService.getOfflineOrCachedChapters(manga.id);
+        if (existing.isNotEmpty) {
+          return {manga.source: existing};
+        }
+        throw Exception('Falha temporária ao localizar capítulos da obra.');
+      }
       await StorageService.cacheMangaChapters(
         manga.id,
         const [],
@@ -1271,28 +1328,33 @@ class MangaDexService {
       return {manga.source: []};
     }
 
-    // Carregamento otimizado com preenchimento inteligente de lacunas (Smart Gap Filling):
-    // 1. Busca primeiro em PT-BR para não diluir os limites com múltiplos idiomas.
-    // 2. Se a obra for grande (ex: One Piece com 1000+ capítulos), busca páginas subsequentes automaticamente.
-    // 3. Busca em EN para preencher de forma transparente quaisquer capítulos ausentes em PT-BR.
-    // 4. Desduplica por número de capítulo garantindo sequência contínua (1, 2, 3...) sem duplicatas na tela.
-    const pageSize = 500;
+    // Carregamento completo com preenchimento de lacunas (PT-BR -> EN -> ES),
+    // paginação além de 1.500 capítulos e concorrência controlada (máx. 2 reqs).
+    const int pageSize = 500;
+    const int maxFeedOffsetPerLanguage = 2500;
+    const int maxConcurrentPages = 2;
 
-    Future<({List<Chapter> chapters, int total})> fetchFeed(
-      String lang, {
-      int reqOffset = 0,
+    Future<
+      ({List<Chapter> chapters, int total, int rawCount, bool failed})
+    > fetchFeedPage(
+      List<String> langs, {
+      required int reqOffset,
     }) async {
       try {
+        final langParams = langs
+            .map((l) => 'translatedLanguage[]=${Uri.encodeQueryComponent(l)}')
+            .join('&');
         final url =
             '$_baseUrl/manga/$targetUuid/feed?limit=$pageSize&offset=$reqOffset'
-            '&translatedLanguage[]=$lang'
+            '&$langParams'
             '&includes[]=scanlation_group'
             '&order[chapter]=desc'
             '&includeExternalUrl=0';
         final response = await safeHttpGet(url);
         final data = jsonDecode(response.body);
         final List entries = data['data'] ?? [];
-        final total = (data['total'] as int?) ?? entries.length;
+        final rawCount = entries.length;
+        final total = (data['total'] as int?) ?? rawCount;
         final list = entries
             .whereType<Map<String, dynamic>>()
             .map(
@@ -1301,90 +1363,148 @@ class MangaDexService {
             )
             .where((ch) => ch.pages > 0)
             .toList();
-        return (chapters: list, total: total);
+        return (
+          chapters: list,
+          total: total,
+          rawCount: rawCount,
+          failed: false,
+        );
       } catch (_) {
-        return (chapters: <Chapter>[], total: 0);
+        return (
+          chapters: <Chapter>[],
+          total: 0,
+          rawCount: 0,
+          failed: true,
+        );
       }
     }
 
-    final initialFeeds = await Future.wait([
-      fetchFeed('pt-br', reqOffset: offset),
-      fetchFeed('en', reqOffset: offset),
-    ]);
+    Future<
+      ({List<Chapter> chapters, bool failed, bool hasMore, int total})
+    > fetchAllPagesForLanguage(
+      List<String> langs, {
+      required int startOffset,
+    }) async {
+      final first = await fetchFeedPage(langs, reqOffset: startOffset);
+      if (first.failed) {
+        return (
+          chapters: <Chapter>[],
+          failed: true,
+          hasMore: false,
+          total: 0,
+        );
+      }
 
-    final ptResult = initialFeeds[0];
-    final enResult = initialFeeds[1];
+      final all = List<Chapter>.from(first.chapters);
+      var coveredUntil = startOffset + first.rawCount;
+      var partialFailure = false;
 
-    final List<Chapter> allPtChapters = List<Chapter>.from(ptResult.chapters);
-    final List<Chapter> allEnChapters = List<Chapter>.from(enResult.chapters);
-
-    // Para obras com muitos capítulos (ex: One Piece, Bleach, Detective Conan),
-    // carrega páginas adicionais do feed em paralelo até cobrir todo o catálogo inicial.
-    if (offset == 0) {
-      final extraPt = <Future<({List<Chapter> chapters, int total})>>[];
-      final extraEn = <Future<({List<Chapter> chapters, int total})>>[];
-      if (ptResult.total > pageSize) {
-        for (
-          int nextOff = pageSize;
-          nextOff < ptResult.total && nextOff < 1500;
-          nextOff += pageSize
-        ) {
-          extraPt.add(fetchFeed('pt-br', reqOffset: nextOff));
+      if (startOffset == 0 && first.total > pageSize) {
+        final extraOffsets = <int>[
+          for (
+            int nextOff = pageSize;
+            nextOff < first.total && nextOff <= maxFeedOffsetPerLanguage;
+            nextOff += pageSize
+          )
+            nextOff,
+        ];
+        for (var i = 0; i < extraOffsets.length; i += maxConcurrentPages) {
+          final chunk = extraOffsets.sublist(
+            i,
+            (i + maxConcurrentPages).clamp(0, extraOffsets.length),
+          );
+          final chunkResults = await Future.wait([
+            for (final off in chunk) fetchFeedPage(langs, reqOffset: off),
+          ]);
+          for (var j = 0; j < chunkResults.length; j++) {
+            final res = chunkResults[j];
+            if (res.failed) {
+              partialFailure = true;
+            } else {
+              all.addAll(res.chapters);
+              final end = chunk[j] + res.rawCount;
+              if (end > coveredUntil) coveredUntil = end;
+            }
+          }
         }
       }
-      if (enResult.total > pageSize) {
-        for (
-          int nextOff = pageSize;
-          nextOff < enResult.total && nextOff < 1500;
-          nextOff += pageSize
-        ) {
-          extraEn.add(fetchFeed('en', reqOffset: nextOff));
-        }
+
+      final hasMore =
+          partialFailure ||
+          (startOffset == 0
+              ? first.total > (maxFeedOffsetPerLanguage + pageSize)
+              : coveredUntil < first.total);
+
+      return (
+        chapters: all,
+        failed: false,
+        hasMore: hasMore,
+        total: first.total,
+      );
+    }
+
+    final ptRes = await fetchAllPagesForLanguage(
+      const ['pt-br'],
+      startOffset: offset,
+    );
+    final enRes = await fetchAllPagesForLanguage(
+      const ['en'],
+      startOffset: offset,
+    );
+
+    final useSpanish =
+        includeSpanishFallback ?? StorageService.includeSpanishFallback;
+    final esRes = useSpanish
+        ? await fetchAllPagesForLanguage(
+            const ['es', 'es-la'],
+            startOffset: offset,
+          )
+        : (chapters: <Chapter>[], failed: false, hasMore: false, total: 0);
+
+    final allFeedsFailed =
+        ptRes.failed && enRes.failed && (!useSpanish || esRes.failed);
+    final anyFeedFailed =
+        ptRes.failed || enRes.failed || (useSpanish && esRes.failed);
+
+    if (allFeedsFailed) {
+      final fallbackCached = StorageService.getOfflineOrCachedChapters(
+        manga.id,
+      );
+      if (fallbackCached.isNotEmpty) {
+        return {manga.source: fallbackCached};
       }
-      final extraResults = await Future.wait([
-        Future.wait(extraPt),
-        Future.wait(extraEn),
-      ]);
-      for (final res in extraResults[0]) {
-        allPtChapters.addAll(res.chapters);
-      }
-      for (final res in extraResults[1]) {
-        allEnChapters.addAll(res.chapters);
-      }
+      throw Exception(
+        'Não foi possível consultar os capítulos no momento. Tente novamente.',
+      );
     }
 
     final Map<String, Chapter> completeChapters = {};
-
-    // 1. Prioridade máxima: capítulos traduzidos em PT-BR
-    for (final ch in allPtChapters) {
-      final numKey = ch.chapterNumber.trim();
-      if (numKey.isEmpty) continue;
-      completeChapters.putIfAbsent(numKey, () => ch);
-    }
-
-    // 2. Preenchimento de lacunas (gaps) com Inglês (EN):
-    // Capítulos ausentes em PT-BR são preenchidos pelo equivalente em EN sem duplicar
-    for (final ch in allEnChapters) {
-      final numKey = ch.chapterNumber.trim();
-      if (numKey.isEmpty) continue;
-      completeChapters.putIfAbsent(numKey, () => ch);
-    }
-
-    // 3. Fallback adicional em espanhol para obras que não possuem PT-BR nem EN
-    if (completeChapters.isEmpty) {
-      final esResult = await fetchFeed('es', reqOffset: offset);
-      for (final ch in esResult.chapters) {
-        final numKey = ch.chapterNumber.trim();
-        if (numKey.isNotEmpty) completeChapters.putIfAbsent(numKey, () => ch);
+    void mergeIntoComplete(List<Chapter> incoming) {
+      for (final ch in incoming) {
+        final key = ch.canonicalKey;
+        if (key.isEmpty) continue;
+        final existing = completeChapters[key];
+        if (existing == null ||
+            ch.languagePriority > existing.languagePriority ||
+            (ch.languagePriority == existing.languagePriority &&
+                ch.pages > existing.pages)) {
+          completeChapters[key] = ch;
+        }
       }
+    }
+
+    // Prioridade: PT-BR > EN > ES (espanhol preenche lacunas quando ativo)
+    mergeIntoComplete(ptRes.chapters);
+    mergeIntoComplete(enRes.chapters);
+    if (useSpanish) {
+      mergeIntoComplete(esRes.chapters);
     }
 
     final completeList = completeChapters.values.toList()
       ..sort((a, b) => b.numericChapter.compareTo(a.numericChapter));
 
     _olderChapterPages[manga.id] =
-        (ptResult.total > allPtChapters.length) ||
-        (enResult.total > allEnChapters.length);
+        ptRes.hasMore || enRes.hasMore || (useSpanish && esRes.hasMore);
 
     sourceChaptersMap[manga.source] = completeList;
     sourceChaptersMap[MangaSourceType.mangadex] = completeList;
@@ -1392,8 +1512,9 @@ class MangaDexService {
       sourceChaptersMap.putIfAbsent(alt.source, () => completeList);
     }
 
-    // Grava no cache para leitura offline instantânea
-    if (offset == 0) {
+    // Grava no cache somente se encontrou capítulos ou se TODAS as consultas
+    // retornaram com sucesso confirmado (evitando marcar 0 capítulos em erro parcial).
+    if (offset == 0 && (completeList.isNotEmpty || !anyFeedFailed)) {
       final cached = StorageService.getCachedMangaChapters(manga.id);
       final seen = completeList.map((ch) => ch.id).toSet();
       await StorageService.cacheMangaChapters(manga.id, [

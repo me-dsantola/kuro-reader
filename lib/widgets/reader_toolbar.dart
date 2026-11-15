@@ -20,6 +20,7 @@ class ReaderToolbar extends StatelessWidget {
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
   final VoidCallback? onOpenManga;
+  final VoidCallback? onComments;
 
   const ReaderToolbar({
     super.key,
@@ -37,6 +38,7 @@ class ReaderToolbar extends StatelessWidget {
     this.onPrevious,
     this.onNext,
     this.onOpenManga,
+    this.onComments,
   });
 
   @override
@@ -164,6 +166,21 @@ class ReaderToolbar extends StatelessWidget {
                           color: colors.secondary,
                         ),
                       ),
+                      if (onComments != null)
+                        IconButton(
+                          constraints: const BoxConstraints(
+                            minWidth: 38,
+                            minHeight: 44,
+                          ),
+                          padding: EdgeInsets.zero,
+                          tooltip: 'Comentários do capítulo',
+                          onPressed: onComments,
+                          icon: Icon(
+                            Icons.forum_outlined,
+                            size: 21,
+                            color: colors.secondary,
+                          ),
+                        ),
                       const SizedBox(width: 2),
                       // Blobatar discreto e pausado quando os controles estão ocultos
                       TickerMode(

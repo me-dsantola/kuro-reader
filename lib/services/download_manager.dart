@@ -47,18 +47,14 @@ class DownloadManager {
   static List<Chapter> deduplicateForBatchDownload(List<Chapter> chapters) {
     final byNum = <String, Chapter>{};
     for (final ch in chapters) {
-      final key = ch.chapterNumber.trim().isEmpty
-          ? ch.id
-          : ch.chapterNumber.trim();
+      final key = ch.canonicalKey;
       final existing = byNum[key];
       if (existing == null) {
         byNum[key] = ch;
-      } else {
-        final existingPt = existing.language.toUpperCase().contains('PT');
-        final newPt = ch.language.toUpperCase().contains('PT');
-        if (!existingPt && newPt) {
-          byNum[key] = ch;
-        }
+      } else if (ch.languagePriority > existing.languagePriority ||
+          (ch.languagePriority == existing.languagePriority &&
+              ch.pages > existing.pages)) {
+        byNum[key] = ch;
       }
     }
     final list = byNum.values.toList()

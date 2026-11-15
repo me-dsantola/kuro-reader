@@ -178,6 +178,16 @@ class StorageService {
     await settingsBox.put('data_saver_mode', value);
   }
 
+  static bool get includeSpanishFallback => Hive.isBoxOpen(settingsBoxName)
+      ? settingsBox.get('include_spanish_fallback', defaultValue: true) != false
+      : true;
+
+  static Future<void> setIncludeSpanishFallback(bool value) async {
+    if (Hive.isBoxOpen(settingsBoxName)) {
+      await settingsBox.put('include_spanish_fallback', value);
+    }
+  }
+
   static bool get privacyProtectionEnabled => Hive.isBoxOpen(settingsBoxName)
       ? settingsBox.get('privacy_protection_enabled', defaultValue: true) !=
             false
@@ -233,6 +243,12 @@ class StorageService {
       await settingsBox.delete(readingListsKey);
       await settingsBox.delete('user_profile');
       await settingsBox.delete('last_cloud_sync_at_v1');
+      final draftKeys = settingsBox.keys
+          .where((k) => k is String && k.startsWith('comment_draft_'))
+          .toList();
+      for (final key in draftKeys) {
+        await settingsBox.delete(key);
+      }
     }
     const freshProfile = UserProfile(isConfigured: false);
     profileNotifier.value = freshProfile;
@@ -464,6 +480,7 @@ class StorageService {
     List<Chapter> chapters, {
     String? titleKey,
   }) async {
+    if (!Hive.isBoxOpen(historyBoxName)) return;
     if (chapters.isEmpty) {
       final existing = getCachedMangaChapters(mangaId);
       if (existing.isEmpty) {
@@ -571,6 +588,7 @@ class StorageService {
   }
 
   static List<Chapter> getCachedMangaChapters(String mangaId) {
+    if (!Hive.isBoxOpen(historyBoxName)) return [];
     final raw = historyBox.get('chapters_$mangaId');
     if (raw is! List) return [];
     return [

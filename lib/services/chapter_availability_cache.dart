@@ -14,6 +14,9 @@ enum ChapterCountStatus {
 
   /// Confirmado 0 capítulos pela fonte ou metadado explícito.
   confirmedZero,
+
+  /// Erro temporário de rede/HTTP ao consultar disponibilidade (NÃO exibir como 0 capítulos).
+  temporaryError,
 }
 
 @immutable
@@ -26,6 +29,8 @@ class ChapterAvailabilityState {
       : this._(ChapterCountStatus.unknown, null);
   const ChapterAvailabilityState.loading()
       : this._(ChapterCountStatus.loading, null);
+  const ChapterAvailabilityState.temporaryError()
+      : this._(ChapterCountStatus.temporaryError, null);
 
   factory ChapterAvailabilityState.fromConfirmedCount(int? explicitCount) {
     if (explicitCount == null) return const ChapterAvailabilityState.unknown();
@@ -42,6 +47,7 @@ class ChapterAvailabilityState {
   }
 
   bool get isConfirmedZero => status == ChapterCountStatus.confirmedZero;
+  bool get isTemporaryError => status == ChapterCountStatus.temporaryError;
 }
 
 class ChapterAvailabilityCache {
@@ -84,6 +90,16 @@ class ChapterAvailabilityCache {
     }
   }
 
+  void markTemporaryError(String mangaId) {
+    final notifier = _notifiers.putIfAbsent(
+      mangaId,
+      () => ValueNotifier(const ChapterAvailabilityState.unknown()),
+    );
+    if (notifier.value.status != ChapterCountStatus.available) {
+      notifier.value = const ChapterAvailabilityState.temporaryError();
+    }
+  }
+
   Future<void> ensureResolved(
     String mangaId,
     Future<int?> Function(String id) fetcher,
@@ -110,7 +126,7 @@ class ChapterAvailabilityCache {
         notifier.value = const ChapterAvailabilityState.unknown();
       }
     } catch (_) {
-      notifier.value = const ChapterAvailabilityState.unknown();
+      notifier.value = const ChapterAvailabilityState.temporaryError();
     } finally {
       _activeFetches--;
       _inFlight.remove(mangaId);

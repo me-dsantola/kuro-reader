@@ -21,6 +21,7 @@ import '../services/reader_image_session.dart';
 import '../widgets/reader_page_provider.dart';
 import '../widgets/reader_paged_view.dart';
 import '../widgets/yomi_blobatar_studio.dart';
+import '../widgets/comments_section_widget.dart';
 import '../services/profile_palette_service.dart';
 import '../models/reader_anchor.dart';
 import 'home_tabs.dart';
@@ -385,6 +386,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
     );
   }
 
+  void _openChapterComments() {
+    final palette = AppearanceController.instance.value.reactiveReader
+        ? _readerPalette ?? ProfilePaletteService.paletteNotifier.value
+        : ProfilePaletteService.paletteNotifier.value;
+    showChapterCommentsSheet(
+      context,
+      chapter: widget.chapter,
+      mangaTitle: widget.manga.title,
+      palette: palette,
+    );
+  }
+
   int _lastPrefetchedPage = -1;
 
   void _warmNextPage(List<String> urls) {
@@ -612,6 +625,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             onMode: _toggleMode,
                             onComplete: _markCurrentChapterFinished,
                             onOpenManga: _openMangaPage,
+                            onComments: _openChapterComments,
                             onPrevious: prevCh == null
                                 ? null
                                 : () => _goToChapter(prevCh),
@@ -818,6 +832,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             size: 18,
                           ),
                           label: const Text('Marcar como concluído'),
+                        ),
+                        TextButton.icon(
+                          onPressed: _openChapterComments,
+                          icon: const Icon(
+                            Icons.forum_outlined,
+                            size: 18,
+                          ),
+                          label: const Text('Comentários'),
                         ),
                         if (prevCh != null)
                           TextButton.icon(

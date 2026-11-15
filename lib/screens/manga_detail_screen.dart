@@ -1,12 +1,14 @@
-import '../widgets/app_feedback.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../models/comment_models.dart';
 import '../models/manga_models.dart';
-import '../services/mangadex_service.dart';
-import '../services/storage_service.dart';
 import '../services/download_manager.dart';
+import '../services/mangadex_service.dart';
 import '../services/profile_palette_service.dart';
+import '../services/storage_service.dart';
+import '../widgets/app_feedback.dart';
+import '../widgets/comments_section_widget.dart';
 import '../widgets/yomi_blobatar_studio.dart';
 import 'home_tabs.dart';
 import 'reader_screen.dart';
@@ -32,6 +34,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   late ProfileAdaptivePalette _mangaPalette;
 
   bool _loadingChapters = true;
+  bool _chapterLoadError = false;
   bool _loadingOlderChapters = false;
   bool _canLoadOlderChapters = false;
   int _nextChapterOffset = 500;
@@ -141,6 +144,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         _recommendedMostCompleteSource = bestSource;
         _selectedSource = bestSource;
         _loadingChapters = false;
+        _chapterLoadError = false;
         _canLoadOlderChapters = MangaDexService.hasOlderChapters(
           widget.manga.id,
         );
@@ -153,9 +157,18 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         setState(() {
           _chaptersBySource = {widget.manga.source: offlineOrCached};
           _loadingChapters = false;
+          _chapterLoadError = offlineOrCached.isEmpty;
         });
       }
     }
+  }
+
+  void _retryLoadChapters() {
+    setState(() {
+      _loadingChapters = true;
+      _chapterLoadError = false;
+    });
+    _discoverAndSelectBestSource();
   }
 
   Future<void> _loadOlderChapters() async {
@@ -350,7 +363,11 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     final filteredChapters = _getFilteredAndSortedChapters();
     final bool hasZeroChaptersEverywhere =
         !_loadingChapters &&
+        !_chapterLoadError &&
         _chaptersBySource.values.every((list) => list.isEmpty);
+    final bool hasSpanishChapters = _currentSourceChapters.any(
+      (c) => c.language.toUpperCase().contains('ES'),
+    );
     final palette = _mangaPalette;
 
     return Theme(
@@ -972,16 +989,24 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                               },
                             ),
                             SegmentedButton<String>(
-                              segments: const [
-                                ButtonSegment(
+                              segments: [
+                                const ButtonSegment(
                                   value: 'TODOS',
                                   label: Text('All'),
                                 ),
-                                ButtonSegment(
+                                const ButtonSegment(
                                   value: 'PT-BR',
                                   label: Text('PT'),
                                 ),
-                                ButtonSegment(value: 'EN', label: Text('EN')),
+                                const ButtonSegment(
+                                  value: 'EN',
+                                  label: Text('EN'),
+                                ),
+                                if (hasSpanishChapters || _selectedLang == 'ES')
+                                  const ButtonSegment(
+                                    value: 'ES',
+                                    label: Text('ES'),
+                                  ),
                               ],
                               selected: {_selectedLang},
                               style: ButtonStyle(
@@ -1018,23 +1043,51 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.all(32),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.sentiment_dissatisfied_rounded,
-                            size: 48,
-                            color: Colors.white38,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            hasZeroChaptersEverywhere
-                                ? 'Este título possui apenas a capa registrada e nenhum capítulo disponível nas fontes consultadas.'
-                                : 'Nenhum capítulo neste filtro de idioma. Toque em "All" acima para ver todos os capítulos da fonte.',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white54),
-                          ),
-                        ],
-                      ),
+                      child: _chapterLoadError
+                          ? Column(
+                              children: [
+                                Icon(
+                                  Icons.wifi_off_rounded,
+                                  size: 48,
+                                  color: palette.secondary.withValues(
+                                    alpha: 0.85,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Não foi possível carregar os capítulos no momento. Verifique sua conexão e tente novamente.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                                const SizedBox(height: 16),
+                                FilledButton.icon(
+                                  onPressed: _retryLoadChapters,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: palette.primary,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  icon: const Icon(Icons.refresh_rounded),
+                                  label: const Text('Tentar novamente'),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              children: [
+                                const Icon(
+                                  Icons.sentiment_dissatisfied_rounded,
+                                  size: 48,
+                                  color: Colors.white38,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  hasZeroChaptersEverywhere
+                                      ? 'Este título possui apenas a capa registrada e nenhum capítulo disponível nas fontes consultadas.'
+                                      : 'Nenhum capítulo neste filtro de idioma. Toque em "All" acima para ver todos os capítulos da fonte.',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white54),
+                                ),
+                              ],
+                            ),
                     ),
                   )
                 else
@@ -1058,7 +1111,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                           size: 22,
                         ),
                         title: Text(
-                          'Cap. ${chapter.chapterNumber} - ${chapter.title}',
+                          '${chapter.displayLabel} - ${chapter.title}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -1130,6 +1183,15 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                       ),
                     ),
                   ),
+                SliverToBoxAdapter(
+                  child: YomiCommentsSection(
+                    targetId: widget.manga.id,
+                    targetType: CommentTargetType.manga,
+                    title: 'Comentários da Obra',
+                    palette: palette,
+                    lazyLoadUntilExpanded: true,
+                  ),
+                ),
               ],
             );
           },
