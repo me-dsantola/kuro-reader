@@ -443,6 +443,7 @@ class Manga {
   final MangaSourceType source;
   final String title;
   final String description;
+  final Map<String, String> localizedDescriptions;
   final String status;
   final String? coverFileName;
   final String? directCoverUrl;
@@ -461,6 +462,7 @@ class Manga {
     this.source = MangaSourceType.mangadex,
     required this.title,
     required this.description,
+    Map<String, String> localizedDescriptions = const {},
     required this.status,
     this.coverFileName,
     this.directCoverUrl,
@@ -473,7 +475,10 @@ class Manga {
     this.preloadedChapters,
     this.availableChaptersCount = -1,
     this.alternativeSources = const [],
-  }) : updatedAt = updatedAt ?? DateTime.now(),
+  }) : localizedDescriptions = localizedDescriptions.isEmpty
+           ? const {}
+           : Map<String, String>.unmodifiable(localizedDescriptions),
+       updatedAt = updatedAt ?? DateTime.now(),
        customHeaders = kIsWeb
            ? const {}
            : (customHeaders ??
@@ -490,7 +495,99 @@ class Manga {
     return normalizeMangaTitle(title);
   }
 
+  static Map<String, String> parseLocalizedDescriptions(dynamic raw) {
+    if (raw is! Map) return const {};
+    final parsed = <String, String>{};
+    for (final entry in raw.entries) {
+      final rawKey = entry.key?.toString().trim().toLowerCase();
+      final value = entry.value?.toString().trim();
+      if (rawKey == null ||
+          rawKey.isEmpty ||
+          value == null ||
+          value.isEmpty) {
+        continue;
+      }
+      final key = rawKey == 'pt_br' ? 'pt-br' : rawKey;
+      parsed[key] = value;
+    }
+    return parsed.isEmpty ? const {} : Map<String, String>.unmodifiable(parsed);
+  }
+
+  /// Combina as sinopses localizadas da obra principal e de fontes alternativas
+  /// sem mutar o campo [description] original salvo localmente.
+  Map<String, String> get allLocalizedDescriptions {
+    final merged = <String, String>{...localizedDescriptions};
+    for (final alt in alternativeSources) {
+      for (final entry in alt.localizedDescriptions.entries) {
+        merged.putIfAbsent(entry.key, () => entry.value);
+      }
+    }
+    return merged;
+  }
+
+  /// Sinopse em português quando disponível nos metadados localizados.
+  String? get portugueseDescription {
+    final map = allLocalizedDescriptions;
+    return map['pt-br'] ?? map['pt'];
+  }
+
+  /// Texto em idioma original / alternativo distinto do português, quando presente.
+  String? get originalLanguageDescription {
+    final pt = portugueseDescription?.trim();
+    const preferredOriginalKeys = ['en', 'ja-ro', 'ja', 'ko', 'zh', 'es'];
+
+    String? findNonPortugueseIn(Map<String, String> map) {
+      for (final key in preferredOriginalKeys) {
+        final candidate = map[key]?.trim();
+        if (candidate != null && candidate.isNotEmpty && candidate != pt) {
+          return candidate;
+        }
+      }
+      for (final entry in map.entries) {
+        if (entry.key.startsWith('pt')) continue;
+        final candidate = entry.value.trim();
+        if (candidate.isNotEmpty && candidate != pt) {
+          return candidate;
+        }
+      }
+      return null;
+    }
+
+    final primaryLocalized = findNonPortugueseIn(localizedDescriptions);
+    if (primaryLocalized != null) return primaryLocalized;
+
+    final primaryDescription = description.trim();
+    if (pt != null &&
+        primaryDescription.isNotEmpty &&
+        primaryDescription != pt &&
+        primaryDescription != 'Sinopse não disponível.') {
+      return primaryDescription;
+    }
+
+    for (final alt in alternativeSources) {
+      final altLocalized = findNonPortugueseIn(alt.localizedDescriptions);
+      if (altLocalized != null) return altLocalized;
+    }
+    return null;
+  }
+
+  /// Sinopse preferencial para exibição na UI (português primeiro, com fallback seguro).
+  String get preferredDescription {
+    final pt = portugueseDescription?.trim();
+    if (pt != null && pt.isNotEmpty) return pt;
+    return description;
+  }
+
+  /// Indica se existem tanto versão em português quanto original para alternância na tela.
+  bool get hasAlternativeOriginalDescription {
+    final pt = portugueseDescription?.trim();
+    final orig = originalLanguageDescription?.trim();
+    return pt != null && pt.isNotEmpty && orig != null && orig.isNotEmpty && pt != orig;
+  }
+
   Manga copyWith({
+    String? description,
+    Map<String, String>? localizedDescriptions,
     int? availableChaptersCount,
     List<Manga>? alternativeSources,
     List<Chapter>? preloadedChapters,
@@ -499,7 +596,9 @@ class Manga {
       id: id,
       source: source,
       title: title,
-      description: description,
+      description: description ?? this.description,
+      localizedDescriptions:
+          localizedDescriptions ?? this.localizedDescriptions,
       status: status,
       coverFileName: coverFileName,
       directCoverUrl: directCoverUrl,
@@ -590,6 +689,8 @@ class Manga {
     'source': source.name,
     'title': title,
     'description': description,
+    if (localizedDescriptions.isNotEmpty)
+      'localizedDescriptions': localizedDescriptions,
     'status': status,
     'coverFileName': coverFileName,
     'directCoverUrl': directCoverUrl,
@@ -621,6 +722,9 @@ class Manga {
       source: source,
       title: (map['title'] ?? 'Sem Título').toString(),
       description: (map['description'] ?? '').toString(),
+      localizedDescriptions: parseLocalizedDescriptions(
+        map['localizedDescriptions'],
+      ),
       status: (map['status'] ?? 'PUBLICADO').toString(),
       coverFileName: map['coverFileName']?.toString(),
       directCoverUrl: map['directCoverUrl']?.toString(),
@@ -689,19 +793,23 @@ class Manga {
     }
     if (resolvedTitle.trim().isEmpty) resolvedTitle = 'Obra Sem Título';
 
-    final descMap = Map<String, dynamic>.from(attributes['description'] ?? {});
-    String resolvedDesc =
-        descMap['pt-br'] ??
-        descMap['en'] ??
-        (descMap.values.isNotEmpty
-            ? descMap.values.first.toString()
+    final localizedDescs = Manga.parseLocalizedDescriptions(
+      attributes['description'],
+    );
+    final String resolvedDesc =
+        localizedDescs['pt-br'] ??
+        localizedDescs['pt'] ??
+        localizedDescs['en'] ??
+        (localizedDescs.values.isNotEmpty
+            ? localizedDescs.values.first
             : 'Sinopse não disponível.');
 
     final rawTags = (attributes['tags'] as List?) ?? [];
     final parsedTags = rawTags
         .map((t) {
           final nameMap = t['attributes']?['name'] as Map?;
-          return (nameMap?['pt-br'] ?? nameMap?['en'] ?? '').toString();
+          return (nameMap?['pt-br'] ?? nameMap?['pt'] ?? nameMap?['en'] ?? '')
+              .toString();
         })
         .where((t) => t.isNotEmpty)
         .take(8)
@@ -749,6 +857,7 @@ class Manga {
       source: overrideSource,
       title: resolvedTitle,
       description: resolvedDesc,
+      localizedDescriptions: localizedDescs,
       status: (attributes['status'] ?? 'ongoing').toString().toUpperCase(),
       coverFileName: coverFile,
       tags: parsedTags,
