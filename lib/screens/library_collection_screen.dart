@@ -197,6 +197,7 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                     valueListenable: StorageService.profileNotifier,
                     builder: (context, profile, _) => YomiProfileBlobatar(
                       mascotContext: BloubContext.library,
+                      loading: _working,
                       profile: profile,
                       size: 68,
                       adaptiveHue: palette.hue,

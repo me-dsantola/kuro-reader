@@ -45,7 +45,9 @@ class BloubAtlas {
           .map((f) => _Frame.fromJson(f as Map<String, dynamic>))
           .toList(),
     );
-    final t = (time * (data['fps'] as num))
+    // Loading may outlast the baked clip. Repeat only its settled pulse cycle.
+    final sampleTime = state == 'thinking' && time > .3 ? .3 + (time - .3) % 1.5 : time;
+    final t = (sampleTime * (data['fps'] as num))
         .clamp(0, frames.length - 1)
         .toDouble();
     final i = t.floor();
@@ -207,7 +209,7 @@ class YomiBloubCompanion extends StatefulWidget {
   final BloubContext context;
   final String shape, expression, label;
   final Color? accent;
-  final bool animated, interactive;
+  final bool animated, interactive, loading;
   final Map<String, String>? equipment;
   const YomiBloubCompanion({
     super.key,
@@ -219,6 +221,7 @@ class YomiBloubCompanion extends StatefulWidget {
     this.accent,
     this.animated = true,
     this.interactive = true,
+    this.loading = false,
     this.equipment,
   });
   @override
@@ -236,9 +239,7 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
       _since = 0,
       _blendAt = 0,
       _last = 0,
-      _returnAt = double.infinity,
-      _gestureAt = 26;
-  int _gesture = 0;
+      _returnAt = double.infinity;
   bool _foreground = true, _reduced = false;
   ScrollPosition? _scroll;
   bool _scrollPending = false;
@@ -317,7 +318,7 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
       _colorFrom = oldWidget.accent ?? const Color(0xFF8C70FF);
       _colorAt = _time;
     }
-    if (oldWidget.context != widget.context) _opening();
+    if (oldWidget.context != widget.context || oldWidget.loading != widget.loading) _opening();
     if (oldWidget.shape != widget.shape ||
         oldWidget.expression != widget.expression) {
       _origin = _current;
@@ -360,8 +361,8 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
     } else {
       _clock.stop();
       _last = 0;
-      if ((!widget.animated || _reduced || DeviceStateService.instance.value.reduceEffects) && _state != 'idle') {
-        _origin = _current; _state = 'idle'; _since = _time; _blendAt = _time; _returnAt = double.infinity;
+      if ((!widget.animated || _reduced || DeviceStateService.instance.value.reduceEffects) && _state != (widget.loading ? 'thinking' : 'idle')) {
+        _origin = _current; _state = widget.loading ? 'thinking' : 'idle'; _since = _time; _blendAt = _time; _returnAt = double.infinity;
       }
       _colorFrom = _target;
       _colorAt = _time - 1;
@@ -375,19 +376,18 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
   }
 
   void _opening() {
-    final state = switch (widget.context) {
-      BloubContext.profile => 'orbit',
+    final state = widget.loading ? 'thinking' : switch (widget.context) {
+      BloubContext.profile => 'idle',
       BloubContext.welcome => 'wink',
-      BloubContext.library => 'thinking',
+      BloubContext.library => 'idle',
       BloubContext.complete => 'burst',
       BloubContext.empty => 'wide',
       BloubContext.reader => 'idle',
     };
     _change(state);
-    _returnAt = state == 'idle'
+    _returnAt = state == 'idle' || widget.loading
         ? double.infinity
         : _time + (state == 'burst' ? 3.6 : 2.8);
-    _gestureAt = _time + 28;
   }
 
   void _change(String state) {
@@ -454,19 +454,14 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
       _returnAt = double.infinity;
       _change('idle');
     }
-    if (widget.context != BloubContext.reader && _time >= _gestureAt) {
-      _change(['wink', 'thinking', 'wide'][_gesture++ % 3]);
-      _returnAt = _time + 2.3;
-      _gestureAt = _time + 28 + (_gesture % 3) * 7;
-    }
     _current = _sample(_time);
     _repaint.tick();
   }
 
   void _tap() {
+    if (widget.loading) return;
     _change('wink');
     _returnAt = _time + 2;
-    _gestureAt = _time + 28;
     _sync();
   }
 

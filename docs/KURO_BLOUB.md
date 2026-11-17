@@ -6,7 +6,7 @@ YomiBloubCompanion paints vectors directly with CustomPainter. There is no embed
 
 The atlas is loaded once, decoded off the UI isolate and shared by instances. Animation pauses with OS reduced motion, battery saving, app background, TickerMode and offscreen scrolling. Small avatars stay static. Profile appearance preferences and backup fields are mapped at the rendering boundary without modifying saved data.
 
-Home welcomes the reader, library is curious, profile has an orbit entrance, reader controls remain discreet, and the existing end-of-chapter footer celebrates before returning to rest. The contextual controller uses active animation time and spacing between gestures, avoiding continuously repeated celebrations.
+Home greets the reader once; profile/library stay idle, reader controls remain discreet, and the existing end-of-chapter footer celebrates once before returning to rest. There are no periodic or random gesture timers.
 
 ## Rebuild vectors
 
@@ -39,7 +39,7 @@ The authoritative rules are in the web repository's `firestore.rules`. Deploy th
 
 ### Verification
 
-Web: 77 unit/regression tests, production compilation and browser checks of all four slots, combinations, interrupted fade, mobile layout, reduced motion and preview isolation. Native: 187 tests, including catalog boundaries, ownership/category validation, customized anchors and rendering with four slots. Firestore emulator checks account isolation, immutable claims, seasonal boundaries, duplicate transactions, forged backup ownership and permanent out-of-season equipment. Run isolated rule tests using the web `tests/firestore/README.md`; never deploy its test-only calendar endpoint. Real-account cross-device synchronization and a physical entry-level Android benchmark remain release checks.
+Web: 77 unit/regression tests, production compilation and browser checks of all four slots, combinations, interrupted fade, mobile layout, reduced motion and preview isolation. Native: 188 tests, including catalog boundaries, ownership/category validation, customized anchors and rendering with four slots. Firestore emulator checks account isolation, immutable claims, seasonal boundaries, duplicate transactions, forged backup ownership and permanent out-of-season equipment. Run isolated rule tests using the web `tests/firestore/README.md`; never deploy its test-only calendar endpoint. Real-account cross-device synchronization and a physical entry-level Android benchmark remain release checks.
 
 
 ## Shape persistence audit — revision 03
@@ -51,3 +51,7 @@ Changing shape midway through a morph snapshots the displayed radii and eye corr
 The Flutter atlas v2 stores state motion separately from catalog profiles. Native playback reconstructs each contour from the selected profile and interpolated pose, and fits eyes to that profile. A shape change keeps the current action clock and blends from the currently drawn frame. This avoids a separate large animation atlas per shape. The generated asset is approximately 2.5 MB.
 
 Regression coverage: eight shapes across normal body states, three-dot loading and return transitions and multiple internal timestamps; every pair of state transitions and both sides of the blend cutoff; interrupted shape changes; cycle wraps/repeated blocks; native selected-shape differentiation and widget transitions.
+
+## Event-driven reactions (v1.2.14)
+
+Profile and library context alone leave Kuro idle. A welcome greeting is a page-entry reaction; completion celebrates once on the real end-of-chapter card; a tap is an explicit interaction. The `loading` input is bound to real requests/operations, takes priority over other reactions, stays active until the operation ends, and then interpolates back to rest. Native loading loops only the settled 1.5-second pulse so operations longer than the six-second atlas never freeze. Idle retains breathing, blinking and page-wide pointer gaze without initiating actions. The `/mascote` simulation requires an explicit loading button; it never automatically tours states.

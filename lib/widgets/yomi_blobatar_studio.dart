@@ -144,6 +144,7 @@ class YomiProfileBlobatar extends StatefulWidget {
   final blob.Backdrop? overrideBackdrop;
   final String? overrideExpressionId;
   final BloubContext mascotContext;
+  final bool loading;
   final Map<String,String>? equipment;
 
   const YomiProfileBlobatar({
@@ -155,6 +156,7 @@ class YomiProfileBlobatar extends StatefulWidget {
     this.overrideBackdrop,
     this.overrideExpressionId,
     this.mascotContext = BloubContext.profile,
+    this.loading = false,
     this.equipment,
   });
 
@@ -226,6 +228,7 @@ class _YomiProfileBlobatarState extends State<YomiProfileBlobatar> {
         .toString()
         .contains('Test');
     final child = YomiBloubCompanion(
+      loading: widget.loading,
       equipment: widget.equipment,
       size: widget.size,
       context: widget.size < 48 ? BloubContext.reader : widget.mascotContext,
