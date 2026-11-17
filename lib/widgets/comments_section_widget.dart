@@ -504,6 +504,7 @@ class _YomiCommentsSectionState extends State<YomiCommentsSection> {
     );
 
     final blobWidget = YomiProfileBlobatar(
+      equipment: const {},
       profile: synthProfile,
       size: 36,
       adaptiveHue: hue ?? widget.palette.hue,

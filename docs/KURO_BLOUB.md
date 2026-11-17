@@ -14,12 +14,30 @@ With Node 24+, run `node tool/bloub/bake.cjs`. All required upstream sources and
 
 Source is based on jeremy-prt/bloub commit b4bb3c1b5f93c7b87a2e8d620f667c4093d97749, under MIT (LICENSE.bloub is preserved beside the motor). Engine easing and the renderer are Yomi adaptations. The original README states that MIT covers its code, not the x.ai design it imitates. This integration does not establish exclusive rights to that design.
 
-## Seasonal extension, later
+## Seasonal events and wardrobe
 
-Use independent layers: atmosphere behind the mascot; body palette; head/hand accessories; foreground effects. Keep the inventory and calendar outside the animation motor. Equip an item only after the account owns it, and keep ownership when an event ends.
+The default shape is `cercle`; explicit saved shape choices are preserved. Equipment has four independent slots: aura, scarf, hat and floating object. The eight initial items are Aurora, Little Star, Winter Scarf, Santa Hat, Witch Hat, Pumpkin Orb, Golden Aura and Tiny Book. Empty strings unequip slots. Hat/scarf anchors follow the actual transformed contour; aura and floating objects share its center and scale. State policy interpolates accessory opacity through the same interrupted-transition machinery as the body. Stable poses restore accessories; orbit, swirl, burst, comet, play, alert and exclaim hide them smoothly. Reduced-motion contextual playback settles on visible idle.
 
-Start with aura colors, a scarf and a small floating star. A hat should attach to a stable head anchor during idle/wink; when a state turns the entire body into a comet or symbol, fade the hat out and restore it after the morph. Avoid stretching garments across those silhouettes. Calendar activation changes decoration automatically, while equipment remains the user's choice. Seasonal particles remain outside the chapter artwork.
+Calendar uses a fixed UTC-03 product clock, inclusive start and exclusive end: Christmas December 1–January 1; Halloween October 15–November 1; New Year December 28–January 8; Book Week April 18–25. New Year wins the overlapping visual theme, while both reward windows remain claimable. Aurora and Little Star are always claimable. Calendar changes seasonal accents automatically; equipping items remains a user choice and does not expire with the event.
 
+The web `/guarda-roupa` and native profile wardrobe support claims, combination and unequipping. Preview mode offers all items and a seasonal override without persisting anything. The override changes presentation only: production claims always use the server clock.
+
+Both clients share Firebase Auth UID and these Firestore documents:
+
+- `kuroUsers/{uid}/items/{itemId}`: immutable `{itemId, claimedAt}` grants, created with a server timestamp in a read-before-create transaction. Repeated claims are no-ops.
+- `kuroUsers/{uid}/state/equipment`: four slot strings and `updatedAt`, validated against owned grants and category membership.
+
+Ownership is separate from editable profile backups. One shared account subscription feeds the mascots; pending local writes are ignored until acknowledged. Account changes immediately clear visible equipment and invalidate old callbacks. Native offline cache is UID-scoped in its own Hive box; it cannot authorize server grants. Other commenters do not inherit the signed-in user's clothes.
+
+Catalog source: web `src/lib/kuro/catalog.json`, mirrored into the renderer's `cosmetic-catalog.ts` and native `assets/mascot/cosmetics.json`. Adding items requires keeping these mirrors, renderer designs and Firestore allowlists/windows aligned. For engine changes, synchronize web and native TypeScript sources and regenerate the native atlas with `node tool/bloub/bake.cjs`.
+
+### Release requirement
+
+The authoritative rules are in the web repository's `firestore.rules`. Deploy those rules to the shared Firebase project before releasing claim/equip UI; the old rules do not enable the new collection. No production rules or real user data were changed during implementation. This uses existing Firebase services without paid animation tools or Cloud Functions; normal Firebase project quotas still apply.
+
+### Verification
+
+Web: 73 unit/regression tests, production compilation and browser checks of all four slots, combinations, interrupted fade, mobile layout, reduced motion and preview isolation. Native: 185 tests, including catalog boundaries, ownership/category validation, customized anchors and rendering with four slots. Firestore emulator checks account isolation, immutable claims, seasonal boundaries, duplicate transactions, forged backup ownership and permanent out-of-season equipment. Run isolated rule tests using the web `tests/firestore/README.md`; never deploy its test-only calendar endpoint. Real-account cross-device synchronization and a physical entry-level Android benchmark remain release checks.
 
 
 ## Shape persistence audit — revision 03

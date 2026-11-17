@@ -8,7 +8,7 @@ function native(f,def,t){
  const coords=[];const chunks=[...f.bodyPath.matchAll(/([MC])([^MCZ]+)/g)];for(const [_,op,s] of chunks){const v=s.trim().split(/[ ,]+/).map(Number);if(op==='M')coords.push(...v);else coords.push(...v.slice(-2));}coords.splice(-2);
  const eyes=f.eyes.map(e=>{const ends=[...e.d.matchAll(/([MLA])([^MLAZ]+)/g)].map(([_,op,s])=>{const v=s.trim().split(/[ ,]+/).map(Number);return op==='A'?v.slice(-2):v;});const xs=ends.map(v=>v[0]),ys=ends.map(v=>v[1]);return [Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys),...e.matrix.match(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/gi).map(Number),e.alpha,e.surface.x,e.surface.y,e.surface.offX,e.surface.offY].map(round);});
  const arcs=def.pose(t).arcs.map(a=>{const s=a.seed;return [s.a,s.k,s.tilt,s.speed,s.phase,s.sweep,s.width,s.cx,s.cy,a.t,a.opacity].map(round);});
- return {b:coords.map(round),s:[f.silhouette.rot,f.silhouette.cx,f.silhouette.cy,f.silhouette.sx,f.silhouette.sy].map(round),a:round(f.bodyAlpha),e:eyes,r:arcs,d:f.dots.map(d=>[d.x,d.y,d.r||3,d.opacity,d.depth??1].map(round)),z:f.dotsBehind,n:f.notif?[f.notif.x,f.notif.y,f.notif.r].map(round):null,h:f.notch?[f.notch.x,f.notch.y,f.notch.r].map(round):null};
+ return {v:round(f.accessoryAlpha),b:coords.map(round),s:[f.silhouette.rot,f.silhouette.cx,f.silhouette.cy,f.silhouette.sx,f.silhouette.sy].map(round),a:round(f.bodyAlpha),e:eyes,r:arcs,d:f.dots.map(d=>[d.x,d.y,d.r||3,d.opacity,d.depth??1].map(round)),z:f.dotsBehind,n:f.notif?[f.notif.x,f.notif.y,f.notif.r].map(round):null,h:f.notch?[f.notch.x,f.notch.y,f.notch.r].map(round):null};
 }
 const shape=SHAPES.find(s=>s.id==='goutte'),expression=EXPRESSIONS.find(e=>e.id==='attentif');
 const data={version:2,fps:24,duration:6,clips:{},rest:{},profiles:{},eyeFit:{}};

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../services/device_state_service.dart';
+import '../services/kuro_cosmetics_service.dart';
+import 'kuro_accessories.dart';
 
 enum BloubContext { profile, welcome, library, reader, complete, empty }
 
@@ -99,6 +101,7 @@ class BloubAtlas {
       retarget(frame.notification),
       retarget(frame.notch),
       sil,
+      frame.accessoryAlpha,
     );
   }
 }
@@ -143,6 +146,7 @@ class _Frame {
   final bool behind;
   final List<double>? notification, notch;
   final List<double>? silhouette;
+  final double accessoryAlpha;
   const _Frame(
     this.body,
     this.alpha,
@@ -153,6 +157,7 @@ class _Frame {
     this.notification,
     this.notch, [
     this.silhouette,
+    this.accessoryAlpha = 1,
   ]);
   factory _Frame.fromJson(Map<String, dynamic> f) => _Frame(
     _numbers(f['b']),
@@ -164,6 +169,7 @@ class _Frame {
     f['n'] == null ? null : _numbers(f['n']),
     f['h'] == null ? null : _numbers(f['h']),
     _numbers(f['s']),
+    (f['v'] as num?)?.toDouble() ?? 1,
   );
   static List<double>? _circle(List<double>? a, List<double>? b, double t) {
     if (a == null && b == null) return null;
@@ -182,6 +188,7 @@ class _Frame {
     a.silhouette == null || b.silhouette == null
         ? null
         : _blend(a.silhouette!, b.silhouette!, t),
+    _mix(a.accessoryAlpha, b.accessoryAlpha, t),
   );
 }
 
@@ -195,16 +202,18 @@ class YomiBloubCompanion extends StatefulWidget {
   final String shape, expression, label;
   final Color? accent;
   final bool animated, interactive;
+  final Map<String, String>? equipment;
   const YomiBloubCompanion({
     super.key,
     this.size = 80,
     this.context = BloubContext.profile,
-    this.shape = 'goutte',
+    this.shape = 'cercle',
     this.expression = 'attentif',
     this.label = 'Kuro, seu companheiro de leitura',
     this.accent,
     this.animated = true,
     this.interactive = true,
+    this.equipment,
   });
   @override
   State<YomiBloubCompanion> createState() => _YomiBloubCompanionState();
@@ -245,6 +254,7 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
       duration: const Duration(seconds: 1),
     )..addListener(_advance);
     DeviceStateService.instance.addListener(_sync);
+    KuroCosmeticsService.instance.addListener(_cosmeticsChanged);
     if (BloubAtlas._cached != null) {
       _atlas = BloubAtlas._cached;
       _current = _atlas!._rest(widget.shape, widget.expression);
@@ -288,6 +298,10 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
       _scrollPending = false;
       if (mounted) _sync();
     });
+  }
+
+  void _cosmeticsChanged() {
+    if (mounted) _repaint.tick();
   }
 
   @override
@@ -340,6 +354,9 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
     } else {
       _clock.stop();
       _last = 0;
+      if ((!widget.animated || _reduced || DeviceStateService.instance.value.reduceEffects) && _state != 'idle') {
+        _origin = _current; _state = 'idle'; _since = _time; _blendAt = _time; _returnAt = double.infinity;
+      }
       _colorFrom = _target;
       _colorAt = _time - 1;
       // Settle a requested pose without running a hidden/reduced-motion loop.
@@ -388,14 +405,19 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
       final blink = cycle > 4.5
           ? 1 - math.sin((cycle - 4.5) / .3 * math.pi) * .96
           : 1.0;
+      final breath=1+math.sin(now*math.pi*2/5.5)*.012;
+      final centerY=(target.silhouette?[2]??0)*100;
+      final breathingBody=List<double>.from(target.body);
+      for(var i=1;i<breathingBody.length;i+=2){breathingBody[i]=centerY+(breathingBody[i]-centerY)*breath;}
       final eyes = target.eyes.map((eye) {
         final e = List<double>.from(eye);
         e[1] *= blink;
         e[6] += math.sin(now * .6) * 1.2;
+        e[7]=centerY+(e[7]-centerY)*breath;
         return e;
       }).toList();
       target = _Frame(
-        target.body,
+        breathingBody,
         target.alpha,
         eyes,
         target.arcs,
@@ -403,6 +425,8 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
         target.behind,
         target.notification,
         target.notch,
+        target.silhouette,
+        target.accessoryAlpha,
       );
     }
     final k = Curves.easeInOutCubic.transform(
@@ -444,6 +468,7 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     DeviceStateService.instance.removeListener(_sync);
+    KuroCosmeticsService.instance.removeListener(_cosmeticsChanged);
     _scroll?.removeListener(_scrollChanged);
     _clock.dispose();
     _repaint.dispose();
@@ -464,6 +489,9 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
             color: () => _color,
             paper: Theme.of(context).scaffoldBackgroundColor,
             repaint: _repaint,
+            equipment: () =>
+                widget.equipment ?? KuroCosmeticsService.instance.equipment,
+            time: () => _time,
           ),
         ),
       ),
@@ -475,10 +503,14 @@ class _BloubPainter extends CustomPainter {
   final _Frame? Function() frame;
   final Color Function() color;
   final Color paper;
+  final Map<String, String> Function() equipment;
+  final double Function() time;
   _BloubPainter({
     required this.frame,
     required this.color,
     required this.paper,
+    required this.equipment,
+    required this.time,
     required Listenable repaint,
   }) : super(repaint: repaint);
   Path _body(List<double> p) {
@@ -568,6 +600,28 @@ class _BloubPainter extends CustomPainter {
     _rings(canvas, f.arcs, true, c);
     if (f.behind) _dots(canvas, f, c);
     final body = _body(f.body);
+    final wardrobe = KuroCosmeticsService.instance;
+    final event = wardrobe.season;
+    if (event != null) {
+      canvas.drawCircle(
+        Offset.zero,
+        145,
+        Paint()
+          ..color = kuroItemColor(event).withValues(alpha: .15)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+    }
+    paintKuroAccessories(
+      canvas,
+      body,
+      f.body,
+      f.accessoryAlpha,
+      equipment(),
+      wardrobe.catalog,
+      time(),
+      behind: true,
+    );
     canvas.drawPath(
       body,
       Paint()
@@ -637,6 +691,16 @@ class _BloubPainter extends CustomPainter {
       );
     }
     _rings(canvas, f.arcs, false, c);
+    paintKuroAccessories(
+      canvas,
+      body,
+      f.body,
+      f.accessoryAlpha,
+      equipment(),
+      wardrobe.catalog,
+      time(),
+      behind: false,
+    );
     canvas.restore();
   }
 

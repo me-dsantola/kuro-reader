@@ -1,3 +1,4 @@
+import 'kuro_wardrobe_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/manga_models.dart';
@@ -90,6 +91,7 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                       return ListView(
                         padding: const EdgeInsets.only(bottom: 116),
                         children: [
+                          Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: ()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>const KuroWardrobeScreen())), icon:const Icon(Icons.checkroom_rounded), label:const Text('Guarda-roupa do Kuro'))),
                           // 1. BANNER ADAPTATIVO + TOP BAR + BOTÃO DIRETO DE BANNER + AVATAR CENTRAL SOBREPOSTO
                           SizedBox(
                             height: 294,

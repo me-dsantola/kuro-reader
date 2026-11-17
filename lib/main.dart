@@ -9,6 +9,7 @@ import 'screens/home_tabs.dart';
 import 'services/appearance_controller.dart';
 import 'services/cloud_auth_service.dart';
 import 'services/cloud_sync_service.dart';
+import 'services/kuro_cosmetics_service.dart';
 import 'services/device_state_service.dart';
 import 'services/profile_palette_service.dart';
 import 'services/scroll_chrome_controller.dart';
@@ -43,6 +44,7 @@ void main() async {
   DeviceStateService.instance.start();
   unawaited(CloudAuthService.initialize().then((_) {
     CloudSyncService.initialize();
+    if (storageReady) { unawaited(KuroCosmeticsService.instance.initialize().catchError((Object e){debugPrint('Guarda-roupa indisponível: $e');})); }
   }));
   runApp(YomiApp(storageReady: storageReady));
 }

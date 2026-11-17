@@ -144,6 +144,7 @@ class YomiProfileBlobatar extends StatefulWidget {
   final blob.Backdrop? overrideBackdrop;
   final String? overrideExpressionId;
   final BloubContext mascotContext;
+  final Map<String,String>? equipment;
 
   const YomiProfileBlobatar({
     super.key,
@@ -154,6 +155,7 @@ class YomiProfileBlobatar extends StatefulWidget {
     this.overrideBackdrop,
     this.overrideExpressionId,
     this.mascotContext = BloubContext.profile,
+    this.equipment,
   });
 
   @override
@@ -204,7 +206,7 @@ class _YomiProfileBlobatarState extends State<YomiProfileBlobatar> {
       'sick': 'confus',
     };
     const shapeMap = <String, String>{
-      'auto': 'goutte',
+      'auto': 'cercle',
       'round': 'cercle',
       'organic': 'galet',
       'boxy': 'squircle',
@@ -224,9 +226,10 @@ class _YomiProfileBlobatarState extends State<YomiProfileBlobatar> {
         .toString()
         .contains('Test');
     final child = YomiBloubCompanion(
+      equipment: widget.equipment,
       size: widget.size,
       context: widget.size < 48 ? BloubContext.reader : widget.mascotContext,
-      shape: shapeMap[widget.profile.blobatarShape] ?? 'goutte',
+      shape: shapeMap[widget.profile.blobatarShape] ?? 'cercle',
       expression: expressionMap[expressionId] ?? 'attentif',
       accent: hue == null
           ? null
@@ -327,6 +330,7 @@ class YomiMascotCompanionCard extends StatelessWidget {
   final String? subtitle;
   final String? overrideExpressionId;
   final BloubContext mascotContext;
+  final Map<String,String>? equipment;
   final VoidCallback? onTap;
   final bool compact;
 
@@ -336,6 +340,7 @@ class YomiMascotCompanionCard extends StatelessWidget {
     this.subtitle,
     this.overrideExpressionId,
     this.mascotContext = BloubContext.profile,
+    this.equipment,
     this.onTap,
     this.compact = false,
   });

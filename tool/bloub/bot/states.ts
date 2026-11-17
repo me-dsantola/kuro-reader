@@ -56,6 +56,7 @@ export interface Pose {
   /** opacite des yeux : sert aux etats sans visage */
   eyeAlpha: number
   bodyAlpha: number
+  accessoryAlpha: number
   dots: DotRender[]
   arcs: ArcSpec[]
   notif: { x: number; y: number; r: number; notch: number } | null
@@ -78,6 +79,7 @@ function base(over: Partial<Pose> = {}): Pose {
     eyes: pair(EYE_W, EYE_H),
     eyeAlpha: 1,
     bodyAlpha: 1,
+    accessoryAlpha: 1,
     dots: [],
     arcs: [],
     notif: null,
@@ -182,6 +184,7 @@ export interface StateDef {
   blinkIn: boolean
   /** Every state preserves the selected radial profile; only its pose may deform. */
   baseBody: true
+  accessories: 'stable' | 'hidden'
   /**
    * true = l'etat porte le visage "au repos", donc remplacable par l'expression
    * choisie. Seul `idle` : les autres etats a visage ont une expression relevee
@@ -201,6 +204,7 @@ function dotPulse(t: number, index: number): number {
 export const STATES: StateDef[] = [
   {
     id: 'idle',
+    accessories: 'stable',
     duration: 2.4,
     morph: 0.45,
     blinkIn: false,
@@ -211,6 +215,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'thinking',
+    accessories: 'stable',
     duration: 2.6,
     morph: 0.4,
     baseFace: false,
@@ -240,6 +245,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'wink',
+    accessories: 'stable',
     duration: 1.6,
     morph: 0.3,
     blinkIn: true,
@@ -260,6 +266,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'wide',
+    accessories: 'stable',
     duration: 1.8,
     morph: 0.55,
     blinkIn: true,
@@ -275,6 +282,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'alert',
+    accessories: 'hidden',
     duration: 2.4,
     // le "!" revient en place a 1.6 + 0.4
     minDuration: 2,
@@ -311,6 +319,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'notify',
+    accessories: 'stable',
     duration: 2.2,
     morph: 0.5,
     blinkIn: true,
@@ -339,6 +348,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'exclaim',
+    accessories: 'hidden',
     duration: 2,
     morph: 0.45,
     baseFace: false,
@@ -354,6 +364,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'sleep',
+    accessories: 'stable',
     duration: 2.4,
     morph: 0.5,
     baseFace: false,
@@ -369,6 +380,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'egg',
+    accessories: 'stable',
     duration: 1.8,
     morph: 0.4,
     baseFace: false,
@@ -386,6 +398,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'hexagon',
+    accessories: 'stable',
     duration: 1.6,
     morph: 0.4,
     baseFace: false,
@@ -402,6 +415,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'play',
+    accessories: 'hidden',
     duration: 2,
     morph: 0.5,
     baseFace: false,
@@ -428,6 +442,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'orbit',
+    accessories: 'hidden',
     duration: 3.4,
     // le corps a fini de se relacher du triangle vers la boule a 1.6 + 0.9
     minDuration: 2.5,
@@ -494,6 +509,7 @@ export const STATES: StateDef[] = [
      * catalogue, c'est une transition d'interface.
      */
     id: 'swirl',
+    accessories: 'hidden',
     // un peu plus que le tour du regard (`TURN_TIME`, 1,1 s) : les yeux doivent
     // etre poses a gauche avant que les anneaux ne s'effacent
     duration: 1.3,
@@ -520,6 +536,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'burst',
+    accessories: 'hidden',
     duration: 2.6,
     // le corps est recompose a 1.7 + 0.7
     minDuration: 2.4,
@@ -542,6 +559,7 @@ export const STATES: StateDef[] = [
 
   {
     id: 'comet',
+    accessories: 'hidden',
     duration: 2.4,
     // le point se recompose a 1.85 + 0.6 = 2.45, soit 0.05 s apres la coupe de
     // la video : ce reliquat se termine pendant le fondu suivant, comme dans la

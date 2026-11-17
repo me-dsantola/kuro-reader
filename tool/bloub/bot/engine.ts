@@ -25,6 +25,7 @@ export interface RenderedEye {
 
 export interface BotFrame {
   silhouette: Silhouette
+  accessoryAlpha: number
   bodyPath: string
   bodyAlpha: number
   eyes: RenderedEye[]
@@ -111,6 +112,7 @@ function blendPose(a: Pose, b: Pose, t: number, rotationOffset = 0): Pose {
     eyes: [lerpEye(a.eyes[0], b.eyes[0], t), lerpEye(a.eyes[1], b.eyes[1], t)],
     eyeAlpha: lerp(a.eyeAlpha, b.eyeAlpha, t),
     bodyAlpha: lerp(a.bodyAlpha, b.bodyAlpha, t),
+    accessoryAlpha: lerp(a.accessoryAlpha,b.accessoryAlpha,t),
     dots: [
       ...a.dots.map((d) => ({ ...d, opacity: d.opacity * out })),
       ...b.dots.map((d) => ({ ...d, opacity: d.opacity * t }))
@@ -278,7 +280,7 @@ export class BotEngine {
   ): Pose {
     let pose = def.pose(t)
     // Geometry belongs to the user in every state, including orbit and symbols.
-    pose = { ...pose, sil: personalizeSilhouette(pose.sil, shape ?? DEFAULT_RADII) }
+    pose = { ...pose, accessoryAlpha:def.accessories==='hidden'?0:1, sil: personalizeSilhouette(pose.sil, shape ?? DEFAULT_RADII) }
     if (def.baseFace && expr) {
       pose = { ...pose, gaze: expr.gaze, split: expr.split, eyes: expr.eyes }
     }
@@ -523,6 +525,7 @@ export class BotEngine {
 
     return {
       silhouette: sil,
+      accessoryAlpha: pose.accessoryAlpha,
       bodyPath,
       bodyAlpha: pose.bodyAlpha,
       eyes,
