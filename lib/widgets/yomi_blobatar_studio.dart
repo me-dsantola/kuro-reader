@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'app_feedback.dart';
+import 'yomi_bloub_companion.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../blobatar/flutter.dart' as blob;
@@ -142,6 +143,7 @@ class YomiProfileBlobatar extends StatefulWidget {
   final bool interactiveCycleOnTap;
   final blob.Backdrop? overrideBackdrop;
   final String? overrideExpressionId;
+  final BloubContext mascotContext;
 
   const YomiProfileBlobatar({
     super.key,
@@ -151,6 +153,7 @@ class YomiProfileBlobatar extends StatefulWidget {
     this.interactiveCycleOnTap = false,
     this.overrideBackdrop,
     this.overrideExpressionId,
+    this.mascotContext = BloubContext.profile,
   });
 
   @override
@@ -181,40 +184,58 @@ class _YomiProfileBlobatarState extends State<YomiProfileBlobatar> {
 
   @override
   Widget build(BuildContext context) {
-    final overrideExpr = _cycledIndex != null
-        ? kBlobatarExpressions[_cycledIndex!].expression
-        : (widget.overrideExpressionId != null
-              ? blobatarExpressionById(widget.overrideExpressionId!).expression
-              : null);
-    final options = buildBlobatarOptionsForProfile(
-      widget.profile,
-      overrideExpression: overrideExpr,
-      adaptiveHue: widget.adaptiveHue,
-      overrideBackdrop: widget.overrideBackdrop,
-    );
-    final seed = widget.profile.effectiveBlobatarSeed;
+    final expressionId = _cycledIndex != null
+        ? kBlobatarExpressions[_cycledIndex!].id
+        : widget.overrideExpressionId ?? widget.profile.blobatarExpression;
+    const expressionMap = <String, String>{
+      'idle': 'neutre',
+      'happy': 'heureux',
+      'love': 'heureux',
+      'wink': 'heureux',
+      'smug': 'fier',
+      'surprised': 'surpris',
+      'thinking': 'attentif',
+      'shy': 'timide',
+      'sleepy': 'somnolent',
+      'sad': 'triste',
+      'mad': 'colere',
+      'unsure': 'curieux',
+      'scared': 'effraye',
+      'sick': 'confus',
+    };
+    const shapeMap = <String, String>{
+      'auto': 'goutte',
+      'round': 'cercle',
+      'organic': 'galet',
+      'boxy': 'squircle',
+      'capsule': 'capsule',
+      'nub': 'goutte',
+      'cloud': 'nuage',
+      'droplet': 'goutte',
+      'hexagon': 'hexagone',
+      'sun': 'cercle',
+      'triangle': 'triangle',
+    };
+    final hue =
+        widget.profile.blobatarHue != null && widget.profile.blobatarHue! >= 0
+        ? widget.profile.blobatarHue
+        : widget.adaptiveHue;
     final isTestBinding = WidgetsBinding.instance.runtimeType
         .toString()
         .contains('Test');
-    final child =
-        widget.profile.blobatarAnimated &&
-            !MediaQuery.disableAnimationsOf(context)
-        ? blob.AnimatedBlobatar(
-            name: seed.isEmpty ? 'kuroyomi' : seed,
-            size: widget.size,
-            animation: blob.BlobatarAnimation.always,
-            active: !isTestBinding,
-            options: options,
-            semanticLabel:
-                'Mascote ${widget.profile.effectiveBlobatarName} de ${widget.profile.name}',
-          )
-        : blob.Blobatar(
-            name: seed.isEmpty ? 'kuroyomi' : seed,
-            size: widget.size,
-            options: options,
-            semanticLabel:
-                'Mascote ${widget.profile.effectiveBlobatarName} de ${widget.profile.name}',
-          );
+    final child = YomiBloubCompanion(
+      size: widget.size,
+      context: widget.size < 48 ? BloubContext.reader : widget.mascotContext,
+      shape: shapeMap[widget.profile.blobatarShape] ?? 'goutte',
+      expression: expressionMap[expressionId] ?? 'attentif',
+      accent: hue == null
+          ? null
+          : HSLColor.fromAHSL(1, hue % 360, .65, .65).toColor(),
+      animated: widget.profile.blobatarAnimated && !isTestBinding,
+      interactive: false,
+      label:
+          'Mascote ${widget.profile.effectiveBlobatarName} de ${widget.profile.name}',
+    );
 
     if (!widget.interactiveCycleOnTap || !widget.profile.blobatarInteractive) {
       return child;
@@ -305,6 +326,7 @@ class YomiMascotCompanionCard extends StatelessWidget {
   final String message;
   final String? subtitle;
   final String? overrideExpressionId;
+  final BloubContext mascotContext;
   final VoidCallback? onTap;
   final bool compact;
 
@@ -313,6 +335,7 @@ class YomiMascotCompanionCard extends StatelessWidget {
     required this.message,
     this.subtitle,
     this.overrideExpressionId,
+    this.mascotContext = BloubContext.profile,
     this.onTap,
     this.compact = false,
   });
@@ -1419,7 +1442,7 @@ class _ProfileAndBlobatarEditorSheetState
           decoration: InputDecoration(
             labelText: 'Semente (Seed) do Mascote',
             helperText:
-                'Qualquer palavra gera uma criatura única e determinística',
+                'Identificador preservado do seu mascote e dos seus backups',
             prefixIcon: Icon(Icons.fingerprint_rounded, color: accent),
             filled: true,
             fillColor: const Color(0xFF070709),
@@ -1469,16 +1492,7 @@ class _ProfileAndBlobatarEditorSheetState
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    blob.Blobatar(
-                      name: draft.effectiveBlobatarSeed.isEmpty
-                          ? 'kuroyomi'
-                          : draft.effectiveBlobatarSeed,
-                      size: 46,
-                      options: buildBlobatarOptionsForProfile(
-                        previewProfile,
-                        adaptiveHue: _livePalette.hue,
-                      ),
-                    ),
+                    YomiProfileBlobatar(profile: previewProfile.copyWith(blobatarAnimated: false), size: 46, adaptiveHue: _livePalette.hue),
                     const SizedBox(height: 6),
                     Text(
                       item.label,
@@ -1541,16 +1555,7 @@ class _ProfileAndBlobatarEditorSheetState
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    blob.Blobatar(
-                      name: draft.effectiveBlobatarSeed.isEmpty
-                          ? 'kuroyomi'
-                          : draft.effectiveBlobatarSeed,
-                      size: 46,
-                      options: buildBlobatarOptionsForProfile(
-                        previewProfile,
-                        adaptiveHue: _livePalette.hue,
-                      ),
-                    ),
+                    YomiProfileBlobatar(profile: previewProfile.copyWith(blobatarAnimated: false), size: 46, adaptiveHue: _livePalette.hue),
                     const SizedBox(height: 6),
                     Text(
                       item.label,

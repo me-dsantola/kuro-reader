@@ -71,6 +71,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/mascot/
     - yomi_hqs_catalog.json
     - assets/banners/
     - assets/images/
