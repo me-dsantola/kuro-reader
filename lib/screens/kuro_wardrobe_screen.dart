@@ -56,8 +56,9 @@ class _KuroWardrobeScreenState extends State<KuroWardrobeScreen> {
     });
     try {
       await action();
-      if (mounted && request == _request)
+      if (mounted && request == _request) {
         setState(() => notice = 'Guarda-roupa atualizado.');
+      }
     } catch (_) {
       if (mounted && request == _request) {
         setState(
