@@ -518,7 +518,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
       backgroundColor: Colors.black,
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: YomiPalette.ensoRed),
+              child: YomiBloubCompanion(size: 100, context: BloubContext.reader, loading: true, interactive: false),
             )
           : totalPages == 0
           ? Center(

@@ -71,6 +71,7 @@ void main() {
                 size: 300,
                 shape: 'triangle',
                 context: BloubContext.library,
+                loading: true,
               ),
             ),
           ),
@@ -96,6 +97,28 @@ void main() {
 
       expect(width(painter.frame()), inInclusiveRange(30, 42));
       expect(painter.frame().dots, hasLength(2));
+      for (var i = 0; i < 100; i++) {
+        await tester.pump(const Duration(milliseconds: 64));
+      }
+      expect(
+        width(painter.frame()),
+        inInclusiveRange(30, 42),
+        reason: 'Stay in loading until the operation ends',
+      );
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: YomiBloubCompanion(
+                size: 300,
+                shape: 'triangle',
+                context: BloubContext.library,
+                loading: false,
+              ),
+            ),
+          ),
+        ),
+      );
       var previous = List<double>.from(painter.frame().body as List<double>);
       for (var i = 0; i < 230; i++) {
         await tester.pump(const Duration(milliseconds: 16));
@@ -117,6 +140,47 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets('idle never starts unrelated actions while the user waits', (
+    tester,
+  ) async {
+    await tester.runAsync(() => BloubAtlas.load());
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: YomiBloubCompanion(
+              size: 200,
+              context: BloubContext.profile,
+              interactive: false,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 700));
+    final dynamic painter = tester
+        .widget<CustomPaint>(
+          find.descendant(
+            of: find.byType(YomiBloubCompanion),
+            matching: find.byType(CustomPaint),
+          ),
+        )
+        .painter;
+    final eyes = [
+      for (final eye in painter.frame().eyes) List<double>.from(eye),
+    ];
+    for (var i = 0; i < 1600; i++) {
+      await tester.pump(const Duration(milliseconds: 64));
+      final dynamic frame = painter.frame();
+      expect(frame.dots, isEmpty);
+      expect(frame.arcs, isEmpty);
+      for (var eye = 0; eye < eyes.length; eye++) {
+        expect(frame.eyes[eye][0], closeTo(eyes[eye][0], .001));
+        expect(frame.eyes[eye][1], lessThanOrEqualTo(eyes[eye][1] + .001));
+      }
+    }
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets(
     'native vector states render, transition, respect reduced motion and dispose',
     (tester) async {
