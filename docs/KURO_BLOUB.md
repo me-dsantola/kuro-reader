@@ -1,6 +1,6 @@
 # Kuro / native Flutter integration
 
-YomiBloubCompanion paints vectors directly with CustomPainter. There is no embedded website or video. Its shared 2.3 MB atlas is generated from the Bloub engine at 24 samples/sec; adjacent vector poses and state transitions are interpolated on the display clock. Idle shapes/expressions are cached as independent poses with native blinking. Procedural ring geometry preserves front/back occlusion. Some non-circular decorative dots are simplified as circles.
+YomiBloubCompanion paints vectors directly with CustomPainter. There is no embedded website or video. Its shared 2.5 MB atlas is generated from the Bloub engine at 24 samples/sec; adjacent vector poses and state transitions are interpolated on the display clock. Idle shapes/expressions are cached as independent poses with native blinking. Procedural ring geometry preserves front/back occlusion. Some non-circular decorative dots are simplified as circles.
 
 The atlas is loaded once, decoded off the UI isolate and shared by instances. Animation pauses with OS reduced motion, battery saving, app background, TickerMode and offscreen scrolling. Small avatars stay static. Profile appearance preferences and backup fields are mapped at the rendering boundary without modifying saved data.
 
@@ -33,11 +33,11 @@ Catalog source: web `src/lib/kuro/catalog.json`, mirrored into the renderer's `c
 
 ### Release requirement
 
-The authoritative rules are in the web repository's `firestore.rules`. Deploy those rules to the shared Firebase project before releasing claim/equip UI; the old rules do not enable the new collection. No production rules or real user data were changed during implementation. This uses existing Firebase services without paid animation tools or Cloud Functions; normal Firebase project quotas still apply.
+The authoritative rules are in the web repository's `firestore.rules`. Deploy those rules to the shared Firebase project before releasing claim/equip UI; the old rules do not enable the new collection. The production rules were deployed and read back for verification on 2026-11-17. Existing backup/comment permissions were preserved; no real user inventory was modified during testing. This uses existing Firebase services without paid animation tools or Cloud Functions; normal Firebase project quotas still apply.
 
 ### Verification
 
-Web: 73 unit/regression tests, production compilation and browser checks of all four slots, combinations, interrupted fade, mobile layout, reduced motion and preview isolation. Native: 185 tests, including catalog boundaries, ownership/category validation, customized anchors and rendering with four slots. Firestore emulator checks account isolation, immutable claims, seasonal boundaries, duplicate transactions, forged backup ownership and permanent out-of-season equipment. Run isolated rule tests using the web `tests/firestore/README.md`; never deploy its test-only calendar endpoint. Real-account cross-device synchronization and a physical entry-level Android benchmark remain release checks.
+Web: 75 unit/regression tests, production compilation and browser checks of all four slots, combinations, interrupted fade, mobile layout, reduced motion and preview isolation. Native: 185 tests, including catalog boundaries, ownership/category validation, customized anchors and rendering with four slots. Firestore emulator checks account isolation, immutable claims, seasonal boundaries, duplicate transactions, forged backup ownership and permanent out-of-season equipment. Run isolated rule tests using the web `tests/firestore/README.md`; never deploy its test-only calendar endpoint. Real-account cross-device synchronization and a physical entry-level Android benchmark remain release checks.
 
 
 ## Shape persistence audit — revision 03
