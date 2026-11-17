@@ -1,5 +1,7 @@
 # Kuro / native Flutter integration
 
+**Availability:** the wardrobe is paused from v1.2.13. Profile entry points are removed, the web route redirects to the account, and automatic wardrobe subscriptions/accessories are disabled. Kuro motion, base appearance and page-wide mouse gaze remain active. Inventory data and internal implementations are retained for future use; the seasonal section below describes that inactive implementation.
+
 YomiBloubCompanion paints vectors directly with CustomPainter. There is no embedded website or video. Its shared 2.5 MB atlas is generated from the Bloub engine at 24 samples/sec; adjacent vector poses and state transitions are interpolated on the display clock. Idle shapes/expressions are cached as independent poses with native blinking. Procedural ring geometry preserves front/back occlusion. Some non-circular decorative dots are simplified as circles.
 
 The atlas is loaded once, decoded off the UI isolate and shared by instances. Animation pauses with OS reduced motion, battery saving, app background, TickerMode and offscreen scrolling. Small avatars stay static. Profile appearance preferences and backup fields are mapped at the rendering boundary without modifying saved data.
@@ -37,15 +39,15 @@ The authoritative rules are in the web repository's `firestore.rules`. Deploy th
 
 ### Verification
 
-Web: 75 unit/regression tests, production compilation and browser checks of all four slots, combinations, interrupted fade, mobile layout, reduced motion and preview isolation. Native: 185 tests, including catalog boundaries, ownership/category validation, customized anchors and rendering with four slots. Firestore emulator checks account isolation, immutable claims, seasonal boundaries, duplicate transactions, forged backup ownership and permanent out-of-season equipment. Run isolated rule tests using the web `tests/firestore/README.md`; never deploy its test-only calendar endpoint. Real-account cross-device synchronization and a physical entry-level Android benchmark remain release checks.
+Web: 77 unit/regression tests, production compilation and browser checks of all four slots, combinations, interrupted fade, mobile layout, reduced motion and preview isolation. Native: 187 tests, including catalog boundaries, ownership/category validation, customized anchors and rendering with four slots. Firestore emulator checks account isolation, immutable claims, seasonal boundaries, duplicate transactions, forged backup ownership and permanent out-of-season equipment. Run isolated rule tests using the web `tests/firestore/README.md`; never deploy its test-only calendar endpoint. Real-account cross-device synchronization and a physical entry-level Android benchmark remain release checks.
 
 
 ## Shape persistence audit — revision 03
 
-All 15 states now preserve the selected 64-sample radial profile. State profiles from the original video are motion references only; they do not replace the character with a circle, triangle, glyph or dot. Pose rotation/translation and bounded (0.92–1.08) squash/stretch remain available. Each transition blends corresponding vertices. The eye fitting table uses this same personalized geometry.
+Normal body states preserve the selected 64-sample radial profile. Loading (`thinking`) is an intentional exception: the body shrinks into the central circle of a three-dot symbol, then interpolates back to the selected silhouette. Native playback honors the atlas `symbolStates` metadata instead of retargeting that dot into a full-size body. Other state profiles are motion references, with bounded (0.92–1.08) squash/stretch over the selected geometry. Every transition blends corresponding vertices; interrupted transitions retain their displayed origin.
 
 Changing shape midway through a morph snapshots the displayed radii and eye correction instead of restarting from the previous target. CyclePlayer uses monotonic absolute time and blended restart at block boundaries, including repeated blocks and wraps; reset is reserved for explicit seeking. No cycle or contextual return clears the selected shape.
 
 The Flutter atlas v2 stores state motion separately from catalog profiles. Native playback reconstructs each contour from the selected profile and interpolated pose, and fits eyes to that profile. A shape change keeps the current action clock and blends from the currently drawn frame. This avoids a separate large animation atlas per shape. The generated asset is approximately 2.5 MB.
 
-Regression coverage: eight shapes across fifteen states and multiple internal timestamps; every pair of state transitions and both sides of the blend cutoff; interrupted shape changes; cycle wraps/repeated blocks; native selected-shape differentiation and widget transitions.
+Regression coverage: eight shapes across normal body states, three-dot loading and return transitions and multiple internal timestamps; every pair of state transitions and both sides of the blend cutoff; interrupted shape changes; cycle wraps/repeated blocks; native selected-shape differentiation and widget transitions.

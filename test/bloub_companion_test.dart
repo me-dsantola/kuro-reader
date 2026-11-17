@@ -11,6 +11,9 @@ void main() {
     final atlas = await BloubAtlas.load();
     final clips = atlas.data['clips'] as Map<String, dynamic>;
     for (final state in clips.keys) {
+      if (state == 'thinking') {
+        continue; // Intentional three-dot loading symbol.
+      }
       for (final t in [0.0, .8, 2.49, 2.51, 4.0]) {
         final circle = atlas.sampleBody(state, t, 'cercle');
         for (final shape in [
@@ -38,6 +41,82 @@ void main() {
       }
     }
   });
+  test(
+    'loading becomes three small circles without replacing the saved shape',
+    () async {
+      final atlas = await BloubAtlas.load();
+      expect(atlas.data['symbolStates'], contains('thinking'));
+      for (final shape in ['cercle', 'goutte', 'triangle']) {
+        final loading = atlas.sampleBody('thinking', 1.2, shape);
+        final xs = [for (var i = 0; i < loading.length; i += 2) loading[i]];
+        final width =
+            xs.reduce((a, b) => a > b ? a : b) -
+            xs.reduce((a, b) => a < b ? a : b);
+        expect(width, inInclusiveRange(30, 42));
+        final frame = (atlas.data['clips'] as Map)['thinking'][29] as Map;
+        expect(frame['d'], hasLength(2)); // Center is the body; two side dots.
+        expect(atlas.sampleBody('idle', 0, shape), isNot(loading));
+      }
+    },
+  );
+  testWidgets(
+    'loading returns from three dots to the selected body without a cut',
+    (tester) async {
+      await tester.runAsync(() => BloubAtlas.load());
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: YomiBloubCompanion(
+                size: 300,
+                shape: 'triangle',
+                context: BloubContext.library,
+              ),
+            ),
+          ),
+        ),
+      );
+      for (var i = 0; i < 100; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final dynamic painter = tester
+          .widget<CustomPaint>(
+            find.descendant(
+              of: find.byType(YomiBloubCompanion),
+              matching: find.byType(CustomPaint),
+            ),
+          )
+          .painter;
+      double width(dynamic frame) {
+        final body = frame.body as List<double>;
+        final xs = [for (var i = 0; i < body.length; i += 2) body[i]];
+        return xs.reduce((a, b) => a > b ? a : b) -
+            xs.reduce((a, b) => a < b ? a : b);
+      }
+
+      expect(width(painter.frame()), inInclusiveRange(30, 42));
+      expect(painter.frame().dots, hasLength(2));
+      var previous = List<double>.from(painter.frame().body as List<double>);
+      for (var i = 0; i < 230; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final body = painter.frame().body as List<double>;
+        final step = List.generate(
+          body.length,
+          (j) => (body[j] - previous[j]).abs(),
+        ).reduce((a, b) => a > b ? a : b);
+        expect(
+          step,
+          lessThan(12),
+          reason: 'Loading exit must interpolate every frame',
+        );
+        previous = List<double>.from(body);
+      }
+      expect(width(painter.frame()), greaterThan(100));
+      expect(painter.frame().dots, isEmpty);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   testWidgets(
     'native vector states render, transition, respect reduced motion and dispose',
     (tester) async {
