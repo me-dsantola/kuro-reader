@@ -279,8 +279,9 @@ export class BotEngine {
     expr: BotExpression | null
   ): Pose {
     let pose = def.pose(t)
-    // Geometry belongs to the user in every state, including orbit and symbols.
-    pose = { ...pose, accessoryAlpha:def.accessories==='hidden'?0:1, sil: personalizeSilhouette(pose.sil, shape ?? DEFAULT_RADII) }
+    // Normal poses keep the chosen body. Loading intentionally becomes three dots;
+    // blending the original silhouette back on exit restores the chosen identity.
+    pose = { ...pose, accessoryAlpha:def.accessories==='hidden'?0:1, sil: def.baseBody ? personalizeSilhouette(pose.sil, shape ?? DEFAULT_RADII) : pose.sil }
     if (def.baseFace && expr) {
       pose = { ...pose, gaze: expr.gaze, split: expr.split, eyes: expr.eyes }
     }

@@ -11,7 +11,7 @@ function native(f,def,t){
  return {v:round(f.accessoryAlpha),b:coords.map(round),s:[f.silhouette.rot,f.silhouette.cx,f.silhouette.cy,f.silhouette.sx,f.silhouette.sy].map(round),a:round(f.bodyAlpha),e:eyes,r:arcs,d:f.dots.map(d=>[d.x,d.y,d.r||3,d.opacity,d.depth??1].map(round)),z:f.dotsBehind,n:f.notif?[f.notif.x,f.notif.y,f.notif.r].map(round):null,h:f.notch?[f.notch.x,f.notch.y,f.notch.r].map(round):null};
 }
 const shape=SHAPES.find(s=>s.id==='goutte'),expression=EXPRESSIONS.find(e=>e.id==='attentif');
-const data={version:2,fps:24,duration:6,clips:{},rest:{},profiles:{},eyeFit:{}};
+const data={version:2,fps:24,duration:6,symbolStates:STATES.filter(s=>!s.baseBody).map(s=>s.id),clips:{},rest:{},profiles:{},eyeFit:{}};
 for(const shape of SHAPES){data.profiles[shape.id]=shape.radii.map(round);data.eyeFit[shape.id]={};for(const state of STATES){data.eyeFit[shape.id][state.id]={};for(const exp of EXPRESSIONS){const fit=decalageDesYeux(shape.radii,state.id,exp.id);data.eyeFit[shape.id][state.id][exp.id]=[round(fit.x*100),round(fit.y*100)];}}}
 for(const state of STATES){const engine=new BotEngine(100,state.id,shape.radii,expression);data.clips[state.id]=Array.from({length:145},(_,i)=>native(engine.sample(i/24),state,i/24));}
 for(const s of SHAPES){data.rest[s.id]={};for(const e of EXPRESSIONS){const engine=new BotEngine(100,'idle',s.radii,e);data.rest[s.id][e.id]=native(engine.sample(0),STATES.find(d=>d.id==='idle'),0);}}

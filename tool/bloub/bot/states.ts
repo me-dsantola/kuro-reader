@@ -182,8 +182,8 @@ export interface StateDef {
   morph: number
   /** true = l'entree est masquee par un clignement, comme dans la video */
   blinkIn: boolean
-  /** Every state preserves the selected radial profile; only its pose may deform. */
-  baseBody: true
+  /** False only for intentional symbolic transforms such as the three loading dots. */
+  baseBody: boolean
   accessories: 'stable' | 'hidden'
   /**
    * true = l'etat porte le visage "au repos", donc remplacable par l'expression
@@ -215,11 +215,11 @@ export const STATES: StateDef[] = [
 
   {
     id: 'thinking',
-    accessories: 'stable',
+    accessories: 'hidden',
     duration: 2.6,
     morph: 0.4,
     baseFace: false,
-    baseBody: true,
+    baseBody: false,
     blinkIn: true,
     pose: (t) => {
       const mid = dotPulse(t, 1)

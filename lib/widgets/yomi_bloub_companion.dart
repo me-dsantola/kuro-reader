@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../services/device_state_service.dart';
 import '../services/kuro_cosmetics_service.dart';
+import '../services/kuro_features.dart';
 import 'kuro_accessories.dart';
 
 enum BloubContext { profile, welcome, library, reader, complete, empty }
@@ -53,7 +54,12 @@ class BloubAtlas {
       frames[math.min(i + 1, frames.length - 1)],
       t - i,
     );
-    // The clip supplies motion, never the user's body geometry.
+    // Symbolic loading uses its real three-dot contour, then the native state
+    // transition blends back into the selected rest shape.
+    if (((data['symbolStates'] as List?) ?? const []).contains(state)) {
+      return frame;
+    }
+    // Other clips supply motion over the user's body geometry.
     final profiles = data['profiles'] as Map<String, dynamic>;
     final radii = _numbers(profiles[shape] ?? profiles['goutte']);
     final sil = frame.silhouette!;
@@ -490,7 +496,7 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
             paper: Theme.of(context).scaffoldBackgroundColor,
             repaint: _repaint,
             equipment: () =>
-                widget.equipment ?? KuroCosmeticsService.instance.equipment,
+                widget.equipment ?? (kuroWardrobeEnabled ? KuroCosmeticsService.instance.equipment : emptyKuroEquipment),
             time: () => _time,
           ),
         ),
@@ -601,7 +607,7 @@ class _BloubPainter extends CustomPainter {
     if (f.behind) _dots(canvas, f, c);
     final body = _body(f.body);
     final wardrobe = KuroCosmeticsService.instance;
-    final event = wardrobe.season;
+    final event = kuroWardrobeEnabled ? wardrobe.season : null;
     if (event != null) {
       canvas.drawCircle(
         Offset.zero,
