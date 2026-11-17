@@ -1,3 +1,4 @@
+import { BotEngine, type BotFrame } from './engine'
 import { SEQUENCE, STATES, STATE_BY_ID, type StateId } from './states'
 
 /**
@@ -21,16 +22,8 @@ export interface Cycle {
   blocks: Block[]
 }
 
-/**
- * Plancher commun a tous les blocs. Le moteur ne garde qu'une case d'historique
- * (`BotEngine.setState` ecrase `prev`), donc un bloc plus court que le fondu d'entree du
- * bloc suivant saute a l'image au lieu de se fondre.
- *
- * DERIVE du catalogue et non ecrit a la main. La valeur etait 0,6, ce qui marchait
- * uniquement parce que 0,6 se trouvait etre le plus long `morph` du catalogue — celui
- * d'`orbit`. Rien ne le garantissait : ajouter un etat qui morphe en 0,8 s aurait fait
- * trembler l'editeur sans qu'aucun test ne bronche. Maintenant le plancher suit.
- */
+/** Minimum readable block length, derived from the longest blend. Geometry continuity
+ * also holds for interruptions: CyclePlayer never resets on a natural boundary. */
 export const MIN_BLOCK = Math.max(...STATES.map((s) => s.morph))
 
 /**
@@ -224,3 +217,26 @@ export function parseCycles(raw: string | null): Cycle[] {
   return out
 }
 
+
+/** Monotonic playback never resets the engine at a block or loop boundary. */
+export class CyclePlayer {
+  private index = 0
+  private boundary = 0
+  private last = -Infinity
+  readonly blocks: Block[]
+  constructor(readonly engine: BotEngine, blocks: Block[]) {
+    this.blocks = blocks.map(b => ({...b, duration:clampDuration(b.state,b.duration)}))
+  }
+  sample(time: number): BotFrame {
+    if (!Number.isFinite(time) || time < 0 || time < this.last) throw new RangeError('Cycle time must advance monotonically')
+    if (!this.blocks.length) return this.engine.sample(time)
+    while (time >= this.boundary) {
+      const block = this.blocks[this.index]!
+      this.engine.setState(block.state, this.boundary, true)
+      this.boundary += block.duration
+      this.index = (this.index + 1) % this.blocks.length
+    }
+    this.last = time
+    return this.engine.sample(time)
+  }
+}

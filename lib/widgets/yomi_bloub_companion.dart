@@ -19,6 +19,9 @@ class BloubAtlas {
       .then((data) => _cached = BloubAtlas._(data));
   final Map<String, List<_Frame>> _clips = {};
   final Map<String, _Frame> _rests = {};
+  @visibleForTesting
+  List<double> sampleBody(String state, double time, String shape) =>
+      _sample(state, time, shape, 'attentif').body;
   _Frame _rest(String shape, String expression) {
     final key = '$shape/$expression';
     return _rests.putIfAbsent(key, () {
@@ -32,7 +35,7 @@ class BloubAtlas {
     });
   }
 
-  _Frame _sample(String state, double time) {
+  _Frame _sample(String state, double time, String shape, String expression) {
     final frames = _clips.putIfAbsent(
       state,
       () => ((data['clips'] as Map<String, dynamic>)[state] as List)
@@ -43,12 +46,71 @@ class BloubAtlas {
         .clamp(0, frames.length - 1)
         .toDouble();
     final i = t.floor();
-    return _Frame.lerp(
+    final frame = _Frame.lerp(
       frames[i],
       frames[math.min(i + 1, frames.length - 1)],
       t - i,
     );
+    // The clip supplies motion, never the user's body geometry.
+    final profiles = data['profiles'] as Map<String, dynamic>;
+    final radii = _numbers(profiles[shape] ?? profiles['goutte']);
+    final sil = frame.silhouette!;
+    final cr = math.cos(sil[0]), sr = math.sin(sil[0]);
+    final body = <double>[];
+    for (var i = 0; i < radii.length; i++) {
+      final angle = i / radii.length * math.pi * 2;
+      final x = radii[i] * math.cos(angle), y = radii[i] * math.sin(angle);
+      body.addAll([
+        (sil[1] + (x * cr - y * sr) * sil[3]) * 100,
+        (sil[2] + (x * sr + y * cr) * sil[4]) * 100,
+      ]);
+    }
+    final fits =
+        (data['eyeFit'] as Map<String, dynamic>)[shape] ??
+        (data['eyeFit'] as Map<String, dynamic>)['goutte'];
+    final byState =
+        (fits as Map<String, dynamic>)[state] as Map<String, dynamic>;
+    final offset = _numbers(byState[expression] ?? byState['attentif']);
+    final eyes = frame.eyes.map((eye) {
+      final e = List<double>.from(eye);
+      final fit = _radius(radii, math.atan2(e[10], e[9]) - sil[0]);
+      e[6] = e[9] * fit + e[11] + offset[0];
+      e[7] = e[10] * fit + e[12] + offset[1];
+      return e;
+    }).toList();
+    List<double>? retarget(List<double>? point) {
+      if (point == null) return null;
+      final offX = frame.eyes.isEmpty ? 0.0 : frame.eyes.first[11];
+      final offY = frame.eyes.isEmpty ? 0.0 : frame.eyes.first[12];
+      final x = point[0] - offX, y = point[1] - offY;
+      final angle = math.atan2(y, x) - sil[0];
+      final original = _radius(_numbers(profiles['goutte']), angle);
+      final ratio = _radius(radii, angle) / original;
+      return [offX + x * ratio, offY + y * ratio, point[2]];
+    }
+
+    return _Frame(
+      body,
+      frame.alpha,
+      eyes,
+      frame.arcs,
+      frame.dots,
+      frame.behind,
+      retarget(frame.notification),
+      retarget(frame.notch),
+      sil,
+    );
   }
+}
+
+double _radius(List<double> radii, double angle) {
+  final phase = ((angle / (2 * math.pi)) % 1) * radii.length;
+  final index = phase.floor();
+  return _mix(
+    radii[index % radii.length],
+    radii[(index + 1) % radii.length],
+    phase - index,
+  );
 }
 
 Map<String, dynamic> _decodeAtlas(String source) =>
@@ -80,6 +142,7 @@ class _Frame {
   final List<List<double>> eyes, arcs, dots;
   final bool behind;
   final List<double>? notification, notch;
+  final List<double>? silhouette;
   const _Frame(
     this.body,
     this.alpha,
@@ -88,8 +151,9 @@ class _Frame {
     this.dots,
     this.behind,
     this.notification,
-    this.notch,
-  );
+    this.notch, [
+    this.silhouette,
+  ]);
   factory _Frame.fromJson(Map<String, dynamic> f) => _Frame(
     _numbers(f['b']),
     (f['a'] as num).toDouble(),
@@ -99,6 +163,7 @@ class _Frame {
     f['z'] as bool,
     f['n'] == null ? null : _numbers(f['n']),
     f['h'] == null ? null : _numbers(f['h']),
+    _numbers(f['s']),
   );
   static List<double>? _circle(List<double>? a, List<double>? b, double t) {
     if (a == null && b == null) return null;
@@ -114,6 +179,9 @@ class _Frame {
     t < .5 ? a.behind : b.behind,
     _circle(a.notification, b.notification, t),
     _circle(a.notch, b.notch, t),
+    a.silhouette == null || b.silhouette == null
+        ? null
+        : _blend(a.silhouette!, b.silhouette!, t),
   );
 }
 
@@ -151,6 +219,7 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
   String _state = 'idle';
   double _time = 0,
       _since = 0,
+      _blendAt = 0,
       _last = 0,
       _returnAt = double.infinity,
       _gestureAt = 26;
@@ -231,7 +300,8 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
     if (oldWidget.context != widget.context) _opening();
     if (oldWidget.shape != widget.shape ||
         oldWidget.expression != widget.expression) {
-      _change('idle');
+      _origin = _current;
+      _blendAt = _time;
     }
     _sync();
   }
@@ -274,7 +344,7 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
       _colorAt = _time - 1;
       // Settle a requested pose without running a hidden/reduced-motion loop.
       if (_atlas != null) {
-        if (_time - _since < .65) _time = _since + .65;
+        if (_time - _blendAt < .65) _time = _blendAt + .65;
         _current = _sample(_time);
         _repaint.tick();
       }
@@ -301,6 +371,7 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
     _origin = _current;
     _state = state;
     _since = _time;
+    _blendAt = _time;
     if (_atlas != null) {
       _current = _sample(_time);
       _repaint.tick();
@@ -311,7 +382,7 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
     final local = math.max(0.0, now - _since);
     var target = _state == 'idle'
         ? _atlas!._rest(widget.shape, widget.expression)
-        : _atlas!._sample(_state, local);
+        : _atlas!._sample(_state, local, widget.shape, widget.expression);
     if (_state == 'idle' && widget.animated && !_reduced) {
       final cycle = now % 4.8;
       final blink = cycle > 4.5
@@ -334,7 +405,9 @@ class _YomiBloubCompanionState extends State<YomiBloubCompanion>
         target.notch,
       );
     }
-    final k = Curves.easeInOutCubic.transform((local / .65).clamp(0.0, 1.0));
+    final k = Curves.easeInOutCubic.transform(
+      ((now - _blendAt) / .65).clamp(0.0, 1.0),
+    );
     return _origin != null && k < 1 ? _Frame.lerp(_origin!, target, k) : target;
   }
 

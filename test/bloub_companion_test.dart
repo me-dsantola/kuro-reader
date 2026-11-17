@@ -7,6 +7,37 @@ import 'package:kuro_reader/widgets/yomi_bloub_companion.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('every native action retains the selected silhouette', () async {
+    final atlas = await BloubAtlas.load();
+    final clips = atlas.data['clips'] as Map<String, dynamic>;
+    for (final state in clips.keys) {
+      for (final t in [0.0, .8, 2.49, 2.51, 4.0]) {
+        final circle = atlas.sampleBody(state, t, 'cercle');
+        for (final shape in [
+          'galet',
+          'squircle',
+          'capsule',
+          'triangle',
+          'hexagone',
+          'nuage',
+          'goutte',
+        ]) {
+          final custom = atlas.sampleBody(state, t, shape);
+          expect(custom.length, 128);
+          expect(custom.every((n) => n.isFinite), isTrue);
+          final difference = List.generate(
+            128,
+            (i) => (custom[i] - circle[i]).abs(),
+          ).reduce((a, b) => a > b ? a : b);
+          expect(
+            difference,
+            greaterThan(1),
+            reason: '$shape must not become a circle in $state at $t',
+          );
+        }
+      }
+    }
+  });
   testWidgets(
     'native vector states render, transition, respect reduced motion and dispose',
     (tester) async {

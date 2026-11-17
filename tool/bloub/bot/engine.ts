@@ -5,6 +5,8 @@ import { blinkScale, eyePoses, liveliness } from './face'
 import { clamp, easings, lerp, r2 } from './math'
 import {
   blend,
+  circle,
+  personalizeSilhouette,
   capsulePath,
   closedPath,
   radiusAtAngle,
@@ -12,15 +14,17 @@ import {
   type Point,
   type Silhouette
 } from './shape'
-import { STATE_BY_ID, type Pose, type StateDef, type StateId } from './states'
+import { STATES, STATE_BY_ID, type Pose, type StateDef, type StateId } from './states'
 
 export interface RenderedEye {
+  surface: { x: number; y: number; offX: number; offY: number }
   d: string
   matrix: string
   alpha: number
 }
 
 export interface BotFrame {
+  silhouette: Silhouette
   bodyPath: string
   bodyAlpha: number
   eyes: RenderedEye[]
@@ -72,6 +76,8 @@ export interface Look {
   wander: number
 }
 
+const DEFAULT_RADII = circle(1).radii
+
 const NO_LOOK: Look = { yaw: 0, pitch: 0, mix: 0, spin: 0, wander: 1 }
 
 const lerpLook = (a: Look, b: Look, t: number): Look => ({
@@ -90,10 +96,10 @@ const lerpEye = (a: Pose['eyes'][number], b: Pose['eyes'][number], t: number) =>
 })
 
 /** Interpolation de deux poses. Le decor se croise en opacite, pas en geometrie. */
-function blendPose(a: Pose, b: Pose, t: number): Pose {
+function blendPose(a: Pose, b: Pose, t: number, rotationOffset = 0): Pose {
   const out = 1 - t
   return {
-    sil: blend(a.sil, b.sil, t),
+    sil: { ...blend(a.sil, b.sil, t), rot:lerp(a.sil.rot,b.sil.rot+rotationOffset,t) },
     offX: lerp(a.offX, b.offX, t),
     offY: lerp(a.offY, b.offY, t),
     gaze: {
@@ -138,11 +144,14 @@ export class BotEngine {
   private departFige: Pose | null = null
   private tCur = 0
   private tPrev = 0
+  private rotationOffset = 0
   private blinkAt = -10
   private pts: Point[] = []
   private shape: number[] | null = null
   private shapePrev: number[] | null = null
   private shapeAt = -10
+  private fitFrom: Map<StateId, {x:number;y:number}> | null = null
+  private fitAt = -10
   private expr: BotExpression | null = null
   private exprPrev: BotExpression | null = null
   private exprAt = -10
@@ -181,7 +190,8 @@ export class BotEngine {
    */
   setExpression(expression: BotExpression | null, now = 0) {
     if (expression === this.expr) return
-    this.exprPrev = this.expr
+    this.captureFit(now)
+    this.exprPrev = this.exprAtTime(now)
     this.expr = expression
     this.exprAt = now
   }
@@ -196,17 +206,11 @@ export class BotEngine {
     return blendExpression(from, to, easings.easeInOutCubic(clamp(k)))
   }
 
-  /**
-   * Forme choisie dans le personnalisateur. Elle ne remplace le corps que sur
-   * les etats au repos (`baseBody`) : sur les autres, la silhouette EST
-   * l'animation et ne doit pas etre ecrasee.
-   *
-   * Le changement se fait en morph, pas d'un coup : comme toutes les formes sont
-   * echantillonnees aux memes angles, il suffit d'interpoler les rayons.
-   */
+  /** Retarget the user's radial profile from the visible, possibly unfinished morph. */
   setShape(radii: number[] | null, now = 0) {
     if (radii === this.shape) return
-    this.shapePrev = this.shape
+    this.captureFit(now)
+    this.shapePrev = this.shapeAtTime(now) ?? DEFAULT_RADII
     this.shape = radii
     this.shapeAt = now
   }
@@ -219,7 +223,7 @@ export class BotEngine {
    * intermediaire. On garde juste une reference de plus.
    */
   private shapeAtTime(now: number): number[] | null {
-    const to = this.shape
+    const to = this.shape ?? DEFAULT_RADII
     const from = this.shapePrev
     if (!to || !from) return to
     const k = (now - this.shapeAt) / BotEngine.SHAPE_MORPH
@@ -273,10 +277,8 @@ export class BotEngine {
     expr: BotExpression | null
   ): Pose {
     let pose = def.pose(t)
-    if (def.baseBody && shape) {
-      // on garde la pose (rotation, decalage, squash) et on n'echange que le profil
-      pose = { ...pose, sil: { ...pose.sil, radii: shape } }
-    }
+    // Geometry belongs to the user in every state, including orbit and symbols.
+    pose = { ...pose, sil: personalizeSilhouette(pose.sil, shape ?? DEFAULT_RADII) }
     if (def.baseFace && expr) {
       pose = { ...pose, gaze: expr.gaze, split: expr.split, eyes: expr.eyes }
     }
@@ -295,42 +297,17 @@ export class BotEngine {
    * profil que rend `shapeAtTime` : celui-la est un tableau neuf alloue a chaque image,
    * donc sans identite, et il n'existe dans aucune table.
    */
-  private decalageAtTime(now: number, state: StateId): { x: number; y: number } {
-    /**
-     * Un axe de morph : on lit la table sur ses deux BORNES et on interpole avec sa
-     * courbe. Jamais sur la valeur interpolee — celle-la n'a pas d'identite et n'existe
-     * dans aucune table, et c'est en la lui donnant a manger que les versions
-     * precedentes tremblaient.
-     */
-    const surAxe = (
-      debut: number,
-      duree: number,
-      a: { x: number; y: number },
-      b: { x: number; y: number }
-    ) => {
-      if (a === b) return b
-      const k = (now - debut) / duree
-      if (k >= 1) return b
-      const t = easings.easeInOutCubic(clamp(k))
-      return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) }
-    }
+  private captureFit(now: number) {
+    this.fitFrom = new Map(STATES.map(def => [def.id, this.decalageAtTime(now, def.id)]))
+    this.fitAt = now
+  }
 
-    // axe de l'expression, pour chacune des deux formes en presence
-    const parForme = (radii: number[] | null) =>
-      surAxe(
-        this.exprAt,
-        BotEngine.SHAPE_MORPH,
-        decalageDesYeux(radii, state, this.exprPrev?.id ?? null),
-        decalageDesYeux(radii, state, this.expr?.id ?? null)
-      )
-
-    // puis axe de la forme
-    return surAxe(
-      this.shapeAt,
-      BotEngine.SHAPE_MORPH,
-      parForme(this.shapePrev),
-      parForme(this.shape)
-    )
+  private decalageAtTime(now: number, state: StateId): {x:number;y:number} {
+    const target = decalageDesYeux(this.shape, state, this.expr?.id ?? null)
+    const from = this.fitFrom?.get(state)
+    if (!from) return target
+    const k = easings.easeInOutCubic(clamp((now - this.fitAt) / BotEngine.SHAPE_MORPH))
+    return {x:lerp(from.x,target.x,k), y:lerp(from.y,target.y,k)}
   }
 
   get state(): StateId {
@@ -387,7 +364,7 @@ export class BotEngine {
     if (since >= def.morph) return pose
     const origine = this.origine(now, shape, expr)
     if (!origine) return pose
-    return blendPose(origine, pose, easings.easeInOutCubic(clamp(since / def.morph)))
+    return blendPose(origine, pose, easings.easeInOutCubic(clamp(since / def.morph)), this.rotationOffset)
   }
 
   /**
@@ -408,11 +385,15 @@ export class BotEngine {
    * le plus long fondu (`MIN_BLOCK`), ne fige donc jamais rien et rend au bit ce qu'elle
    * rendait.
    */
-  setState(id: StateId, now: number) {
-    if (id === this.cur) return
+  setState(id: StateId, now: number, restart = false) {
+    if (id === this.cur && !restart) return
     const morph = STATE_BY_ID.get(this.cur)!.morph
     const enPleinFondu = this.prev !== null && now - this.tCur < morph
-    this.departFige = enPleinFondu ? this.poseComposee(now) : null
+    const visible = this.poseComposee(now)
+    this.departFige = enPleinFondu || restart ? visible : null
+    // Choose the rotation branch ONCE. Rewrapping every frame jumps at +/- PI.
+    const targetRotation = STATE_BY_ID.get(id)!.pose(0).sil.rot
+    this.rotationOffset = Math.round((visible.sil.rot-targetRotation)/(2*Math.PI))*2*Math.PI
     this.prev = this.cur
     this.tPrev = this.tCur
     this.cur = id
@@ -443,7 +424,7 @@ export class BotEngine {
       // donnerait un ratio negatif, que l'ease-out extrapole — la silhouette
       // part alors trente fois trop loin.
       const ratio = easings.easeInOutCubic(clamp(since / def.morph))
-      pose = blendPose(origine, pose, ratio)
+      pose = blendPose(origine, pose, ratio, this.rotationOffset)
       // Le decalage des yeux suit la MEME courbe que la silhouette qui le motive. Il vient
       // de l'etat quitte, que `setState` renseigne toujours en meme temps que l'origine —
       // le test est la pour le typage, pas pour un cas reel.
@@ -520,6 +501,7 @@ export class BotEngine {
         // a l'ecran, pas le long de l'axe de la gelule.
         const k = blinkScale(Math.min(lid, cfg.open))
         eyes.push({
+          surface: { x:e.x, y:e.y, offX:offX * R, offY:offY * R },
           d: capsulePath(cfg.w * R, cfg.h * R),
           matrix: `matrix(${r2(ax)},${r2(ay * k)},${r2(cx2)},${r2(cy2 * k)},${r2(e.x * fit + (offX + decalage.x) * R)},${r2(e.y * fit + (offY + decalage.y) * R)})`,
           alpha: pose.eyeAlpha * clamp(e.depth / 0.12)
@@ -540,6 +522,7 @@ export class BotEngine {
     const notch = pose.notif ? { x: nx, y: ny, r: pose.notif.notch * R } : null
 
     return {
+      silhouette: sil,
       bodyPath,
       bodyAlpha: pose.bodyAlpha,
       eyes,

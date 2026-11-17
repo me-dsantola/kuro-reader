@@ -180,13 +180,8 @@ export interface StateDef {
   morph: number
   /** true = l'entree est masquee par un clignement, comme dans la video */
   blinkIn: boolean
-  /**
-   * true = le corps est la silhouette "au repos", donc remplacable par la forme
-   * choisie dans le personnalisateur. Les etats qui dessinent leur propre forme
-   * (le "!", les points, l'oeuf, le triangle...) valent false : c'est cette forme
-   * la qui EST l'animation.
-   */
-  baseBody: boolean
+  /** Every state preserves the selected radial profile; only its pose may deform. */
+  baseBody: true
   /**
    * true = l'etat porte le visage "au repos", donc remplacable par l'expression
    * choisie. Seul `idle` : les autres etats a visage ont une expression relevee
@@ -219,7 +214,7 @@ export const STATES: StateDef[] = [
     duration: 2.6,
     morph: 0.4,
     baseFace: false,
-    baseBody: false,
+    baseBody: true,
     blinkIn: true,
     pose: (t) => {
       const mid = dotPulse(t, 1)
@@ -285,7 +280,7 @@ export const STATES: StateDef[] = [
     minDuration: 2,
     morph: 0.45,
     baseFace: false,
-    baseBody: false,
+    baseBody: true,
     blinkIn: false,
     pose: (t) => {
       // Course mesuree : -0.087 -> +0.732 en 1.5 s, ease-in-out, micro-overshoot.
@@ -347,7 +342,7 @@ export const STATES: StateDef[] = [
     duration: 2,
     morph: 0.45,
     baseFace: false,
-    baseBody: false,
+    baseBody: true,
     blinkIn: false,
     pose: () =>
       base({
@@ -362,7 +357,7 @@ export const STATES: StateDef[] = [
     duration: 2.4,
     morph: 0.5,
     baseFace: false,
-    baseBody: false,
+    baseBody: true,
     blinkIn: false,
     pose: (t) =>
       base({
@@ -377,7 +372,7 @@ export const STATES: StateDef[] = [
     duration: 1.8,
     morph: 0.4,
     baseFace: false,
-    baseBody: false,
+    baseBody: true,
     blinkIn: true,
     pose: () =>
       base({
@@ -394,7 +389,7 @@ export const STATES: StateDef[] = [
     duration: 1.6,
     morph: 0.4,
     baseFace: false,
-    baseBody: false,
+    baseBody: true,
     blinkIn: true,
     pose: () =>
       base({
@@ -410,7 +405,7 @@ export const STATES: StateDef[] = [
     duration: 2,
     morph: 0.5,
     baseFace: false,
-    baseBody: false,
+    baseBody: true,
     blinkIn: true,
     pose: (t) => {
       // Le triangle reste quasi immobile pendant que le bouquet le traverse.
@@ -438,7 +433,7 @@ export const STATES: StateDef[] = [
     minDuration: 2.5,
     morph: 0.6,
     baseFace: false,
-    baseBody: false,
+    baseBody: true,
     blinkIn: false,
     pose: (t) => {
       // Rotation mesuree : rampe sur 0.35 s puis 1.25 tour/s (sens antihoraire).
@@ -530,7 +525,7 @@ export const STATES: StateDef[] = [
     minDuration: 2.4,
     morph: 0.4,
     baseFace: false,
-    baseBody: false,
+    baseBody: true,
     blinkIn: false,
     pose: (t) => {
       // Effondrement mesure : 1.0 -> 0.166 en 0.7 s, ease-out, sans rebond.
@@ -554,7 +549,7 @@ export const STATES: StateDef[] = [
     minDuration: 2.4,
     morph: 0.45,
     baseFace: false,
-    baseBody: false,
+    baseBody: true,
     blinkIn: false,
     pose: (t) => {
       const collapse = 1 - (1 - COMET_DOT) * easings.easeOutQuint(clamp(t / 0.55))

@@ -309,3 +309,8 @@ export function capsulePath(w: number, h: number): string {
   )
 }
 
+
+/** A state's motion may pose the body, but never replace its identity. */
+export function personalizeSilhouette(pose: Silhouette, radii: number[]): Silhouette {
+  return { ...pose, radii, sx: Math.max(.92, Math.min(1.08, pose.sx)), sy: Math.max(.92, Math.min(1.08, pose.sy)) }
+}

@@ -40,7 +40,7 @@
 
 import { EXPRESSIONS, type BotExpression } from './expressions'
 import { eyePoses } from './face'
-import { radiusAtAngle, toPoints, type Point } from './shape'
+import { circle, personalizeSilhouette, radiusAtAngle, toPoints, type Point } from './shape'
 import { SHAPES } from './skins'
 import { STATES, type Pose, type StateDef, type StateId } from './states'
 
@@ -367,7 +367,8 @@ function decalagePour(
 ): { x: number; y: number } {
   const epreuves: Epreuve[] = []
   for (const t of dates(def)) {
-    const pose = def.pose(t)
+    const original = def.pose(t)
+    const pose = {...original, sil:personalizeSilhouette(original.sil, circle(1).radii)}
     const contour = toPoints({ ...pose.sil, radii }, R)
     const calContour = toPoints(pose.sil, R)
     const v = visageDe(def, pose, expr)
@@ -416,7 +417,7 @@ function batir(): Map<number[], Map<string, { x: number; y: number }>> {
   SHAPES.map((forme) => {
     const par = new Map<string, { x: number; y: number }>()
     for (const def of STATES) {
-      if (!def.baseBody) continue
+      if (def.pose(0).eyeAlpha === 0 && def.pose(def.duration).eyeAlpha === 0) continue
       const expressions = def.baseFace ? [null, ...EXPRESSIONS] : [null]
       for (const expr of expressions) {
         par.set(clef(def.id, expr?.id ?? null), decalagePour(def, forme.radii, expr))
