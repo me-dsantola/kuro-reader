@@ -1,3 +1,4 @@
+import '../widgets/yomi_bloub_companion.dart';
 import '../services/device_state_service.dart';
 import '../widgets/app_feedback.dart';
 import '../services/appearance_controller.dart';
@@ -713,6 +714,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       child: TickerMode(
                         enabled: !reduceMotion,
                         child: YomiProfileBlobatar(
+                          mascotContext: BloubContext.complete,
                           profile: profile,
                           size: 74,
                           adaptiveHue: palette.hue,
@@ -835,10 +837,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                         ),
                         TextButton.icon(
                           onPressed: _openChapterComments,
-                          icon: const Icon(
-                            Icons.forum_outlined,
-                            size: 18,
-                          ),
+                          icon: const Icon(Icons.forum_outlined, size: 18),
                           label: const Text('Comentários'),
                         ),
                         if (prevCh != null)
@@ -848,7 +847,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
                               Icons.skip_previous_rounded,
                               size: 18,
                             ),
-                            label: Text('Cap. anterior (${prevCh.chapterNumber})'),
+                            label: Text(
+                              'Cap. anterior (${prevCh.chapterNumber})',
+                            ),
                           ),
                       ],
                     ),

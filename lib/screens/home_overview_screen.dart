@@ -1,3 +1,4 @@
+import '../widgets/yomi_bloub_companion.dart';
 import 'dart:async';
 import 'dart:collection';
 import 'dart:math' as math;
@@ -474,6 +475,17 @@ class _HomeOverviewScreenState extends State<HomeOverviewScreen>
                                   _currentInterpolatedPalette,
                                   reduceMotion,
                                 ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                child: Row(children: [
+                                  YomiBloubCompanion(size: 68, context: BloubContext.welcome,
+                                    animated: !reduceMotion && !WidgetsBinding.instance.runtimeType.toString().contains('Test'),
+                                    accent: pagePalette.primary),
+                                  const SizedBox(width: 12),
+                                  const Expanded(child: Text('Que bom ter você por aqui.\nQual história vamos descobrir hoje?',
+                                    style: TextStyle(fontSize: 13, height: 1.5))),
+                                ]),
                               ),
                               const SizedBox(height: 8),
                               Padding(

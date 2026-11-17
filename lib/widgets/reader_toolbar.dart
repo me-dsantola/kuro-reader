@@ -1,3 +1,4 @@
+import 'yomi_bloub_companion.dart';
 import 'package:flutter/material.dart';
 import '../services/appearance_controller.dart';
 import '../services/profile_palette_service.dart';
@@ -54,8 +55,7 @@ class ReaderToolbar extends StatelessWidget {
           : ProfilePaletteService.paletteNotifier.value;
       final profile = StorageService.profileNotifier.value;
       final reduceMotion = MediaQuery.disableAnimationsOf(context);
-      final progress =
-          total > 0 ? ((page + 1) / total).clamp(0.0, 1.0) : 0.0;
+      final progress = total > 0 ? ((page + 1) / total).clamp(0.0, 1.0) : 0.0;
 
       return IconTheme(
         data: IconThemeData(color: colors.soft),
@@ -199,8 +199,10 @@ class ReaderToolbar extends StatelessWidget {
                             ),
                             child: ClipOval(
                               child: YomiProfileBlobatar(
+                                mascotContext: BloubContext.reader,
                                 profile: profile.copyWith(
-                                  blobatarAnimated: visible &&
+                                  blobatarAnimated:
+                                      visible &&
                                       !reduceMotion &&
                                       profile.blobatarAnimated,
                                 ),

@@ -1,3 +1,4 @@
+import '../widgets/yomi_bloub_companion.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../widgets/yomi_blobatar_studio.dart';
@@ -195,6 +196,7 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                   child: ValueListenableBuilder<UserProfile>(
                     valueListenable: StorageService.profileNotifier,
                     builder: (context, profile, _) => YomiProfileBlobatar(
+                      mascotContext: BloubContext.library,
                       profile: profile,
                       size: 68,
                       adaptiveHue: palette.hue,
@@ -351,7 +353,8 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                           'favorites' => 'Nenhum favorito encontrado.',
                           'reading' => 'Nenhuma obra em leitura no momento.',
                           'completed' => 'Nenhuma obra concluída ainda.',
-                          _ => 'Nenhuma obra corresponde à pesquisa e ao filtro.',
+                          _ =>
+                            'Nenhuma obra corresponde à pesquisa e ao filtro.',
                         },
                   style: const TextStyle(color: Colors.white60),
                   textAlign: TextAlign.center,
@@ -370,7 +373,8 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
                 const SizedBox(height: 24),
               ],
               if (displayed.any(
-                (m) => !favorites.any((fav) => fav.compositeId == m.compositeId),
+                (m) =>
+                    !favorites.any((fav) => fav.compositeId == m.compositeId),
               )) ...[
                 _heading(
                   'Suas obras',
@@ -626,7 +630,9 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
           final manga = items[index];
           final reading =
               progress[manga.compositeId] ?? LibraryProgress.forManga(manga);
-          final isFav = favorites.any((m) => m.compositeId == manga.compositeId);
+          final isFav = favorites.any(
+            (m) => m.compositeId == manga.compositeId,
+          );
           return SizedBox(
             width: width,
             child: Column(
@@ -727,8 +733,9 @@ class _LibraryCollectionScreenState extends State<LibraryCollectionScreen> {
     final reading =
         progress[manga.compositeId] ?? LibraryProgress.forManga(manga);
     final isFav = favorites.any((m) => m.compositeId == manga.compositeId);
-    final mangaPalette =
-        ProfilePaletteService.synchronousFallbackForManga(manga);
+    final mangaPalette = ProfilePaletteService.synchronousFallbackForManga(
+      manga,
+    );
 
     return Material(
       color: Colors.transparent,

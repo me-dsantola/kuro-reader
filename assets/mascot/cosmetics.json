@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "utcOffsetMinutes": -180,
+  "categories": {
+    "aura": "Auras",
+    "scarf": "Cachecóis",
+    "hat": "Gorros e chapéus",
+    "floating": "Objetos flutuantes"
+  },
+  "events": [
+    {
+      "id": "christmas",
+      "name": "Natal",
+      "start": 1201,
+      "end": 101,
+      "priority": 20,
+      "accent": "#f4b5c5"
+    },
+    {
+      "id": "halloween",
+      "name": "Halloween",
+      "start": 1015,
+      "end": 1101,
+      "priority": 20,
+      "accent": "#c6a2ff"
+    },
+    {
+      "id": "newyear",
+      "name": "Ano Novo",
+      "start": 1228,
+      "end": 108,
+      "priority": 30,
+      "accent": "#ffe4a1"
+    },
+    {
+      "id": "bookday",
+      "name": "Semana do Livro",
+      "start": 418,
+      "end": 425,
+      "priority": 10,
+      "accent": "#9cdee6"
+    }
+  ],
+  "items": [
+    {
+      "id": "aurora",
+      "name": "Aura Aurora",
+      "category": "aura",
+      "event": "always",
+      "color": "#65e7ef",
+      "design": "aura"
+    },
+    {
+      "id": "little_star",
+      "name": "Estrelinha companheira",
+      "category": "floating",
+      "event": "always",
+      "color": "#e4cdff",
+      "design": "star"
+    },
+    {
+      "id": "winter_scarf",
+      "name": "Cachecol das histórias",
+      "category": "scarf",
+      "event": "christmas",
+      "color": "#da567d",
+      "design": "scarf"
+    },
+    {
+      "id": "santa_hat",
+      "name": "Gorro de Natal",
+      "category": "hat",
+      "event": "christmas",
+      "color": "#d64e72",
+      "design": "santa"
+    },
+    {
+      "id": "witch_hat",
+      "name": "Chapéu de bruxo",
+      "category": "hat",
+      "event": "halloween",
+      "color": "#9b72df",
+      "design": "witch"
+    },
+    {
+      "id": "pumpkin_orb",
+      "name": "Abóbora flutuante",
+      "category": "floating",
+      "event": "halloween",
+      "color": "#f4ad69",
+      "design": "pumpkin"
+    },
+    {
+      "id": "golden_aura",
+      "name": "Aura de Ano Novo",
+      "category": "aura",
+      "event": "newyear",
+      "color": "#ffe08c",
+      "design": "aura"
+    },
+    {
+      "id": "tiny_book",
+      "name": "Livro viajante",
+      "category": "floating",
+      "event": "bookday",
+      "color": "#b49bff",
+      "design": "book"
+    }
+  ]
+}
