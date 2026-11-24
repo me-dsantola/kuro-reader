@@ -80,11 +80,12 @@ class _RatingCardState extends State<_RatingCard> {
       });
       if (mounted) setState(() => message = 'Avaliação salva.');
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () =>
               message = 'Falha ao salvar. Toque na nota para tentar novamente.',
         );
+      }
     } finally {
       if (mounted) setState(() => saving = false);
     }
