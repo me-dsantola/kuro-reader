@@ -96,10 +96,13 @@ class StorageService {
 
   static Future<void> init() async {
     await Hive.initFlutter();
-    await Hive.openBox(favBoxName);
-    await Hive.openBox(historyBoxName);
-    await Hive.openBox(downloadsBoxName);
-    final settings = await Hive.openBox(settingsBoxName);
+    await Future.wait([
+      Hive.openBox(favBoxName),
+      Hive.openBox(historyBoxName),
+      Hive.openBox(downloadsBoxName),
+      Hive.openBox(settingsBoxName),
+    ]);
+    final settings = settingsBox;
     await recoverInterruptedRestore();
 
     // 0. Em novas instalações, a biblioteca inicia limpa.
@@ -114,7 +117,9 @@ class StorageService {
         settings.get('lock_nsfw_on_startup', defaultValue: true) == true;
 
     if (keepNsfwLockedOnStartup) {
-      await settings.put('nsfw_mode', NsfwDisplayMode.hidden.name);
+      if (settings.get('nsfw_mode') != NsfwDisplayMode.hidden.name) {
+        await settings.put('nsfw_mode', NsfwDisplayMode.hidden.name);
+      }
       nsfwModeNotifier.value = NsfwDisplayMode.hidden;
     } else {
       final savedMode = settings.get('nsfw_mode', defaultValue: 'hidden');

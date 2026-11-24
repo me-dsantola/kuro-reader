@@ -173,9 +173,15 @@ class _MainNavigationShellState extends State<MainNavigationShell>
         if (_currentIndex != 3) _currentIndex = 1;
         _visitedTabs.removeWhere((index) => index != 1 && index != 3);
         _visitedTabs.add(_currentIndex);
+        _backHistory.removeWhere((index) => index != 1 && index != 3);
+        for (var i = _backHistory.length - 1; i > 0; i--) {
+          if (_backHistory[i] == _backHistory[i - 1]) _backHistory.removeAt(i);
+        }
+        if (_backHistory.isEmpty || _backHistory.last != _currentIndex) {
+          _backHistory.add(_currentIndex);
+        }
       } else if (reconnected) {
         _refreshGeneration++;
-        _visitedTabs.add(0);
         MangaDexService.resetAggregator();
       }
     });

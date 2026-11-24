@@ -37,7 +37,7 @@ const List<YomiBannerPreset> kYomiBannerPresets = [
     subtitle: 'Um viajante sob o luar carmesim',
     seedColor: Color(0xFFB91C3C),
     secondaryColor: Color(0xFFFB7185),
-    assetPath: 'assets/banners/horizonte_distante.png',
+    assetPath: 'assets/banners/horizonte_distante.webp',
   ),
   YomiBannerPreset(
     id: 'preset:lua_vermelha',
@@ -45,7 +45,7 @@ const List<YomiBannerPreset> kYomiBannerPresets = [
     subtitle: 'Templos e montanhas sob a lua',
     seedColor: Color(0xFFDC264C),
     secondaryColor: Color(0xFFFDA4AF),
-    assetPath: 'assets/banners/lua_vermelha.png',
+    assetPath: 'assets/banners/lua_vermelha.webp',
   ),
   YomiBannerPreset(
     id: 'preset:portal_da_noite',
@@ -53,7 +53,7 @@ const List<YomiBannerPreset> kYomiBannerPresets = [
     subtitle: 'Um caminho iluminado entre portais',
     seedColor: Color(0xFFE11D48),
     secondaryColor: Color(0xFFFB7185),
-    assetPath: 'assets/banners/portal_da_noite.png',
+    assetPath: 'assets/banners/portal_da_noite.webp',
   ),
   YomiBannerPreset(
     id: 'preset:torii_crimson',
@@ -222,7 +222,6 @@ class ProfilePaletteService {
     ValueListenable<UserProfile> profileListenable,
   ) {
     if (identical(_boundProfileNotifier, profileListenable)) {
-      refreshGlobalPalette(profileListenable.value);
       return;
     }
     _boundProfileNotifier?.removeListener(_onBoundProfileChanged);
