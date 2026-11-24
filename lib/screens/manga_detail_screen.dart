@@ -9,6 +9,7 @@ import '../services/mangadex_service.dart';
 import '../services/profile_palette_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/app_feedback.dart';
+import '../widgets/work_rating.dart';
 import '../widgets/comments_section_widget.dart';
 import '../widgets/manga_detail_sections.dart';
 import '../widgets/yomi_blobatar_studio.dart';
@@ -751,6 +752,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                       ),
                     ),
                   ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+                    child: WorkRating(workId: widget.manga.id),
+                  ),
+                ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: horizontalInset),
