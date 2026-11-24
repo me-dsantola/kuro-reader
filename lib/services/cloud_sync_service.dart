@@ -98,8 +98,13 @@ class CloudSyncService {
       return null;
     }
     try {
-      final file = File(path);
+      final preview = File('$path.preview');
+      final mediaDir = await AppDirectoryService.getProfileMediaDirectory();
+      final managed = File(path).parent.absolute.path == mediaDir.absolute.path &&
+          File(path).uri.pathSegments.last.startsWith('profile_');
+      final file = managed && await preview.exists() ? preview : File(path);
       if (!file.existsSync()) return null;
+      if (await file.length() > _maxCloudImageBytes) return null;
       final bytes = await file.readAsBytes();
       if (bytes.lengthInBytes > _maxCloudImageBytes) return null;
       return base64Encode(bytes);
@@ -198,7 +203,11 @@ class CloudSyncService {
         ignorePreset: true,
       );
 
-      final payloadBytes = utf8.encode(mergedRawPayload).length;
+      final payloadBytes = utf8.encode(mergedRawPayload).length +
+          utf8.encode(jsonEncode(compacted['profile'])).length;
+      if (payloadBytes > _maxFirestoreBudgetBytes) {
+        throw StateError('Backup grande demais para sincronizar. Salve o backup completo no Google Drive pelo perfil.');
+      }
       if (payloadBytes +
               (avatarBase64?.length ?? 0) +
               (bannerBase64?.length ?? 0) >

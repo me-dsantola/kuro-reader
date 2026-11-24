@@ -262,7 +262,8 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
                                         vertical: 2,
                                       ),
                                       minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     onPressed: () {
                                       widget.onAuthenticated();
@@ -349,7 +350,9 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
                             side: BorderSide(
                               color: Colors.white.withValues(alpha: 0.16),
                             ),
-                            backgroundColor: Colors.white.withValues(alpha: 0.04),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.04,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(24),
                             ),
@@ -374,7 +377,7 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
 
                       // Subtle Security & Sync Footer
                       const Text(
-                        'Sincronização em nuvem de favoritos, histórico e perfil.',
+                        'Personalize seu perfil com e-mail ou Google. Conecte o Drive no perfil para guardar originais e backups.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 11.5,
@@ -399,9 +402,7 @@ class _KuroAuthScreenState extends State<KuroAuthScreen> {
     return const SizedBox(
       width: 20,
       height: 20,
-      child: CustomPaint(
-        painter: _GoogleGLogoPainter(),
-      ),
+      child: CustomPaint(painter: _GoogleGLogoPainter()),
     );
   }
 }
@@ -554,9 +555,7 @@ class _EmailAuthModalSheetState extends State<_EmailAuthModalSheet> {
         decoration: const BoxDecoration(
           color: Color(0xFF0E0E14),
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border(
-            top: BorderSide(color: Colors.white12),
-          ),
+          border: Border(top: BorderSide(color: Colors.white12)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 14, 24, 28),
         child: Column(
@@ -630,7 +629,10 @@ class _EmailAuthModalSheetState extends State<_EmailAuthModalSheet> {
                 controller: _nameCtrl,
                 textInputAction: TextInputAction.next,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
-                decoration: _fieldDecoration('Nome ou apelido', Icons.person_outline_rounded),
+                decoration: _fieldDecoration(
+                  'Nome ou apelido',
+                  Icons.person_outline_rounded,
+                ),
               ),
               const SizedBox(height: 12),
             ],
@@ -640,7 +642,10 @@ class _EmailAuthModalSheetState extends State<_EmailAuthModalSheet> {
               autocorrect: false,
               textInputAction: TextInputAction.next,
               style: const TextStyle(color: Colors.white, fontSize: 14),
-              decoration: _fieldDecoration('E-mail', Icons.mail_outline_rounded),
+              decoration: _fieldDecoration(
+                'E-mail',
+                Icons.mail_outline_rounded,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -666,10 +671,20 @@ class _EmailAuthModalSheetState extends State<_EmailAuthModalSheet> {
               ),
             ),
 
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'Fotos e GIFs compactos estão incluídos. Você pode vincular o Google depois para guardar originais e backups.',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ),
             if (_localError != null) ...[
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.red.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),

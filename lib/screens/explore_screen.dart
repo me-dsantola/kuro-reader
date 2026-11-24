@@ -794,13 +794,29 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 16,
                             ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => MangaGridCard(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final card = MangaGridCard(
                             manga: displayed[index],
                             heroPrefix: 'explore',
-                          ),
-                          childCount: displayed.length,
-                        ),
+                          );
+                          if (MediaQuery.disableAnimationsOf(context)) {
+                            return card;
+                          }
+                          return TweenAnimationBuilder<double>(
+                            key: ValueKey(displayed[index].id),
+                            tween: Tween(begin: 0, end: 1),
+                            duration: const Duration(milliseconds: 240),
+                            curve: Curves.easeOut,
+                            child: card,
+                            builder: (_, value, child) => Opacity(
+                              opacity: value,
+                              child: Transform.translate(
+                                offset: Offset(0, 8 * (1 - value)),
+                                child: child,
+                              ),
+                            ),
+                          );
+                        }, childCount: displayed.length),
                       ),
                     ),
                     if (_isLoadingMore)
@@ -824,4 +840,3 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 }
-

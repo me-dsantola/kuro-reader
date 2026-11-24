@@ -6,6 +6,8 @@ import '../services/profile_palette_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/yomi_blobatar_studio.dart';
 import '../widgets/yomi_brand_widgets.dart';
+import '../widgets/profile_storage.dart';
+import '../services/cloud_auth_service.dart';
 import 'favorite_updates_screen.dart';
 import 'home_overview_screen.dart';
 import 'manga_detail_screen.dart';
@@ -497,6 +499,15 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
 
                                 const SizedBox(height: 22),
 
+                                ValueListenableBuilder(
+                                  valueListenable: CloudAuthService.currentUser,
+                                  builder: (_, user, _) => user == null
+                                      ? const SizedBox.shrink()
+                                      : ProfileStorage(
+                                          key: ValueKey(user.uid),
+                                          uid: user.uid,
+                                        ),
+                                ),
                                 // 5. GÊNEROS FAVORITOS
                                 Row(
                                   mainAxisAlignment:
@@ -1122,4 +1133,3 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
     );
   }
 }
-
