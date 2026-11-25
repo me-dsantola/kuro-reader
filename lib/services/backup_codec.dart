@@ -232,6 +232,13 @@ class BackupCodec {
       }
     } else if (key.startsWith('webtoon_offset_')) {
       if (value is! num || !value.isFinite || value < 0) _invalid(key);
+    } else if (key.startsWith('reading_metric_')) {
+      final event = _map(value, key);
+      if (event['changedAt'] is! String) _invalid(key);
+      _optional(event, 'readAt', (v) => v is String);
+      _optional(event, 'mangaId', (v) => v is String);
+      _optional(event, 'number', (v) => v is String);
+      _optional(event, 'pages', _nonNegativeInt);
     } else if (key.startsWith('read_')) {
       if (value is! bool) _invalid(key);
     } else if (key.startsWith('last_')) {
@@ -337,7 +344,20 @@ class BackupCodec {
     final mergedHist = <String, dynamic>{};
 
     for (final key in {...olderHist.keys, ...newerHist.keys}) {
-      if (key.startsWith('read_')) {
+      if (key.startsWith('reading_metric_')) {
+        final cloudEvent = _asStringMap(cloudHist[key]);
+        final localEvent = _asStringMap(localHist[key]);
+        final cloudAt = DateTime.tryParse(
+          cloudEvent['changedAt']?.toString() ?? '',
+        );
+        final localAt = DateTime.tryParse(
+          localEvent['changedAt']?.toString() ?? '',
+        );
+        mergedHist[key] =
+            localAt != null && (cloudAt == null || !localAt.isBefore(cloudAt))
+            ? localEvent
+            : cloudEvent;
+      } else if (key.startsWith('read_')) {
         mergedHist[key] = (cloudHist[key] == true) || (localHist[key] == true);
       } else if (key.startsWith('page_')) {
         final cPage = cloudHist[key] is int ? cloudHist[key] as int : -1;
@@ -366,6 +386,14 @@ class BackupCodec {
         mergedHist[key] = newerHist.containsKey(key)
             ? newerHist[key]
             : olderHist[key];
+      }
+    }
+    for (final key in mergedHist.keys.toList()) {
+      if (!key.startsWith('reading_metric_')) continue;
+      final event = _asStringMap(mergedHist[key]);
+      if (event['changedAt'] is String) {
+        mergedHist['read_${key.substring('reading_metric_'.length)}'] =
+            event['readAt'] is String;
       }
     }
     merged['history'] = mergedHist;

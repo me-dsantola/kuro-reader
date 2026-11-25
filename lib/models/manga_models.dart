@@ -449,6 +449,7 @@ class Manga {
   final String? directCoverUrl;
   final String? directHighResCoverUrl;
   final List<String> tags;
+  final List<String>? readingGenres;
   final bool isNsfw;
   final bool contentRatingKnown;
   final DateTime updatedAt;
@@ -468,6 +469,7 @@ class Manga {
     this.directCoverUrl,
     this.directHighResCoverUrl,
     required this.tags,
+    this.readingGenres,
     this.isNsfw = false,
     this.contentRatingKnown = true,
     DateTime? updatedAt,
@@ -604,6 +606,7 @@ class Manga {
       directCoverUrl: directCoverUrl,
       directHighResCoverUrl: directHighResCoverUrl,
       tags: tags,
+      readingGenres: readingGenres,
       isNsfw: isNsfw,
       contentRatingKnown: contentRatingKnown,
       updatedAt: updatedAt,
@@ -696,6 +699,7 @@ class Manga {
     'directCoverUrl': directCoverUrl,
     'directHighResCoverUrl': directHighResCoverUrl,
     'tags': tags,
+    if (readingGenres != null) 'readingGenres': readingGenres,
     'isNsfw': isNsfw,
     'contentRatingKnown': contentRatingKnown,
     'updatedAt': updatedAt.toIso8601String(),
@@ -732,6 +736,9 @@ class Manga {
       tags: map['tags'] is List
           ? (map['tags'] as List).whereType<String>().toList()
           : const [],
+      readingGenres: map['readingGenres'] is List
+          ? (map['readingGenres'] as List).whereType<String>().toList()
+          : null,
       isNsfw: map['isNsfw'] == true || !known,
       contentRatingKnown: known,
       updatedAt:
@@ -861,6 +868,15 @@ class Manga {
       status: (attributes['status'] ?? 'ongoing').toString().toUpperCase(),
       coverFileName: coverFile,
       tags: parsedTags,
+      readingGenres: rawTags
+          .where((tag) => tag['attributes']?['group'] == 'genre')
+          .map((tag) {
+            final names = tag['attributes']?['name'] as Map?;
+            return (names?['pt-br'] ?? names?['pt'] ?? names?['en'] ?? '')
+                .toString();
+          })
+          .where((name) => name.isNotEmpty)
+          .toList(),
       isNsfw: isNsfw,
       contentRatingKnown: ratingKnown,
       updatedAt: updated,

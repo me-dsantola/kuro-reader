@@ -4,6 +4,8 @@ import '../models/manga_models.dart';
 import '../services/favorite_updates_service.dart';
 import '../services/profile_palette_service.dart';
 import '../services/storage_service.dart';
+import '../services/reader_metrics.dart';
+import '../widgets/reader_metrics_section.dart';
 import '../widgets/yomi_blobatar_studio.dart';
 import '../widgets/yomi_brand_widgets.dart';
 import '../widgets/profile_storage.dart';
@@ -29,11 +31,17 @@ class ProfileDashboardScreen extends StatefulWidget {
 
 class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
   int _selectedGenreIdx = 0;
+  late final Stream<BoxEvent> _readingChanges;
 
   @override
   void initState() {
     super.initState();
     ProfilePaletteService.bindToProfileNotifier(StorageService.profileNotifier);
+    _readingChanges = StorageService.historyBox.watch().where((event) {
+      final key = event.key;
+      return key is String &&
+          (key.startsWith('reading_metric_') || key.startsWith('read_'));
+    });
   }
 
   void _openChapterFromProfile(
@@ -72,7 +80,7 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
           backgroundColor: YomiPalette.pitchBlack,
           body: ValueListenableBuilder(
             valueListenable: StorageService.historyBox.listenable(
-              keys: ['recent_reading_list'],
+              keys: ['recent_reading_list', 'reading_events_log'],
             ),
             builder: (context, Box historyBox, _) {
               return ValueListenableBuilder(
@@ -614,6 +622,24 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                                   ),
                                 ),
 
+                                const SizedBox(height: 26),
+
+                                StreamBuilder<BoxEvent>(
+                                  stream: _readingChanges,
+                                  builder: (context, snapshot) =>
+                                      ReaderMetricsSection(
+                                        metrics: ReaderMetrics.calculate(
+                                          historyBox,
+                                          favorites,
+                                          readingLists,
+                                          allowAdult: StorageService
+                                              .nsfwMode
+                                              .allowNsfwFetch,
+                                        ),
+                                        profile: profile,
+                                        accent: accent,
+                                      ),
+                                ),
                                 const SizedBox(height: 26),
 
                                 // 6. SEÇÃO 1: OBRAS LIDAS RECENTEMENTE (EM ROLL)

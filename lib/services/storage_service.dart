@@ -668,6 +668,22 @@ class StorageService {
     }
     // Commit the flag last. Retrying after a failed write cannot duplicate
     // the event already saved above.
+    final metricKey = 'reading_metric_${chapter.id}';
+    final previousMetric = historyBox.get(metricKey);
+    final metricIsRead = previousMetric is Map && previousMetric['readAt'] is String;
+    if ((read && !metricIsRead && (!wasRead || previousMetric is Map)) ||
+        (!read && (wasRead || metricIsRead))) {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await historyBox.put(metricKey, {
+        'changedAt': now,
+        if (read) ...{
+          'readAt': now,
+          'mangaId': manga.id,
+          'pages': chapter.pages > 0 ? chapter.pages : 0,
+          'number': chapter.chapterNumber,
+        },
+      });
+    }
     await historyBox.put('read_${chapter.id}', read);
   }
 
