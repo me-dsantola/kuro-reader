@@ -214,21 +214,6 @@ class _ProfileDashboardScreenState extends State<ProfileDashboardScreen> {
                                               size: 23,
                                             ),
                                           ),
-                                          IconButton(
-                                            tooltip:
-                                                'Personalizar Perfil e Mascote',
-                                            onPressed: () =>
-                                                showYomiProfileAndBlobatarEditor(
-                                                  context,
-                                                  profile,
-                                                  initialTab: 0,
-                                                ),
-                                            icon: const Icon(
-                                              Icons.more_vert_rounded,
-                                              color: Colors.white,
-                                              size: 22,
-                                            ),
-                                          ),
                                         ],
                                       ),
                                     ),

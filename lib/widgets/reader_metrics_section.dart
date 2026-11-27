@@ -309,6 +309,8 @@ class _MonthlyPreviewState extends State<_MonthlyPreview> {
   Widget _buildCard() {
     final metrics = widget.metrics;
     final profile = widget.profile;
+    final savedHue = profile.blobatarHue;
+    final cardHue = savedHue == null ? profile.seedHue : savedHue < 0 ? HSLColor.fromColor(widget.accent).hue : savedHue % 360;
     Widget label(
       String text,
       double size, {
@@ -342,7 +344,7 @@ class _MonthlyPreviewState extends State<_MonthlyPreview> {
             end: Alignment.bottomRight,
             colors: [
               const Color(0xff111124),
-              Color.lerp(const Color(0xff141323), widget.accent, .38)!,
+              Color.lerp(const Color(0xff141323), HSLColor.fromAHSL(1, cardHue, .65, .65).toColor(), .38)!,
             ],
           ),
         ),

@@ -345,7 +345,7 @@ class CommentsService {
     final effectiveHue =
         (profile.blobatarHue != null && profile.blobatarHue! >= 0)
         ? profile.blobatarHue
-        : palette.hue;
+        : profile.blobatarHue == null ? profile.seedHue : palette.hue;
     final mascotColorId = hexColorFromProfile(
       hue: effectiveHue,
       customAccentColor: profile.customAccentColor,

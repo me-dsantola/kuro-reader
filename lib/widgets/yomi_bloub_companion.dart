@@ -559,7 +559,7 @@ class _BloubPainter extends CustomPainter {
         Paint()
           ..color = Color.lerp(
             c,
-            const Color(0xFF52E3F5),
+            Colors.white,
             .45,
           )!.withValues(alpha: a[10].clamp(0.0, 1.0))
           ..style = PaintingStyle.stroke
@@ -630,9 +630,9 @@ class _BloubPainter extends CustomPainter {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color.lerp(c, const Color(0xFF52E3F5), .65)!,
+            HSLColor.fromAHSL(1, HSLColor.fromColor(c).hue, .75, .82).toColor(),
             c,
-            Color.lerp(c, const Color(0xFF20234F), .6)!,
+            HSLColor.fromAHSL(1, HSLColor.fromColor(c).hue, .5, .32).toColor(),
           ],
         ).createShader(const Rect.fromLTWH(-100, -100, 200, 200))
         ..color = Colors.white.withValues(alpha: f.alpha.clamp(0.0, 1.0)),

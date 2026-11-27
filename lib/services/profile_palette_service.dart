@@ -8,7 +8,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
-import '../blobatar/blobatar.dart' as blob;
 import '../models/manga_models.dart';
 
 @immutable
@@ -133,14 +132,14 @@ class ProfileAdaptivePalette {
   Color get cardSurface => surfaceTint;
   Color get softTint => soft;
 
-  factory ProfileAdaptivePalette.fromColor(Color seedColor) {
+  factory ProfileAdaptivePalette.fromColor(Color seedColor, {bool preservePrimary = false}) {
     final hsv = HSVColor.fromColor(seedColor);
     final bool isAchromatic = hsv.saturation < 0.12;
-    final double h = isAchromatic ? 347.0 : hsv.hue;
+    final double h = isAchromatic && !preservePrimary ? 347.0 : hsv.hue;
     final double s = isAchromatic ? 0.82 : hsv.saturation.clamp(0.65, 0.90);
     final double v = isAchromatic ? 0.88 : hsv.value.clamp(0.82, 0.96);
 
-    final primary = HSVColor.fromAHSV(1.0, h, s, v).toColor();
+    final primary = preservePrimary ? seedColor : HSVColor.fromAHSV(1.0, h, s, v).toColor();
     final secondary = HSVColor.fromAHSV(
       1.0,
       (h + 10.0) % 360.0,
@@ -287,7 +286,7 @@ class ProfilePaletteService {
   static ProfileAdaptivePalette synchronousFallbackFor(UserProfile profile) {
     if (profile.customAccentColor != null) {
       return ProfileAdaptivePalette.fromColor(
-        Color(profile.customAccentColor! | 0xFF000000),
+        Color(profile.customAccentColor! | 0xFF000000), preservePrimary: true,
       );
     }
     final avatarKey = profile.avatarImagePath?.trim() ?? '';
@@ -303,25 +302,10 @@ class ProfilePaletteService {
       return _cache[bannerKey]!;
     }
     if (profile.useBlobatarAsAvatar || avatarKey.isEmpty) {
-      try {
-        final resolved = blob.resolve(
-          profile.effectiveBlobatarSeed,
-          blob.BlobatarOptions(
-            hue: profile.blobatarHue != null && profile.blobatarHue! >= 0
-                ? profile.blobatarHue
-                : null,
-          ),
-        );
-        final headHex = resolved.palette[blob.colorHead];
-        if (headHex != null && headHex.startsWith('#') && headHex.length == 7) {
-          final colorInt = int.tryParse(headHex.substring(1), radix: 16);
-          if (colorInt != null) {
-            return ProfileAdaptivePalette.fromColor(
-              Color(colorInt | 0xFF000000),
-            );
-          }
-        }
-      } catch (_) {}
+      final hue = profile.blobatarHue;
+      return ProfileAdaptivePalette.fromColor(
+        HSLColor.fromAHSL(1, hue != null && hue >= 0 ? hue % 360 : profile.seedHue, .65, .65).toColor(),
+      );
     }
     if (preset != null) {
       return ProfileAdaptivePalette.fromColor(preset.seedColor);
@@ -334,7 +318,7 @@ class ProfilePaletteService {
   ) async {
     if (profile.customAccentColor != null) {
       return ProfileAdaptivePalette.fromColor(
-        Color(profile.customAccentColor! | 0xFF000000),
+        Color(profile.customAccentColor! | 0xFF000000), preservePrimary: true,
       );
     }
 

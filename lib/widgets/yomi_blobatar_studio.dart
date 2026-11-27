@@ -220,10 +220,10 @@ class _YomiProfileBlobatarState extends State<YomiProfileBlobatar> {
       'sun': 'cercle',
       'triangle': 'triangle',
     };
-    final hue =
-        widget.profile.blobatarHue != null && widget.profile.blobatarHue! >= 0
-        ? widget.profile.blobatarHue
-        : widget.adaptiveHue;
+    final savedHue = widget.profile.blobatarHue;
+    final hue = savedHue == null
+        ? widget.profile.seedHue
+        : savedHue < 0 ? widget.adaptiveHue ?? 347.0 : savedHue;
     final isTestBinding = WidgetsBinding.instance.runtimeType
         .toString()
         .contains('Test');
@@ -234,22 +234,29 @@ class _YomiProfileBlobatarState extends State<YomiProfileBlobatar> {
       context: widget.size < 48 ? BloubContext.reader : widget.mascotContext,
       shape: shapeMap[widget.profile.blobatarShape] ?? 'cercle',
       expression: expressionMap[expressionId] ?? 'attentif',
-      accent: hue == null
-          ? null
-          : HSLColor.fromAHSL(1, hue % 360, .65, .65).toColor(),
+      accent: _blobatarHueColor(hue),
       animated: widget.profile.blobatarAnimated && !isTestBinding,
       interactive: false,
       label:
           'Mascote ${widget.profile.effectiveBlobatarName} de ${widget.profile.name}',
     );
 
+    final backdrop = widget.overrideBackdrop ?? blobatarBackdropById(widget.profile.blobatarBackground);
+    final framed = backdrop == blob.Backdrop.none ? child : DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xff101529),
+        shape: backdrop == blob.Backdrop.circle ? BoxShape.circle : BoxShape.rectangle,
+        borderRadius: backdrop == blob.Backdrop.squircle ? BorderRadius.circular(widget.size * .25) : null,
+      ),
+      child: child,
+    );
     if (!widget.interactiveCycleOnTap || !widget.profile.blobatarInteractive) {
-      return child;
+      return framed;
     }
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _cycleExpression,
-      child: child,
+      child: framed,
     );
   }
 }
@@ -898,7 +905,7 @@ class YomiMoonlitLibraryBackdropPainter extends CustomPainter {
 }
 
 Color _blobatarHueColor(double hue) {
-  return HSVColor.fromAHSV(1.0, hue % 360.0, 0.78, 0.92).toColor();
+  return HSLColor.fromAHSL(1.0, hue % 360.0, .65, .65).toColor();
 }
 
 Future<void> showYomiProfileAndBlobatarEditor(
@@ -1329,6 +1336,7 @@ class _ProfileAndBlobatarEditorSheetState
   }
 
   Widget _buildBlobatarStudioTab(UserProfile draft, Color accent) {
+    final selectedHue = (_blobatarHue == null ? draft.seedHue : _blobatarHue! < 0 ? _livePalette.hue : _blobatarHue!).clamp(0, 360).toDouble();
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       children: [
@@ -1643,14 +1651,14 @@ class _ProfileAndBlobatarEditorSheetState
         const SizedBox(height: 22),
 
         Text(
-          'Matiz personalizada: ${(_blobatarHue ?? _livePalette.hue).clamp(0, 360).round()}°',
+          'Matiz personalizada: ${selectedHue.round()}°',
         ),
         Slider(
           min: 0,
           max: 360,
           divisions: 360,
-          label: '${(_blobatarHue ?? _livePalette.hue).clamp(0, 360).round()}°',
-          value: (_blobatarHue ?? _livePalette.hue).clamp(0, 360).toDouble(),
+          label: '${selectedHue.round()}°',
+          value: selectedHue,
           activeColor: accent,
           onChanged: (value) => setState(() => _blobatarHue = value),
           onChangeEnd: (_) => _autoPersistDraft(),

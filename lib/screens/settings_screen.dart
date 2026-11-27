@@ -8,6 +8,7 @@ import '../services/profile_palette_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/appearance_settings.dart';
+import '../widgets/yomi_blobatar_studio.dart';
 import '../widgets/yomi_brand_widgets.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -147,6 +148,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // generous bottom padding so the floating navbar never cuts off content
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 130),
                     children: [
+                      _buildSectionTitle('Perfil e Kuro', palette),
+                      for (final entry in ['Mascote e cores', 'Foto, banner e tema', 'Identidade do leitor'].indexed)
+                        ListTile(
+                          leading: Icon([Icons.pets, Icons.wallpaper, Icons.badge_outlined][entry.$1], color: palette.primary),
+                          title: Text(entry.$2),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => showYomiProfileAndBlobatarEditor(context, StorageService.profileNotifier.value, initialTab: entry.$1),
+                        ),
+                      const SizedBox(height: 24),
                       // 1. CONTA E NUVEM (GOOGLE / FIRESTORE)
                       _buildSectionTitle('Conta & Sincronização em Nuvem', palette),
                       const SizedBox(height: 8),

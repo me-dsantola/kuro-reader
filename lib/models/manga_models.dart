@@ -1151,6 +1151,9 @@ class UserProfile {
   String get effectiveBlobatarSeed =>
       blobatarSeed.trim().isNotEmpty ? blobatarSeed.trim() : name;
 
+  double get seedHue => effectiveBlobatarSeed.codeUnits
+      .fold<int>(0, (hash, unit) => (hash * 31 + unit) % 360).toDouble();
+
   String get effectiveBlobatarName =>
       blobatarName.trim().isNotEmpty ? blobatarName.trim() : 'Kuro';
 

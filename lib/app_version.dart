@@ -4,5 +4,5 @@
 /// (`kAppVersion+kAppBuildNumber`). O teste `test/app_version_test.dart`
 /// falha no CI se os dois divergirem, então lembre de atualizar aqui
 /// sempre que fizer bump de versão.
-const String kAppVersion = '1.4.2';
-const int kAppBuildNumber = 26;
+const String kAppVersion = '1.4.3';
+const int kAppBuildNumber = 27;

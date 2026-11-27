@@ -323,7 +323,7 @@ class CloudSyncService {
 
         if (!kIsWeb) {
           final avatarBase64 = data['avatarBase64'];
-          if (avatarBase64 is String && avatarBase64.isNotEmpty) {
+          if (avatarBase64 is String && avatarBase64.isNotEmpty && currentProfile.avatarImagePath?.startsWith('https://') != true) {
             try {
               final bytes = base64Decode(avatarBase64);
               final mediaDir = await AppDirectoryService.getProfileMediaDirectory();
@@ -337,7 +337,7 @@ class CloudSyncService {
           }
 
           final bannerBase64 = data['bannerBase64'];
-          if (bannerBase64 is String && bannerBase64.isNotEmpty) {
+          if (bannerBase64 is String && bannerBase64.isNotEmpty && currentProfile.bannerImagePath?.startsWith('https://') != true && currentProfile.bannerImagePath?.startsWith('preset:') != true) {
             try {
               final bytes = base64Decode(bannerBase64);
               final mediaDir = await AppDirectoryService.getProfileMediaDirectory();
